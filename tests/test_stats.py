@@ -459,6 +459,23 @@ def test_compare_groups_picks_mann_whitney_when_non_normal(call_tool, load_df_in
     assert result["assumption_checks"]["normality_test"]["violated"] is True
 
 
+def test_compare_groups_picks_anova_three_groups_normal(call_tool, load_df_into_session):
+    load_df_into_session("triplets", _make_three_group_df())
+    result = call_tool(
+        "compare_groups",
+        {"name": "triplets", "group_column": "g", "metric_column": "v"},
+    )
+    # Three small symmetric groups → ANOVA path.
+    # scipy.stats.f_oneway([1..5],[3..7],[5..9]) → F=8.0, p=0.0061963978
+    # eta_sq = 0.5714285714
+    assert result["ok"] is True
+    assert result["test"] == "anova"
+    assert result["statistic"] == pytest.approx(8.0, abs=1e-4)
+    assert result["p_value"] == pytest.approx(0.0061963978, abs=1e-4)
+    assert result["effect_size"]["name"] == "eta_squared"
+    assert result["effect_size"]["value"] == pytest.approx(0.5714285714, abs=1e-4)
+
+
 def test_test_hypothesis_records_cells_on_success(call_tool, load_df_into_session):
     from data_analyst_mcp.recorder import get_recorder
 
