@@ -9,8 +9,10 @@ if TYPE_CHECKING:
 
 
 def png_to_base64(png_bytes: bytes) -> str:
-    """Stub — returns empty string so the round-trip assertion fails."""
-    return ""
+    """Encode raw PNG bytes as a base64 ASCII string (no data: prefix)."""
+    import base64
+
+    return base64.b64encode(png_bytes).decode("ascii")
 
 
 def rows_to_dicts(rel: duckdb.DuckDBPyRelation) -> list[dict[str, Any]]:
