@@ -51,6 +51,7 @@ dev = [
     "jupyter>=1.1.0",
     "nbclient>=0.10.0",
     "pillow>=10.4.0",
+    "pytest-asyncio>=0.24.0",
 ]
 
 [tool.ruff]
@@ -94,7 +95,11 @@ addopts = [
 ]
 markers = [
     "slow: marks tests as slow",
+    "eval: marks tests as evals (integration via mcp.client.stdio)",
 ]
+asyncio_mode = "auto"
+python_files = ["test_*.py", "eval_*.py"]
+python_functions = ["test_*", "eval_*"]
 
 [tool.coverage.run]
 source = ["data_analyst_mcp"]
