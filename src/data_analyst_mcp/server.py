@@ -24,6 +24,27 @@ mcp: FastMCP = FastMCP("data-analyst-mcp")
 
 
 @mcp.tool()
+def profile_dataset(name: str, sample_rows: int = 5) -> dict[str, Any]:
+    """Produce a full EDA profile for a registered dataset.
+
+    Reports total rows + columns, per-column dtype/null counts/distinct
+    counts, numeric stats (min/max/mean/median/std/p25/p75/p99/zeros/
+    negatives), string-length stats, temporal stats, top-5 most-frequent
+    values per column, heuristic flags (``looks_like_id``,
+    ``looks_like_categorical``, ``looks_like_timestamp``,
+    ``high_cardinality``, ``mostly_null``, ``constant``,
+    ``mixed_dtype_suspect``), a head sample of ``sample_rows`` rows, and a
+    short list of suggested next actions. This is the headline EDA tool.
+    """
+    try:
+        payload = _datasets.ProfileDatasetInput(name=name, sample_rows=sample_rows)
+        return _datasets.profile_dataset(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("profile_dataset failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
 def list_datasets() -> dict[str, Any]:
     """List every dataset currently registered in this session.
 

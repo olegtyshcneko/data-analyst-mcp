@@ -85,6 +85,13 @@ def test_list_datasets_returns_empty_on_fresh_session(call_tool: Any) -> None:
     assert result == {"ok": True, "datasets": []}
 
 
+def test_profile_dataset_errors_when_name_missing(call_tool: Any) -> None:
+    result = call_tool("profile_dataset", {"name": "nope"})
+
+    assert result["ok"] is False
+    assert result["error"]["type"] == "not_found"
+
+
 def test_list_datasets_reports_registered_entries(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 

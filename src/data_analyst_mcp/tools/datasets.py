@@ -71,6 +71,25 @@ def _build_read_call(path: str, fmt: str) -> str:
     return f"read_csv_auto('{path}', SAMPLE_SIZE=-1)"
 
 
+class ProfileDatasetInput(BaseModel):
+    """Inputs for ``profile_dataset``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(..., description="Registered dataset name to profile.")
+    sample_rows: int = Field(
+        default=5,
+        ge=0,
+        le=100,
+        description="Number of head rows to include in the response sample.",
+    )
+
+
+def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
+    """Stub — always returns ok=True so the not-found test fails."""
+    return {"ok": True}
+
+
 def list_datasets() -> dict[str, Any]:
     """Return every registered dataset with name, rows, columns, registered_at."""
     items = [
