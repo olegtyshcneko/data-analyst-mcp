@@ -140,6 +140,7 @@ def describe_column(payload: DescribeColumnInput) -> dict[str, Any]:
         p75 = quantiles[75]
         iqr = (p75 - p25) if (p25 is not None and p75 is not None) else 0.0
         result["iqr"] = iqr
+        result["histogram"] = _histogram(con, table, quoted, bins=payload.bins)
 
     return result
 
@@ -229,6 +230,43 @@ def _build_suggestions(column_profiles: list[dict[str, Any]]) -> list[str]:
     if not suggestions:
         suggestions.append("Run describe_column on individual columns to dig deeper.")
     return suggestions[:3]
+
+
+def _histogram(con: Any, table: str, quoted: str, bins: int) -> dict[str, Any]:
+    """Equal-width histogram with ``bins`` bins for one numeric column."""
+    range_row = con.execute(
+        f"SELECT MIN({quoted}), MAX({quoted}) FROM {table} WHERE {quoted} IS NOT NULL"
+    ).fetchone()
+    if range_row is None or range_row[0] is None or range_row[1] is None:
+        return {"bin_edges": [], "counts": []}
+    lo = float(range_row[0])
+    hi = float(range_row[1])
+    if lo == hi:
+        return {"bin_edges": [lo, hi], "counts": [
+            int(
+                con.execute(
+                    f"SELECT COUNT(*) FROM {table} WHERE {quoted} IS NOT NULL"
+                ).fetchone()[0]  # type: ignore[index]
+            )
+        ]}
+    width = (hi - lo) / bins
+    edges = [lo + i * width for i in range(bins + 1)]
+    edges[-1] = hi  # avoid float-drift cutoff
+    # FLOOR((x - lo) / width) bucketed; clamp to [0, bins-1].
+    bucket_rows = con.execute(
+        f"""
+        SELECT bucket, COUNT(*) FROM (
+            SELECT LEAST(CAST(FLOOR(({quoted} - {lo!r}) / {width!r}) AS INTEGER), {bins - 1}) AS bucket
+            FROM {table}
+            WHERE {quoted} IS NOT NULL
+        ) GROUP BY bucket ORDER BY bucket
+        """
+    ).fetchall()
+    counts = [0] * bins
+    for bucket, count in bucket_rows:
+        idx = max(0, min(int(bucket), bins - 1))
+        counts[idx] = int(count)
+    return {"bin_edges": edges, "counts": counts}
 
 
 def _top_values(con: Any, table: str, quoted: str, limit: int = 5) -> list[dict[str, Any]]:
