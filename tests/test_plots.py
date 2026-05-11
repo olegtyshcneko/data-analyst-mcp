@@ -120,3 +120,16 @@ def test_plot_title_changes_rendered_bytes(call_tool, load_df_into_session):
     _assert_valid_png(plain)
     _assert_valid_png(titled)
     assert plain["png_base64"] != titled["png_base64"]
+
+
+def test_plot_success_records_markdown_and_code_cells(call_tool, load_df_into_session):
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("d", _NUMERIC_DF)
+    call_tool("plot", {"name": "d", "kind": "hist", "x": "x"})
+    cells = get_recorder().cells
+    assert len(cells) == 2
+    assert cells[0]["cell_type"] == "markdown"
+    assert cells[1]["cell_type"] == "code"
+    assert cells[0]["metadata"]["tool_name"] == "plot"
+    assert cells[1]["metadata"]["tool_name"] == "plot"
