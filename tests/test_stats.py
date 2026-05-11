@@ -75,3 +75,21 @@ def test_correlate_spearman_known_answer(call_tool, load_df_into_session):
     assert m[idx["x"]][idx["y"]] == pytest.approx(0.7378647874, abs=1e-4)
     assert m[idx["x"]][idx["z"]] == pytest.approx(0.8000000000, abs=1e-4)
     assert m[idx["y"]][idx["z"]] == pytest.approx(0.3162277660, abs=1e-4)
+
+
+def test_correlate_kendall_known_answer(call_tool, load_df_into_session):
+    load_df_into_session("xyz", _XYZ_DF)
+    result = call_tool(
+        "correlate",
+        {"name": "xyz", "columns": ["x", "y", "z"], "method": "kendall", "plot": False},
+    )
+    # scipy.stats.kendalltau on _XYZ_DF:
+    #   x,y → 0.6708203932499368
+    #   x,z → 0.6
+    #   y,z → 0.22360679774997894
+    m = result["matrix"]
+    labels = result["labels"]
+    idx = {lab: i for i, lab in enumerate(labels)}
+    assert m[idx["x"]][idx["y"]] == pytest.approx(0.6708203932, abs=1e-4)
+    assert m[idx["x"]][idx["z"]] == pytest.approx(0.6000000000, abs=1e-4)
+    assert m[idx["y"]][idx["z"]] == pytest.approx(0.2236067977, abs=1e-4)
