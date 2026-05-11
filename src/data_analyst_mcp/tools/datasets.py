@@ -73,7 +73,16 @@ def _build_read_call(path: str, fmt: str) -> str:
 
 def list_datasets() -> dict[str, Any]:
     """Return every registered dataset with name, rows, columns, registered_at."""
-    return {"ok": True, "datasets": []}
+    items = [
+        {
+            "name": name,
+            "rows": entry.rows,
+            "columns": len(entry.columns),
+            "registered_at": entry.registered_at.isoformat(),
+        }
+        for name, entry in session.get_datasets().items()
+    ]
+    return {"ok": True, "datasets": items}
 
 
 def load_dataset(payload: LoadDatasetInput) -> dict[str, Any]:
