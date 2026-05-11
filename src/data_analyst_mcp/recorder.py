@@ -14,6 +14,10 @@ class NotebookRecorder:
     def __init__(self) -> None:
         self.cells: list[dict[str, Any]] = []
 
+    def record(self, *, markdown: str, code: str, tool_name: str) -> None:
+        """Stub — records nothing so the cell-count assertion fails."""
+        return None
+
 
 _recorder = NotebookRecorder()
 
