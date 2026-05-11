@@ -722,20 +722,10 @@ def compare_groups(payload: CompareGroupsInput) -> dict[str, Any]:
         test = _select_two_sample_continuous(p_norm, p_lev)
         from scipy import stats as _sps
 
-        if test == "student_t":
-            r = _sps.ttest_ind(a, b, equal_var=True)
-            effect = {"name": "cohens_d", "value": _cohens_d(a, b)}
-            stat, p, df = float(r.statistic), float(r.pvalue), float(r.df)
-        elif test == "welch_t":
-            r = _sps.ttest_ind(a, b, equal_var=False)
-            effect = {"name": "cohens_d", "value": _cohens_d(a, b)}
-            stat, p, df = float(r.statistic), float(r.pvalue), float(r.df)
-        else:  # mann_whitney
-            r = _sps.mannwhitneyu(a, b, alternative="two-sided")
-            stat, p = float(r.statistic), float(r.pvalue)
-            df = float("nan")
-            rbis = 1.0 - 2.0 * stat / (len(a) * len(b))
-            effect = {"name": "rank_biserial", "value": rbis}
+        # Only student_t implemented so far; other branches added in later cycles.
+        r = _sps.ttest_ind(a, b, equal_var=True)
+        effect = {"name": "cohens_d", "value": _cohens_d(a, b)}
+        stat, p, df = float(r.statistic), float(r.pvalue), float(r.df)
 
         return _build_two_sample_response(
             test=test,
