@@ -162,6 +162,22 @@ def test_profile_dataset_returns_string_stats(call_tool: Any) -> None:
     assert s["max_length"] == 16
 
 
+def test_profile_dataset_returns_temporal_stats(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("profile_dataset", {"name": "messy"})
+
+    by_name = {c["name"]: c for c in result["columns"]}
+    # The CSV header has trailing whitespace on `last_login `.
+    login = by_name["last_login "]
+    assert "temporal" in login
+    t = login["temporal"]
+    for key in ("min", "max", "range_days", "null_count", "modal_weekday"):
+        assert key in t
+    assert t["range_days"] >= 0
+    assert t["modal_weekday"] in {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
+
+
 def test_list_datasets_reports_registered_entries(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 
