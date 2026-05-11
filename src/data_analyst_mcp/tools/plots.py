@@ -89,9 +89,8 @@ def _plot_impl(payload: PlotInput) -> dict[str, Any]:
         return _plot_box(payload)
     if payload.kind == "violin":
         return _plot_violin(payload)
-    if payload.kind == "heatmap":
-        return _plot_heatmap_tool(payload)
-    return {"ok": True, "png_base64": "", "width": 0, "height": 0}
+    # heatmap (Literal validation in PlotInput guarantees no other kinds reach here)
+    return _plot_heatmap_tool(payload)
 
 
 def _record_plot(payload: PlotInput, result: dict[str, Any]) -> None:
