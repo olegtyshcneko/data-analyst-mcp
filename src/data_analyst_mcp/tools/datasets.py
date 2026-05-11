@@ -115,6 +115,21 @@ def _is_numeric(dtype: str) -> bool:
 
 _STRING_DTYPES = {"VARCHAR", "CHAR", "TEXT", "BLOB", "STRING"}
 
+
+def _top_values(con: Any, table: str, quoted: str, limit: int = 5) -> list[dict[str, Any]]:
+    """Return the top ``limit`` most-frequent values for a column."""
+    rows = con.execute(
+        f"""
+        SELECT {quoted} AS value, COUNT(*) AS c
+        FROM {table}
+        WHERE {quoted} IS NOT NULL
+        GROUP BY value
+        ORDER BY c DESC, value ASC
+        LIMIT {int(limit)}
+        """
+    ).fetchall()
+    return [{"value": r[0], "count": int(r[1])} for r in rows]
+
 _TEMPORAL_DTYPES = {"DATE", "TIMESTAMP", "TIMESTAMPTZ", "TIMESTAMP_NS", "TIMESTAMP_MS",
                     "TIMESTAMP_S", "TIME", "TIMETZ", "DATETIME"}
 
@@ -249,6 +264,7 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
             entry_dict["temporal"] = _temporal_stats(con, table, quoted)
         elif _is_string(col["dtype"]):
             entry_dict["string"] = _string_stats(con, table, quoted)
+        entry_dict["top_values"] = _top_values(con, table, quoted)
         column_profiles.append(entry_dict)
 
     return {
