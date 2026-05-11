@@ -189,3 +189,29 @@ def test_test_hypothesis_welch_known_answer(call_tool, load_df_into_session):
     assert result["effect_size"]["name"] == "cohens_d"
     assert result["n_a"] == 5
     assert result["n_b"] == 8
+
+
+def test_test_hypothesis_mann_whitney_known_answer(call_tool, load_df_into_session):
+    load_df_into_session("pairs", _make_two_group_df())
+    result = call_tool(
+        "test_hypothesis",
+        {
+            "kind": "mann_whitney",
+            "name": "pairs",
+            "group_column": "g",
+            "metric_column": "v",
+            "group_a": "A",
+            "group_b": "B",
+        },
+    )
+    # scipy.stats.mannwhitneyu([1,2,3,4,5], [3,4,5,6,7], alternative='two-sided')
+    #   U=4.5, p=0.11384629800665805
+    # rank_biserial = 1 - 2*U/(n1*n2) = 1 - 2*4.5/25 = 0.64
+    assert result["ok"] is True
+    assert result["test"] == "mann_whitney"
+    assert result["statistic"] == pytest.approx(4.5, abs=1e-4)
+    assert result["p_value"] == pytest.approx(0.1138462980, abs=1e-4)
+    assert result["effect_size"]["name"] == "rank_biserial"
+    assert result["effect_size"]["value"] == pytest.approx(0.64, abs=1e-4)
+    assert result["n_a"] == 5
+    assert result["n_b"] == 5
