@@ -197,6 +197,28 @@ def test_profile_dataset_returns_top5_most_frequent_per_column(call_tool: Any) -
     assert top[0]["value"] in {"PL", "US", "DE", "UA"}
 
 
+def test_profile_dataset_emits_heuristic_flags(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("profile_dataset", {"name": "messy"})
+
+    by_name = {c["name"]: c for c in result["columns"]}
+    cust = by_name["customer_id"]
+    # customer_id is unique → looks_like_id + high_cardinality.
+    assert cust["flags"]["looks_like_id"] is True
+    assert cust["flags"]["high_cardinality"] is True
+    assert cust["flags"]["looks_like_categorical"] is False
+
+    # country is low-cardinality categorical.
+    country = by_name["country"]
+    assert country["flags"]["looks_like_categorical"] is True
+    assert country["flags"]["looks_like_id"] is False
+
+    # last_login is timestamp → looks_like_timestamp.
+    login = by_name["last_login"]
+    assert login["flags"]["looks_like_timestamp"] is True
+
+
 def test_list_datasets_reports_registered_entries(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 
