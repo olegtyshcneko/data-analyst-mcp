@@ -75,6 +75,8 @@ def plot(payload: PlotInput) -> dict[str, Any]:
         return _plot_bar(payload)
     if payload.kind == "line":
         return _plot_line(payload)
+    if payload.kind == "scatter":
+        return _plot_scatter(payload)
     return {"ok": True, "png_base64": "", "width": 0, "height": 0}
 
 
@@ -151,6 +153,33 @@ def _render_to_base64(fig: Any) -> dict[str, Any]:
         "width": int(w),
         "height": int(h),
     }
+
+
+def _plot_scatter(payload: PlotInput) -> dict[str, Any]:
+    """Scatter of ``y`` against ``x``. ``hue`` colors points by group."""
+    assert payload.x is not None and payload.y is not None
+    con = session.get_connection()
+    cols = [payload.x, payload.y] + ([payload.hue] if payload.hue is not None else [])
+    select = ", ".join(_quote(c) for c in cols)
+    df: Any = con.execute(f"SELECT {select} FROM {_quote(payload.name)}").df()
+    fig, ax = _make_figure()
+    if payload.hue is None:
+        ax.scatter(df[payload.x].to_numpy(), df[payload.y].to_numpy(), s=18, alpha=0.75)
+    else:
+        for label, sub in df.groupby(payload.hue):
+            ax.scatter(
+                sub[payload.x].to_numpy(),
+                sub[payload.y].to_numpy(),
+                s=18,
+                alpha=0.75,
+                label=str(label),
+            )
+        ax.legend(title=payload.hue, frameon=False)
+    ax.set_xlabel(payload.x)
+    ax.set_ylabel(payload.y)
+    if payload.title is not None:
+        ax.set_title(payload.title)
+    return _render_to_base64(fig)
 
 
 def _plot_line(payload: PlotInput) -> dict[str, Any]:
