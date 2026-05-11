@@ -334,6 +334,21 @@ def test_compare_groups_picks_fisher_when_2x2_expected_low(call_tool, load_df_in
     assert result["effect_size"]["value"] == pytest.approx(20.0, abs=1e-4)
 
 
+def test_compare_groups_records_markdown_and_code_cells(call_tool, load_df_into_session):
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("pairs", _make_two_group_df())
+    call_tool(
+        "compare_groups",
+        {"name": "pairs", "group_column": "g", "metric_column": "v", "groups": ["A", "B"]},
+    )
+    cells = get_recorder().cells
+    assert len(cells) == 2
+    assert cells[0]["cell_type"] == "markdown"
+    assert cells[1]["cell_type"] == "code"
+    assert cells[0]["metadata"]["tool_name"] == "compare_groups"
+
+
 def _make_three_group_non_normal_df() -> pd.DataFrame:
     import numpy as np
 
