@@ -10,6 +10,33 @@ from pydantic import BaseModel, ConfigDict, Field
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
 
+_NUMERIC_DTYPES = {
+    "TINYINT",
+    "SMALLINT",
+    "INTEGER",
+    "BIGINT",
+    "HUGEINT",
+    "UTINYINT",
+    "USMALLINT",
+    "UINTEGER",
+    "UBIGINT",
+    "FLOAT",
+    "DOUBLE",
+    "REAL",
+    "DECIMAL",
+}
+
+
+def _is_numeric_dtype(dtype: str) -> bool:
+    """True if a DuckDB dtype represents a numeric column."""
+    base = dtype.split("(")[0].strip().upper()
+    return base in _NUMERIC_DTYPES
+
+
+def _quote(name: str) -> str:
+    """Quote a SQL identifier safely for DuckDB."""
+    return '"' + name.replace('"', '""') + '"'
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,4 +82,13 @@ def correlate(payload: CorrelateInput) -> dict[str, Any]:
                 message=f"Columns not in dataset {payload.name!r}: {missing}.",
                 hint=f"Available: {sorted(available)}",
             )
-    return {"ok": True}
+        chosen = list(payload.columns)
+    else:
+        chosen = [c["name"] for c in entry.columns if _is_numeric_dtype(c["dtype"])]
+        if not chosen:
+            return build_error(
+                type="no_numeric_columns",
+                message=f"Dataset {payload.name!r} has no numeric columns.",
+                hint="Pass an explicit `columns` list, or cast columns to numeric first.",
+            )
+    return {"ok": True, "columns": chosen}
