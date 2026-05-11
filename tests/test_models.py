@@ -403,6 +403,33 @@ def test_fit_model_logistic_records_markdown_and_code_cells(call_tool, load_df_i
     assert "smf.logit" in cells[1]["source"]
 
 
+def test_fit_model_logistic_coerces_bool_endog_to_numeric(call_tool, load_df_into_session):
+    """Real-world boolean targets (e.g. `won`) must fit without manual casting.
+
+    statsmodels' patsy refuses to dummy-code a single-column boolean endog,
+    so the tool has to coerce it itself before handing off. Without this,
+    every CSV that stores a 0/1 outcome as a Python bool (DuckDB infers
+    BOOLEAN for `true`/`false`) breaks the logistic path with an opaque
+    "endog has evaluated to ... multiple columns" error.
+    """
+    df = pd.DataFrame(
+        {
+            "y": [True, False, True, False, True, False, True, False, True, False],
+            "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+        }
+    )
+    load_df_into_session("bool_logi", df)
+    result = call_tool(
+        "fit_model",
+        {"name": "bool_logi", "formula": "y ~ x", "kind": "logistic"},
+    )
+    assert result["ok"] is True, result
+    # Coefficient for `x` must be present and a finite number.
+    by_name = {c["name"]: c for c in result["coefficients"]}
+    assert "x" in by_name
+    assert by_name["x"]["estimate"] is not None
+
+
 # === Poisson — known-answer on a seeded synthetic dataset ===
 #
 # Generated with numpy.random.default_rng(20260511), n=400:
