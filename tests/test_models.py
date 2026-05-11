@@ -15,27 +15,21 @@ import pytest
 
 
 def test_fit_model_unknown_dataset_returns_not_found(call_tool):
-    result = call_tool(
-        "fit_model", {"name": "nope", "formula": "y ~ x", "kind": "ols"}
-    )
+    result = call_tool("fit_model", {"name": "nope", "formula": "y ~ x", "kind": "ols"})
     assert result["ok"] is False
     assert result["error"]["type"] == "not_found"
 
 
 def test_fit_model_unknown_kind_returns_invalid_kind(call_tool, load_df_into_session):
     load_df_into_session("tiny", pd.DataFrame({"y": [1.0, 2.0, 3.0], "x": [0.0, 1.0, 2.0]}))
-    result = call_tool(
-        "fit_model", {"name": "tiny", "formula": "y ~ x", "kind": "probit"}
-    )
+    result = call_tool("fit_model", {"name": "tiny", "formula": "y ~ x", "kind": "probit"})
     assert result["ok"] is False
     assert result["error"]["type"] == "invalid_kind"
 
 
 def test_fit_model_missing_column_returns_formula_error(call_tool, load_df_into_session):
     load_df_into_session("tiny", pd.DataFrame({"y": [1.0, 2.0, 3.0], "x": [0.0, 1.0, 2.0]}))
-    result = call_tool(
-        "fit_model", {"name": "tiny", "formula": "y ~ nope", "kind": "ols"}
-    )
+    result = call_tool("fit_model", {"name": "tiny", "formula": "y ~ nope", "kind": "ols"})
     assert result["ok"] is False
     assert result["error"]["type"] == "formula_error"
 
@@ -197,9 +191,7 @@ def _heteroskedastic_df() -> pd.DataFrame:
 
 def test_fit_model_ols_emits_heteroskedasticity_warning(call_tool, load_df_into_session):
     load_df_into_session("hetero", _heteroskedastic_df())
-    result = call_tool(
-        "fit_model", {"name": "hetero", "formula": "y ~ x", "kind": "ols"}
-    )
+    result = call_tool("fit_model", {"name": "hetero", "formula": "y ~ x", "kind": "ols"})
     # het_breuschpagan p on this fixture (seed 20260511) = 0.00014260162314631662
     assert result["diagnostics"]["breusch_pagan_p"] < 0.05
     assert "heteroskedasticity" in result["warnings"]
@@ -217,17 +209,13 @@ def _heavy_tail_df() -> pd.DataFrame:
 
 def test_fit_model_ols_emits_non_normal_residuals_warning(call_tool, load_df_into_session):
     load_df_into_session("heavy", _heavy_tail_df())
-    result = call_tool(
-        "fit_model", {"name": "heavy", "formula": "y ~ x", "kind": "ols"}
-    )
+    result = call_tool("fit_model", {"name": "heavy", "formula": "y ~ x", "kind": "ols"})
     # jarque_bera p on this fixture (seed 20260511) = 0.0023420079865034194
     assert result["diagnostics"]["jarque_bera_p"] < 0.05
     assert "non_normal_residuals" in result["warnings"]
 
 
-def test_fit_model_ols_robust_switches_to_hc3_standard_errors(
-    call_tool, load_df_into_session
-):
+def test_fit_model_ols_robust_switches_to_hc3_standard_errors(call_tool, load_df_into_session):
     load_df_into_session("duncan", _duncan_df())
     plain = call_tool(
         "fit_model",
@@ -322,9 +310,7 @@ def _logistic_df() -> pd.DataFrame:
 
 def test_fit_model_logistic_returns_pinned_coefficients(call_tool, load_df_into_session):
     load_df_into_session("logi", _logistic_df())
-    result = call_tool(
-        "fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"}
-    )
+    result = call_tool("fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"})
     assert result["ok"] is True
     # smf.logit("y ~ x + z", data=logi).fit(disp=0).params:
     #   Intercept = -0.2936185311262021
@@ -340,9 +326,7 @@ def test_fit_model_logistic_returns_pinned_coefficients(call_tool, load_df_into_
 
 def test_fit_model_logistic_returns_pseudo_r_squared_fit_block(call_tool, load_df_into_session):
     load_df_into_session("logi", _logistic_df())
-    result = call_tool(
-        "fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"}
-    )
+    result = call_tool("fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"})
     fit = result["fit"]
     # Logistic does NOT report r_squared / adj_r_squared.
     assert "r_squared" not in fit
@@ -363,9 +347,7 @@ def test_fit_model_logistic_returns_pseudo_r_squared_fit_block(call_tool, load_d
 
 def test_fit_model_logistic_diagnostics_omit_ols_only_fields(call_tool, load_df_into_session):
     load_df_into_session("logi", _logistic_df())
-    result = call_tool(
-        "fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"}
-    )
+    result = call_tool("fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"})
     diag = result["diagnostics"]
     # condition_number is always present (numpy.linalg.cond fallback).
     assert isinstance(diag["condition_number"], float)
@@ -400,9 +382,7 @@ def test_fit_model_logistic_emits_high_multicollinearity_warning(call_tool, load
 
 def test_fit_model_logistic_interpretation_mentions_odds(call_tool, load_df_into_session):
     load_df_into_session("logi", _logistic_df())
-    result = call_tool(
-        "fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"}
-    )
+    result = call_tool("fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"})
     interp = result["interpretation"]
     assert isinstance(interp, str)
     # On this seeded fixture, `x` has the smallest p-value (≈ 0), so the
@@ -415,9 +395,7 @@ def test_fit_model_logistic_records_markdown_and_code_cells(call_tool, load_df_i
     from data_analyst_mcp.recorder import get_recorder
 
     load_df_into_session("logi", _logistic_df())
-    call_tool(
-        "fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"}
-    )
+    call_tool("fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"})
     cells = get_recorder().cells
     assert len(cells) == 2
     assert cells[0]["cell_type"] == "markdown"
@@ -444,9 +422,7 @@ def _poisson_df() -> pd.DataFrame:
 
 def test_fit_model_poisson_returns_pinned_coefficients(call_tool, load_df_into_session):
     load_df_into_session("pois", _poisson_df())
-    result = call_tool(
-        "fit_model", {"name": "pois", "formula": "y ~ x", "kind": "poisson"}
-    )
+    result = call_tool("fit_model", {"name": "pois", "formula": "y ~ x", "kind": "poisson"})
     assert result["ok"] is True
     # smf.poisson("y ~ x", data=pois).fit(disp=0).params:
     #   Intercept = 0.4955550345349605
@@ -460,9 +436,7 @@ def test_fit_model_poisson_returns_pinned_coefficients(call_tool, load_df_into_s
 
 def test_fit_model_poisson_returns_pseudo_r_squared_fit_block(call_tool, load_df_into_session):
     load_df_into_session("pois", _poisson_df())
-    result = call_tool(
-        "fit_model", {"name": "pois", "formula": "y ~ x", "kind": "poisson"}
-    )
+    result = call_tool("fit_model", {"name": "pois", "formula": "y ~ x", "kind": "poisson"})
     fit = result["fit"]
     # m.aic        = 1261.6421455062296
     # m.bic        = 1269.6250746004455
@@ -490,9 +464,7 @@ def _overdispersed_df() -> pd.DataFrame:
 
 def test_fit_model_poisson_emits_overdispersion_warning(call_tool, load_df_into_session):
     load_df_into_session("overdisp", _overdispersed_df())
-    result = call_tool(
-        "fit_model", {"name": "overdisp", "formula": "y ~ x", "kind": "poisson"}
-    )
+    result = call_tool("fit_model", {"name": "overdisp", "formula": "y ~ x", "kind": "poisson"})
     # Pearson dispersion on this fixture (seed 20260511) ≈ 1.89 >> 1.5.
     assert "overdispersion" in result["warnings"]
 
@@ -501,9 +473,7 @@ def test_fit_model_poisson_no_overdispersion_warning_on_clean_fixture(
     call_tool, load_df_into_session
 ):
     load_df_into_session("pois", _poisson_df())
-    result = call_tool(
-        "fit_model", {"name": "pois", "formula": "y ~ x", "kind": "poisson"}
-    )
+    result = call_tool("fit_model", {"name": "pois", "formula": "y ~ x", "kind": "poisson"})
     # Pearson dispersion ≈ 0.95 on the clean fixture → no warning.
     assert "overdispersion" not in result["warnings"]
 
@@ -512,9 +482,7 @@ def test_fit_model_poisson_records_markdown_and_code_cells(call_tool, load_df_in
     from data_analyst_mcp.recorder import get_recorder
 
     load_df_into_session("pois", _poisson_df())
-    call_tool(
-        "fit_model", {"name": "pois", "formula": "y ~ x", "kind": "poisson"}
-    )
+    call_tool("fit_model", {"name": "pois", "formula": "y ~ x", "kind": "poisson"})
     cells = get_recorder().cells
     assert len(cells) == 2
     assert cells[0]["cell_type"] == "markdown"
@@ -541,18 +509,14 @@ def test_call_tool_fit_model_ols_returns_full_envelope(call_tool, load_df_into_s
 
 def test_call_tool_fit_model_logistic_returns_full_envelope(call_tool, load_df_into_session):
     load_df_into_session("logi", _logistic_df())
-    result = call_tool(
-        "fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"}
-    )
+    result = call_tool("fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"})
     assert result["ok"] is True
     assert {"coefficients", "fit", "diagnostics", "warnings", "interpretation"} <= set(result)
 
 
 def test_call_tool_fit_model_poisson_returns_full_envelope(call_tool, load_df_into_session):
     load_df_into_session("pois", _poisson_df())
-    result = call_tool(
-        "fit_model", {"name": "pois", "formula": "y ~ x", "kind": "poisson"}
-    )
+    result = call_tool("fit_model", {"name": "pois", "formula": "y ~ x", "kind": "poisson"})
     assert result["ok"] is True
     assert {"coefficients", "fit", "diagnostics", "warnings", "interpretation"} <= set(result)
 
@@ -582,9 +546,9 @@ def test_fit_model_emitted_code_cell_matches_runtime_template(call_tool, load_df
     )
     code = get_recorder().cells[1]["source"]
     expected = (
-        'import statsmodels.formula.api as smf\n'
+        "import statsmodels.formula.api as smf\n"
         'df = con.sql("SELECT * FROM duncan").df()\n'
         'model = smf.ols("prestige ~ income + education", data=df).fit(cov_type="HC3")\n'
-        'model.summary()'
+        "model.summary()"
     )
     assert code == expected

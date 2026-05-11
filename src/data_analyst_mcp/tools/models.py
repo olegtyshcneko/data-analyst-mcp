@@ -26,6 +26,27 @@ def _smf() -> Any:
     return _smf
 
 
+def _sm_diagnostic() -> Any:
+    """Return ``statsmodels.stats.diagnostic`` as an untyped module."""
+    import statsmodels.stats.diagnostic as _d  # type: ignore[reportMissingTypeStubs]
+
+    return _d
+
+
+def _sm_stattools() -> Any:
+    """Return ``statsmodels.stats.stattools`` as an untyped module."""
+    import statsmodels.stats.stattools as _s  # type: ignore[reportMissingTypeStubs]
+
+    return _s
+
+
+def _sm_outliers() -> Any:
+    """Return ``statsmodels.stats.outliers_influence`` as an untyped module."""
+    import statsmodels.stats.outliers_influence as _o  # type: ignore[reportMissingTypeStubs]
+
+    return _o
+
+
 def _materialize_dataframe(name: str) -> Any:
     """Materialize a registered dataset as a pandas DataFrame via DuckDB."""
     con = session.get_connection()
@@ -67,10 +88,7 @@ def fit_model(payload: FitModelInput) -> dict[str, Any]:
         return build_error(
             type="formula_error",
             message=str(fe),
-            hint=(
-                "Verify column names exist and the formula parses, e.g. "
-                "'y ~ x + C(group)'."
-            ),
+            hint=("Verify column names exist and the formula parses, e.g. 'y ~ x + C(group)'."),
         )
     _record_fit_model(payload, result)
     return result
@@ -187,8 +205,12 @@ def _warnings(m: Any, diagnostics: dict[str, Any], kind: str) -> list[str]:
     ``diagnostics.vif`` block per spec.
     """
     out: list[str] = []
-    vif = diagnostics.get("vif")
-    if not isinstance(vif, dict):
+    raw_vif: Any = diagnostics.get("vif")
+    vif: dict[str, float]
+    if isinstance(raw_vif, dict):
+        items: list[tuple[Any, Any]] = list(raw_vif.items())  # type: ignore[reportUnknownVariableType,reportUnknownArgumentType]
+        vif = {str(k): float(v) for k, v in items}
+    else:
         vif = _vif_per_coefficient(m)
     if any(v > 10 for v in vif.values()):
         out.append("high_multicollinearity")
@@ -226,16 +248,12 @@ def _diagnostics(m: Any, kind: str) -> dict[str, Any]:
 
     out: dict[str, Any] = {"condition_number": _condition_number(m)}
     if kind == "ols":
-        from statsmodels.stats.diagnostic import het_breuschpagan  # type: ignore[reportMissingTypeStubs]
-        from statsmodels.stats.stattools import (  # type: ignore[reportMissingTypeStubs]
-            durbin_watson,
-            jarque_bera,
-        )
-
-        bp = het_breuschpagan(np.asarray(m.resid), np.asarray(m.model.exog))
-        jb = jarque_bera(np.asarray(m.resid))
+        diag = _sm_diagnostic()
+        st = _sm_stattools()
+        bp = diag.het_breuschpagan(np.asarray(m.resid), np.asarray(m.model.exog))
+        jb = st.jarque_bera(np.asarray(m.resid))
         out["breusch_pagan_p"] = float(bp[1])
-        out["durbin_watson"] = float(durbin_watson(np.asarray(m.resid)))
+        out["durbin_watson"] = float(st.durbin_watson(np.asarray(m.resid)))
         out["jarque_bera_p"] = float(jb[1])
         out["vif"] = _vif_per_coefficient(m)
     else:
@@ -249,17 +267,15 @@ def _diagnostics(m: Any, kind: str) -> dict[str, Any]:
 def _vif_per_coefficient(m: Any) -> dict[str, float]:
     """Compute the variance-inflation factor for each non-intercept regressor."""
     import numpy as np
-    from statsmodels.stats.outliers_influence import (  # type: ignore[reportMissingTypeStubs]
-        variance_inflation_factor,
-    )
 
+    outliers = _sm_outliers()
     exog: Any = np.asarray(m.model.exog)
     names: list[str] = list(m.model.exog_names)
     out: dict[str, float] = {}
     for i, name in enumerate(names):
         if name == "Intercept":
             continue
-        out[name] = float(variance_inflation_factor(exog, i))
+        out[name] = float(outliers.variance_inflation_factor(exog, i))
     return out
 
 
