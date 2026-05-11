@@ -19,3 +19,10 @@ def test_correlate_unknown_dataset_returns_not_found(call_tool):
     result = call_tool("correlate", {"name": "nope"})
     assert result["ok"] is False
     assert result["error"]["type"] == "not_found"
+
+
+def test_correlate_unknown_column_returns_column_not_found(call_tool, load_df_into_session):
+    load_df_into_session("tiny", pd.DataFrame({"x": [1, 2, 3], "y": [4, 5, 6]}))
+    result = call_tool("correlate", {"name": "tiny", "columns": ["x", "zzz"]})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "column_not_found"
