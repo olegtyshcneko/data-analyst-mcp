@@ -280,6 +280,33 @@ def test_test_hypothesis_anova_known_answer(call_tool, load_df_into_session):
     assert result["effect_size"]["value"] == pytest.approx(0.5714285714, abs=1e-4)
 
 
+def _make_categorical_df() -> pd.DataFrame:
+    # group A: 15 'x' + 15 'y'; group B: 10 'x' + 20 'y'
+    return pd.DataFrame(
+        {
+            "g": ["A"] * 30 + ["B"] * 30,
+            "metric": ["x"] * 15 + ["y"] * 15 + ["x"] * 10 + ["y"] * 20,
+        }
+    )
+
+
+def test_compare_groups_picks_chi_square_for_categorical_metric(call_tool, load_df_into_session):
+    load_df_into_session("catfix", _make_categorical_df())
+    result = call_tool(
+        "compare_groups",
+        {"name": "catfix", "group_column": "g", "metric_column": "metric"},
+    )
+    # 2x2 table [[15,15],[10,20]]:
+    #   chi2 = 1.0971428571, p = 0.2948939838, df = 1
+    #   N=60 → cramers_v = sqrt(chi2/(60*1)) = 0.1352246808
+    assert result["ok"] is True
+    assert result["test"] == "chi_square"
+    assert result["statistic"] == pytest.approx(1.0971428571, abs=1e-4)
+    assert result["p_value"] == pytest.approx(0.2948939838, abs=1e-4)
+    assert result["effect_size"]["name"] == "cramers_v"
+    assert result["effect_size"]["value"] == pytest.approx(0.1352246808, abs=1e-4)
+
+
 def _make_three_group_non_normal_df() -> pd.DataFrame:
     import numpy as np
 
