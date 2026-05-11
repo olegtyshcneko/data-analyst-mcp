@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
 
 logger = logging.getLogger(__name__)
@@ -44,18 +46,34 @@ class LoadDatasetInput(BaseModel):
 
 _SUPPORTED_EXTENSIONS = {".csv", ".tsv", ".parquet", ".xlsx", ".json", ".jsonl"}
 
+_EXT_TO_FORMAT: dict[str, str] = {
+    ".csv": "csv",
+    ".tsv": "tsv",
+    ".parquet": "parquet",
+    ".xlsx": "xlsx",
+    ".json": "json",
+    ".jsonl": "jsonl",
+}
+
 
 def _extension(path: str) -> str:
     """Lowercase extension including the leading dot."""
-    import os
-
     return os.path.splitext(path)[1].lower()
+
+
+def _build_read_call(path: str, fmt: str) -> str:
+    """Render the DuckDB read_* call used in the CREATE TABLE statement."""
+    if fmt in {"csv", "tsv"}:
+        return f"read_csv_auto('{path}', SAMPLE_SIZE=-1)"
+    if fmt == "parquet":
+        return f"read_parquet('{path}')"
+    if fmt in {"json", "jsonl"}:
+        return f"read_json('{path}')"
+    return f"read_csv_auto('{path}', SAMPLE_SIZE=-1)"
 
 
 def load_dataset(payload: LoadDatasetInput) -> dict[str, Any]:
     """Register a file as a DuckDB table in the session."""
-    import os
-
     ext = _extension(payload.path)
     if ext not in _SUPPORTED_EXTENSIONS:
         return build_error(
@@ -70,4 +88,30 @@ def load_dataset(payload: LoadDatasetInput) -> dict[str, Any]:
             message=f"No file at {payload.path!r}.",
             hint="Check the path is absolute or relative to the server's cwd.",
         )
-    return {"ok": True, "name": payload.name or "", "rows": 0, "columns": []}
+
+    fmt = _EXT_TO_FORMAT[ext]
+    name = payload.name or os.path.splitext(os.path.basename(payload.path))[0]
+    con = session.get_connection()
+    read_call = _build_read_call(payload.path, fmt)
+    con.execute(f'CREATE OR REPLACE TABLE "{name}" AS SELECT * FROM {read_call}')
+
+    describe_rows = con.execute(f'DESCRIBE "{name}"').fetchall()
+    columns = [{"name": str(row[0]), "dtype": str(row[1])} for row in describe_rows]
+    rows = int(con.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0])  # type: ignore[index]
+
+    session.register(
+        name=name,
+        path=payload.path,
+        read_options=payload.read_options or {},
+        format=fmt,
+        rows=rows,
+        columns=columns,
+    )
+
+    return {
+        "ok": True,
+        "name": name,
+        "rows": rows,
+        "columns": columns,
+        "warnings": [],
+    }
