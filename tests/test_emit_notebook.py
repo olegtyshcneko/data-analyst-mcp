@@ -30,3 +30,15 @@ def test_emit_notebook_returns_absolute_path(call_tool, tmp_path, monkeypatch):
     assert Path(r["path"]).is_absolute()
 
 
+def test_emit_notebook_reports_n_cells_matching_file(call_tool, tmp_path):
+    target = tmp_path / "out.ipynb"
+    r = call_tool("emit_notebook", {"path": str(target)})
+    assert r["ok"] is True
+    import nbformat as nbf
+
+    nb = nbf.read(r["path"], as_version=4)
+    assert r["n_cells"] == len(nb.cells)
+    # Fresh recorder + setup cell = exactly one cell.
+    assert r["n_cells"] == 1
+
+
