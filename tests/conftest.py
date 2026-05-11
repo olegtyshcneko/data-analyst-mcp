@@ -79,3 +79,28 @@ def call_tool(server: Any):
         return asyncio.run(_invoke(name, args or {}))
 
     return _call
+
+
+@pytest.fixture
+def load_df_into_session():
+    """Register an in-memory pandas DataFrame as a DuckDB table + session entry."""
+
+    def _load(name: str, df: Any) -> None:
+        from data_analyst_mcp import session as _session
+
+        con = _session.get_connection()
+        con.register(f"__df_{name}", df)
+        con.execute(f'CREATE OR REPLACE TABLE "{name}" AS SELECT * FROM __df_{name}')
+        con.unregister(f"__df_{name}")
+        describe_rows = con.execute(f'DESCRIBE "{name}"').fetchall()
+        cols = [{"name": str(r[0]), "dtype": str(r[1])} for r in describe_rows]
+        _session.register(
+            name=name,
+            path="(dataframe)",
+            read_options={},
+            format="dataframe",
+            rows=int(len(df)),
+            columns=cols,
+        )
+
+    return _load
