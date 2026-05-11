@@ -752,11 +752,26 @@ def compare_groups(payload: CompareGroupsInput) -> dict[str, Any]:
             p_lev=p_lev,
         )
 
-    # >2 groups: only ANOVA implemented; Kruskal-Wallis added in a later cycle.
+    # >2 groups: ANOVA if normality holds, else Kruskal-Wallis.
     p_norm_many = [_shapiro_p(arr) for arr in arrays]
     p_lev_many = _levene_p(*arrays)
     from scipy import stats as _sps
 
+    if any(pn is not None and pn < 0.05 for pn in p_norm_many):
+        r = _sps.kruskal(*arrays)
+        n_total = sum(len(g) for g in arrays)
+        eps = float(r.statistic) / (n_total - 1) if n_total > 1 else 0.0
+        return _build_many_sample_response(
+            test="kruskal_wallis",
+            stat=float(r.statistic),
+            p=float(r.pvalue),
+            df=None,
+            effect={"name": "epsilon_squared", "value": eps},
+            labels=labels,
+            arrays=arrays,
+            p_norm=p_norm_many,
+            p_lev=p_lev_many,
+        )
     r = _sps.f_oneway(*arrays)
     eta = _eta_squared(arrays)
     return _build_many_sample_response(
