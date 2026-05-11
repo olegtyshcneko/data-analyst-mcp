@@ -54,8 +54,8 @@ class NotebookRecorder:
         self.cells: list[dict[str, Any]] = []
 
     def reset(self) -> None:
-        """Stub — does not actually empty cells."""
-        return None
+        """Empty the recorded cell list."""
+        self.cells.clear()
 
     def to_notebook(self, include_setup: bool = True) -> nbformat.NotebookNode:
         """Render the recorded cells as a ``nbformat.v4`` notebook.
