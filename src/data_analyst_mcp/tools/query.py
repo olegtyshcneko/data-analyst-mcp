@@ -121,7 +121,9 @@ def query(payload: QueryInput) -> dict[str, Any]:
         )
 
     con = session.get_connection()
-    final_sql = _apply_limit(payload.sql, payload.limit)
+    final_sql = (
+        payload.sql if _has_explicit_limit(payload.sql) else _apply_limit(payload.sql, payload.limit)
+    )
 
     started = time.perf_counter()
     cursor = con.execute(final_sql)
