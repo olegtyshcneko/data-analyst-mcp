@@ -92,12 +92,23 @@ def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
         # Patsy / NameError / column-binding failures all bubble up here.
         raise _FormulaError(str(exc)) from exc
 
+    diagnostics = _diagnostics(m, payload.kind)
     return {
         "ok": True,
         "coefficients": _coefficients(m),
         "fit": _fit_block(m, payload.kind),
-        "diagnostics": _diagnostics(m, payload.kind),
+        "diagnostics": diagnostics,
+        "warnings": _warnings(diagnostics, payload.kind),
     }
+
+
+def _warnings(diagnostics: dict[str, Any], kind: str) -> list[str]:
+    """Translate diagnostic numbers into a list of human-readable warning tags."""
+    out: list[str] = []
+    vif = diagnostics.get("vif")
+    if isinstance(vif, dict) and any(v > 10 for v in vif.values()):
+        out.append("high_multicollinearity")
+    return out
 
 
 def _diagnostics(m: Any, kind: str) -> dict[str, Any]:
