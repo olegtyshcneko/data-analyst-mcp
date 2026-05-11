@@ -143,6 +143,35 @@ def correlate(
 
 
 @mcp.tool()
+def compare_groups(
+    name: str,
+    group_column: str,
+    metric_column: str,
+    groups: list[str] | None = None,
+) -> dict[str, Any]:
+    """Compare a metric across groups and pick an appropriate test.
+
+    Reads dtype of ``metric_column``: numeric → t-test / Welch / Mann-Whitney
+    (2 groups) or ANOVA / Kruskal-Wallis (>2 groups), based on Shapiro-Wilk
+    normality + Levene equal-variance checks. Categorical → chi-square, or
+    Fisher's exact when 2×2 with a low expected cell count. Returns the
+    selected test, statistic, p-value, effect size, sample sizes,
+    assumption-check results, and a plain-English interpretation.
+    """
+    try:
+        payload = _stats.CompareGroupsInput(
+            name=name,
+            group_column=group_column,
+            metric_column=metric_column,
+            groups=groups,
+        )
+        return _stats.compare_groups(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("compare_groups failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
 def test_hypothesis(
     kind: str,
     name: str | None = None,

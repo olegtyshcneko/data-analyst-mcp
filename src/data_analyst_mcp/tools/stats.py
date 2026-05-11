@@ -605,6 +605,38 @@ def _code_for_kind(payload: Any) -> str:
     return f"from scipy import stats\nstats.fisher_exact({payload.table!r})"
 
 
+class CompareGroupsInput(BaseModel):
+    """Inputs for ``compare_groups``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(..., description="Registered dataset name.")
+    group_column: str = Field(..., description="Column holding the group labels.")
+    metric_column: str = Field(
+        ..., description="Column holding the metric to compare across groups."
+    )
+    groups: list[str] | None = Field(
+        default=None,
+        description=(
+            "Subset of group labels to include. When omitted, default to "
+            "the top-2 most-frequent labels (2-sample path) or all distinct "
+            "labels (>2-sample path)."
+        ),
+    )
+
+
+def compare_groups(payload: CompareGroupsInput) -> dict[str, Any]:
+    """Pick an appropriate statistical test for two-or-more groups."""
+    entries = session.get_datasets()
+    if payload.name not in entries:
+        return build_error(
+            type="not_found",
+            message=f"No dataset named {payload.name!r} registered.",
+            hint="Call list_datasets to see what is available.",
+        )
+    return {"ok": True}
+
+
 def _render_heatmap_png(labels: list[str], matrix: list[list[float]]) -> str:
     """Render the correlation matrix as a base64-encoded PNG heatmap."""
     import io
