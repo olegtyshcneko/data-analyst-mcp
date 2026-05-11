@@ -111,6 +111,9 @@ def _warnings(diagnostics: dict[str, Any], kind: str) -> list[str]:
     bp = diagnostics.get("breusch_pagan_p")
     if kind == "ols" and isinstance(bp, float) and bp < 0.05:
         out.append("heteroskedasticity")
+    jb = diagnostics.get("jarque_bera_p")
+    if kind == "ols" and isinstance(jb, float) and jb < 0.05:
+        out.append("non_normal_residuals")
     return out
 
 
