@@ -80,5 +80,12 @@ def test_setup_cell_contains_canonical_imports(call_tool, tmp_path):
         assert expected in src, f"missing canonical import: {expected!r}"
 
 
+def test_setup_cell_creates_duckdb_connection_exactly_once(call_tool, tmp_path):
+    r = call_tool("emit_notebook", {"path": str(tmp_path / "out.ipynb")})
+    assert r["ok"] is True
+    setup_src = _read_nb(r["path"]).cells[0].source
+    assert setup_src.count("con = duckdb.connect()") == 1
+
+
 
 
