@@ -69,7 +69,69 @@ def plot(payload: PlotInput) -> dict[str, Any]:
                 message=f"Column {col!r} ({label}) is not in dataset {payload.name!r}.",
                 hint=f"Available columns: {sorted(available)}",
             )
+    if payload.kind == "hist":
+        return _plot_hist(payload)
     return {"ok": True, "png_base64": "", "width": 0, "height": 0}
+
+
+def _quote(name: str) -> str:
+    """Quote a SQL identifier safely for DuckDB."""
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _fetch_column(table: str, column: str) -> Any:
+    """Materialize a single column as a 1-D numpy array via DuckDB."""
+    con = session.get_connection()
+    df: Any = con.execute(f"SELECT {_quote(column)} FROM {_quote(table)}").df()
+    return df[column].to_numpy()
+
+
+def _make_figure() -> Any:
+    """Construct a fresh ``Figure`` with the project's standard size + DPI."""
+    from matplotlib.figure import Figure
+
+    fig = Figure(figsize=(8, 6), dpi=100)
+    fig.set_facecolor("white")
+    return fig
+
+
+def _encode_figure(fig: Any) -> dict[str, Any]:
+    """Render ``fig`` to a PNG and return the ``{ok, png_base64, width, height}`` envelope."""
+    import io
+
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    from PIL import Image
+
+    from data_analyst_mcp.formatting import png_to_base64
+
+    canvas = FigureCanvasAgg(fig)
+    _ = canvas  # keep the canvas alive for savefig
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight")
+    png_bytes = buf.getvalue()
+    with Image.open(io.BytesIO(png_bytes)) as im:
+        w, h = im.size
+    return {
+        "ok": True,
+        "png_base64": png_to_base64(png_bytes),
+        "width": int(w),
+        "height": int(h),
+    }
+
+
+def _plot_hist(payload: PlotInput) -> dict[str, Any]:
+    """Histogram of ``payload.x`` (numeric) with optional ``bins``."""
+    assert payload.x is not None  # guarded by _missing_required_params
+    values = _fetch_column(payload.name, payload.x)
+    fig = _make_figure()
+    ax = fig.add_subplot(111)
+    bins = payload.bins if payload.bins is not None else 20
+    ax.hist(values, bins=bins)
+    ax.set_xlabel(payload.x)
+    ax.set_ylabel("count")
+    if payload.title is not None:
+        ax.set_title(payload.title)
+    return _encode_figure(fig)
 
 
 _REQUIRES_X: frozenset[str] = frozenset({"hist", "bar", "line", "scatter"})
