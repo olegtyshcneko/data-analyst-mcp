@@ -293,5 +293,13 @@ def test_six_step_workflow_round_trip(call_tool, tmp_path):
     assert result.returncode == 0, f"nbconvert failed:\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
 
 
+def test_emit_notebook_is_registered_as_an_mcp_tool(server):
+    import asyncio
+
+    tools = asyncio.run(server.list_tools())
+    names = {t.name for t in tools}
+    assert "emit_notebook" in names
+
+
 
 
