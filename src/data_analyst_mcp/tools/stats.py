@@ -252,14 +252,19 @@ def _cohens_d(a: Any, b: Any) -> float:
     return (float(a.mean()) - float(b.mean())) / sp
 
 
+def _materialize_two(payload: _TwoSampleColumns) -> tuple[Any, Any]:
+    """Materialize the metric arrays for ``group_a`` and ``group_b``."""
+    a = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_a)
+    b = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_b)
+    return a, b
+
+
 def _run_t_test(payload: TTestInput) -> dict[str, Any]:
     """Student's t-test (equal_var=True)."""
     from scipy import stats as _sps
 
-    a = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_a)
-    b = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_b)
+    a, b = _materialize_two(payload)
     r = _sps.ttest_ind(a, b, equal_var=True)
-    interp = _interpret_two_sample(payload.group_a, payload.group_b, float(r.pvalue))
     return {
         "ok": True,
         "test": "t_test",
@@ -269,7 +274,9 @@ def _run_t_test(payload: TTestInput) -> dict[str, Any]:
         "effect_size": {"name": "cohens_d", "value": _cohens_d(a, b)},
         "n_a": int(len(a)),
         "n_b": int(len(b)),
-        "interpretation": interp,
+        "interpretation": _interpret_two_sample(
+            payload.group_a, payload.group_b, float(r.pvalue)
+        ),
     }
 
 
@@ -288,10 +295,8 @@ def _run_welch(payload: WelchInput) -> dict[str, Any]:
     """Welch's t-test (equal_var=False)."""
     from scipy import stats as _sps
 
-    a = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_a)
-    b = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_b)
+    a, b = _materialize_two(payload)
     r = _sps.ttest_ind(a, b, equal_var=False)
-    interp = _interpret_two_sample(payload.group_a, payload.group_b, float(r.pvalue))
     return {
         "ok": True,
         "test": "welch",
@@ -301,7 +306,9 @@ def _run_welch(payload: WelchInput) -> dict[str, Any]:
         "effect_size": {"name": "cohens_d", "value": _cohens_d(a, b)},
         "n_a": int(len(a)),
         "n_b": int(len(b)),
-        "interpretation": interp,
+        "interpretation": _interpret_two_sample(
+            payload.group_a, payload.group_b, float(r.pvalue)
+        ),
     }
 
 
@@ -309,8 +316,7 @@ def _run_mann_whitney(payload: MannWhitneyInput) -> dict[str, Any]:
     """Mann-Whitney U (two-sided)."""
     from scipy import stats as _sps
 
-    a = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_a)
-    b = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_b)
+    a, b = _materialize_two(payload)
     r = _sps.mannwhitneyu(a, b, alternative="two-sided")
     n_a, n_b = len(a), len(b)
     rbis = 1.0 - 2.0 * float(r.statistic) / (n_a * n_b)
@@ -475,8 +481,7 @@ def _run_ks(payload: KSInput) -> dict[str, Any]:
     """Two-sample Kolmogorov-Smirnov."""
     from scipy import stats as _sps
 
-    a = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_a)
-    b = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_b)
+    a, b = _materialize_two(payload)
     r = _sps.ks_2samp(a, b)
     p = float(r.pvalue)
     interp = (
