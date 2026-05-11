@@ -121,9 +121,8 @@ def query(payload: QueryInput) -> dict[str, Any]:
         )
 
     con = session.get_connection()
-    final_sql = (
-        payload.sql if _has_explicit_limit(payload.sql) else _apply_limit(payload.sql, payload.limit)
-    )
+    auto_limited = not _has_explicit_limit(payload.sql)
+    final_sql = _apply_limit(payload.sql, payload.limit) if auto_limited else payload.sql
 
     started = time.perf_counter()
     cursor = con.execute(final_sql)
@@ -141,11 +140,13 @@ def query(payload: QueryInput) -> dict[str, Any]:
     code = final_sql
     get_recorder().record(markdown=md, code=code, tool_name="query")
 
+    truncated = auto_limited and total > len(rows)
+
     return {
         "ok": True,
         "rows": rows,
         "columns": columns,
         "total_rows": total,
         "execution_time_ms": elapsed_ms,
-        "truncated": False,
+        "truncated": truncated,
     }
