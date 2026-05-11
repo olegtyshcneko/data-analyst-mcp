@@ -146,12 +146,21 @@ def _render_heatmap_png(labels: list[str], matrix: list[list[float]]) -> str:
     return png_to_base64(buf.getvalue())
 
 
+def _pairwise_corr(a: Any, b: Any, method: str) -> float:
+    """Return the requested pairwise correlation coefficient as a float."""
+    from scipy import stats as _sps
+
+    if method == "spearman":
+        return float(_sps.spearmanr(a, b).statistic)
+    if method == "kendall":
+        return float(_sps.kendalltau(a, b).statistic)
+    return float(_sps.pearsonr(a, b).statistic)
+
+
 def _build_corr_matrix(
     dataset_name: str, columns: list[str], method: str
 ) -> list[list[float]]:
     """Materialize columns then compute the correlation matrix."""
-    from scipy import stats as _sps
-
     con = session.get_connection()
     table = _quote(dataset_name)
     select_cols = ", ".join(_quote(c) for c in columns)
@@ -161,14 +170,7 @@ def _build_corr_matrix(
     for i in range(n):
         matrix[i][i] = 1.0
         for j in range(i + 1, n):
-            a = df[columns[i]].to_numpy()
-            b = df[columns[j]].to_numpy()
-            if method == "spearman":
-                r = float(_sps.spearmanr(a, b).statistic)
-            elif method == "kendall":
-                r = float(_sps.kendalltau(a, b).statistic)
-            else:
-                r = float(_sps.pearsonr(a, b).statistic)
+            r = _pairwise_corr(df[columns[i]].to_numpy(), df[columns[j]].to_numpy(), method)
             matrix[i][j] = r
             matrix[j][i] = r
     return matrix
