@@ -326,6 +326,38 @@ def _run_mann_whitney(payload: MannWhitneyInput) -> dict[str, Any]:
     }
 
 
+def _run_chi_square(payload: ChiSquareInput) -> dict[str, Any]:
+    """Chi-square test of independence on an explicit contingency table."""
+    import math
+
+    import numpy as np
+    from scipy import stats as _sps
+
+    table = np.array(payload.table, dtype=float)
+    chi2, p, dof, _exp = _sps.chi2_contingency(table)
+    n = float(table.sum())
+    cv_denom = n * max(min(table.shape) - 1, 1)
+    cv = math.sqrt(float(chi2) / cv_denom) if cv_denom > 0 else 0.0
+    n_a = int(table[0].sum()) if table.shape[0] >= 1 else 0
+    n_b = int(table[1].sum()) if table.shape[0] >= 2 else 0
+    interp = (
+        f"Variables are not independent at α=0.05 (chi-square, p={p:.4f})."
+        if p < 0.05
+        else f"No evidence against independence at α=0.05 (chi-square, p={p:.4f})."
+    )
+    return {
+        "ok": True,
+        "test": "chi_square",
+        "statistic": float(chi2),
+        "p_value": float(p),
+        "df": int(dof),
+        "effect_size": {"name": "cramers_v", "value": float(cv)},
+        "n_a": n_a,
+        "n_b": n_b,
+        "interpretation": interp,
+    }
+
+
 def test_hypothesis(payload: Any) -> dict[str, Any]:
     """Dispatch to a kind-specific handler. ``payload`` is the validated union."""
     kind = payload.kind
@@ -335,6 +367,8 @@ def test_hypothesis(payload: Any) -> dict[str, Any]:
         return _run_welch(payload)
     if kind == "mann_whitney":
         return _run_mann_whitney(payload)
+    if kind == "chi_square":
+        return _run_chi_square(payload)
     return build_error(
         type="invalid_kind",
         message=f"Unknown kind {kind!r}.",
