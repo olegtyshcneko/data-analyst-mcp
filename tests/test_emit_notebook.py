@@ -87,5 +87,29 @@ def test_setup_cell_creates_duckdb_connection_exactly_once(call_tool, tmp_path):
     assert setup_src.count("con = duckdb.connect()") == 1
 
 
+def test_setup_cell_reloads_each_registered_dataset(call_tool, tmp_path):
+    import duckdb
+
+    # one csv (already on disk) + one parquet (generated via DuckDB to avoid
+    # pulling pyarrow into our dev dependencies just for this test)
+    parquet = tmp_path / "tiny.parquet"
+    duckdb.sql(f"COPY (SELECT 1 AS a, 4 AS b UNION ALL SELECT 2, 5) TO '{parquet}' (FORMAT PARQUET)")
+    csv = Path(__file__).parent.parent / "fixtures" / "messy.csv"
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "raw"})
+    assert r["ok"]
+    r = call_tool("load_dataset", {"path": str(parquet), "name": "tiny"})
+    assert r["ok"]
+
+    r = call_tool("emit_notebook", {"path": str(tmp_path / "out.ipynb")})
+    assert r["ok"]
+    setup_src = _read_nb(r["path"]).cells[0].source
+
+    assert "CREATE OR REPLACE TABLE raw AS" in setup_src
+    assert "read_csv_auto(" in setup_src
+    assert "CREATE OR REPLACE TABLE tiny AS" in setup_src
+    assert "read_parquet(" in setup_src
+
+
 
 
