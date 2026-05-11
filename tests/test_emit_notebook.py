@@ -221,5 +221,64 @@ def test_emit_notebook_smoke_load_and_query_validates(call_tool, tmp_path):
     assert len(nb.cells) == r["n_cells"] == 5
 
 
+import os  # noqa: E402
+
+import pytest  # noqa: E402
+
+
+@pytest.mark.slow
+def test_six_step_workflow_round_trip(call_tool, tmp_path):
+    """THE load-bearing acceptance test.
+
+    Six analytical steps + emit + re-execute via ``jupyter nbconvert``. If the
+    emitted notebook does not run to completion against the same fixture
+    files, the differentiator promise fails and the rest of the project does
+    not matter.
+    """
+    csv = Path(__file__).parent.parent / "fixtures" / "messy.csv"
+
+    # 1. load
+    r = call_tool("load_dataset", {"path": str(csv), "name": "raw"})
+    assert r["ok"], r
+    # 2. profile
+    r = call_tool("profile_dataset", {"name": "raw"})
+    assert r["ok"], r
+    # 3. query
+    r = call_tool("query", {"sql": "SELECT COUNT(*) AS n FROM raw"})
+    assert r["ok"], r
+    # 4. correlate
+    r = call_tool("correlate", {"name": "raw", "method": "spearman", "plot": False})
+    assert r["ok"], r
+    # 5. plot
+    r = call_tool("plot", {"name": "raw", "kind": "hist", "x": "score"})
+    assert r["ok"], r
+    # 6. emit
+    nb_path = tmp_path / "round_trip.ipynb"
+    r = call_tool("emit_notebook", {"path": str(nb_path)})
+    assert r["ok"], r
+    assert Path(r["path"]).exists()
+
+    import subprocess
+
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "jupyter",
+            "nbconvert",
+            "--to",
+            "notebook",
+            "--execute",
+            "--inplace",
+            str(nb_path),
+            "--ExecutePreprocessor.timeout=120",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    assert result.returncode == 0, f"nbconvert failed:\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+
+
 
 
