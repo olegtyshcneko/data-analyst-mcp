@@ -94,12 +94,43 @@ def correlate(payload: CorrelateInput) -> dict[str, Any]:
 
     matrix = _build_corr_matrix(payload.name, chosen, payload.method)
 
-    return {
+    out: dict[str, Any] = {
         "ok": True,
         "method": payload.method,
         "labels": list(chosen),
         "matrix": matrix,
     }
+    if payload.plot:
+        out["heatmap_png_base64"] = _render_heatmap_png(chosen, matrix)
+    return out
+
+
+def _render_heatmap_png(labels: list[str], matrix: list[list[float]]) -> str:
+    """Render the correlation matrix as a base64-encoded PNG heatmap."""
+    import io
+
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from data_analyst_mcp.formatting import png_to_base64
+
+    fig, ax = plt.subplots(figsize=(4 + 0.4 * len(labels), 4 + 0.4 * len(labels)))
+    im = ax.imshow(matrix, vmin=-1.0, vmax=1.0, cmap="RdBu_r")
+    ax.set_xticks(range(len(labels)))
+    ax.set_yticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=45, ha="right")
+    ax.set_yticklabels(labels)
+    for i, row in enumerate(matrix):
+        for j, v in enumerate(row):
+            ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=8)
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    fig.tight_layout()
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=100)
+    plt.close(fig)
+    return png_to_base64(buf.getvalue())
 
 
 def _build_corr_matrix(
