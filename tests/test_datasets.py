@@ -146,6 +146,22 @@ def test_profile_dataset_returns_numeric_stats(call_tool: Any) -> None:
     assert stats["negatives"] == 0
 
 
+def test_profile_dataset_returns_string_stats(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("profile_dataset", {"name": "messy"})
+
+    by_name = {c["name"]: c for c in result["columns"]}
+    cust = by_name["customer_id"]
+    assert "string" in cust
+    s = cust["string"]
+    for key in ("min_length", "max_length", "mean_length", "empty_count", "whitespace_count"):
+        assert key in s
+    # CUST-XXXXXX-YYYY is always 17 chars long.
+    assert s["min_length"] == 17
+    assert s["max_length"] == 17
+
+
 def test_list_datasets_reports_registered_entries(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 
