@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "data-analyst": {
+      "command": "uvx",
+      "args": ["data-analyst-mcp"]
+    }
+  }
+}
