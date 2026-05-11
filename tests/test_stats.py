@@ -427,6 +427,38 @@ def test_compare_groups_picks_welch_when_unequal_variances(call_tool, load_df_in
     assert result["assumption_checks"]["equal_variances_test"]["violated"] is True
 
 
+def _make_non_normal_two_sample_df() -> pd.DataFrame:
+    import numpy as np
+
+    a = np.random.RandomState(42).standard_cauchy(30)
+    b = np.random.RandomState(43).standard_cauchy(30)
+    return pd.DataFrame(
+        {
+            "g": ["A"] * 30 + ["B"] * 30,
+            "v": list(a) + list(b),
+        }
+    )
+
+
+def test_compare_groups_picks_mann_whitney_when_non_normal(call_tool, load_df_into_session):
+    load_df_into_session("mwfix", _make_non_normal_two_sample_df())
+    result = call_tool(
+        "compare_groups",
+        {"name": "mwfix", "group_column": "g", "metric_column": "v", "groups": ["A", "B"]},
+    )
+    # rs(42).cauchy(30) has shapiro p≈0.029 (< 0.05) → normality violated
+    # so compare_groups switches to mann_whitney.
+    # scipy.stats.mannwhitneyu(a, b, alternative='two-sided') → U=509.0, p=0.3870997777
+    # rank_biserial = 1 - 2*509/(30*30) = -0.1311111111
+    assert result["ok"] is True
+    assert result["test"] == "mann_whitney"
+    assert result["statistic"] == pytest.approx(509.0, abs=1e-4)
+    assert result["p_value"] == pytest.approx(0.3870997777, abs=1e-4)
+    assert result["effect_size"]["name"] == "rank_biserial"
+    assert result["effect_size"]["value"] == pytest.approx(-0.1311111111, abs=1e-4)
+    assert result["assumption_checks"]["normality_test"]["violated"] is True
+
+
 def test_test_hypothesis_records_cells_on_success(call_tool, load_df_into_session):
     from data_analyst_mcp.recorder import get_recorder
 
