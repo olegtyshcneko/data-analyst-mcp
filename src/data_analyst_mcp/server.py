@@ -15,6 +15,7 @@ from mcp.server.fastmcp import FastMCP
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.tools import datasets as _datasets
 from data_analyst_mcp.tools import models as _models
+from data_analyst_mcp.tools import plots as _plots
 from data_analyst_mcp.tools import query as _query
 from data_analyst_mcp.tools import stats as _stats
 
@@ -262,6 +263,45 @@ def fit_model(
         return _models.fit_model(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("fit_model failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def plot(
+    name: str,
+    kind: str,
+    x: str | None = None,
+    y: str | None = None,
+    hue: str | None = None,
+    title: str | None = None,
+    bins: int | None = None,
+) -> dict[str, Any]:
+    """Render a chart of a registered dataset to a base64-encoded PNG.
+
+    ``kind`` is one of ``hist``, ``bar``, ``line``, ``scatter``, ``box``,
+    ``violin``, ``heatmap``. Each kind requires its own columns: ``hist``
+    needs ``x``; ``bar`` needs ``x`` (and may aggregate with ``y``); ``line``
+    and ``scatter`` need both ``x`` and ``y``; ``box`` and ``violin`` need
+    ``y`` (and may group by ``x``); ``heatmap`` visualizes the correlation
+    matrix of every numeric column. ``hue`` is an optional color-group
+    column. ``title`` adds a chart title. ``bins`` overrides the histogram
+    bin count. Returns ``{ok, png_base64, width, height}``.
+    """
+    try:
+        payload = _plots.PlotInput.model_validate(
+            {
+                "name": name,
+                "kind": kind,
+                "x": x,
+                "y": y,
+                "hue": hue,
+                "title": title,
+                "bins": bins,
+            }
+        )
+        return _plots.plot(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("plot failed")
         return build_error(type="internal", message=str(exc))
 
 
