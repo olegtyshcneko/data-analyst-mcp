@@ -288,17 +288,32 @@ def plot(
     bin count. Returns ``{ok, png_base64, width, height}``.
     """
     try:
-        payload = _plots.PlotInput.model_validate(
-            {
-                "name": name,
-                "kind": kind,
-                "x": x,
-                "y": y,
-                "hue": hue,
-                "title": title,
-                "bins": bins,
-            }
-        )
+        from pydantic import ValidationError
+
+        try:
+            payload = _plots.PlotInput.model_validate(
+                {
+                    "name": name,
+                    "kind": kind,
+                    "x": x,
+                    "y": y,
+                    "hue": hue,
+                    "title": title,
+                    "bins": bins,
+                }
+            )
+        except ValidationError as ve:
+            for err in ve.errors():
+                if err.get("loc") == ("kind",):
+                    return build_error(
+                        type="invalid_kind",
+                        message=f"Unknown kind {kind!r}.",
+                        hint=(
+                            "Allowed kinds: ['bar', 'box', 'heatmap', 'hist', "
+                            "'line', 'scatter', 'violin']."
+                        ),
+                    )
+            raise
         return _plots.plot(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("plot failed")
