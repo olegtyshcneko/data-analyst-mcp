@@ -280,6 +280,21 @@ def test_describe_column_numeric_returns_histogram_with_bins(call_tool: Any) -> 
     assert sum(hist["counts"]) > 0
 
 
+def test_describe_column_numeric_returns_outliers(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("describe_column", {"name": "messy", "column": "score"})
+
+    assert "outliers" in result
+    out = result["outliers"]
+    assert "iqr_count" in out
+    assert "zscore_count" in out
+    assert "examples" in out
+    # The fixture plants 20 IQR outliers.
+    assert out["iqr_count"] >= 20
+    assert len(out["examples"]) <= 5
+
+
 def test_profile_dataset_records_cell_pair_on_success(call_tool: Any) -> None:
     from data_analyst_mcp.recorder import get_recorder
 
