@@ -244,18 +244,43 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
     total_rows = entry.rows
     for col in entry.columns:
         quoted = _quote(col["name"])
-        null_count_row = con.execute(
-            f"SELECT COUNT(*) - COUNT({quoted}) FROM {table}"
+        agg_row = con.execute(
+            f"""
+            SELECT
+                COUNT(*) - COUNT({quoted}),
+                COUNT(DISTINCT {quoted})
+            FROM {table}
+            """
         ).fetchone()
-        null_count = int(null_count_row[0]) if null_count_row else 0
+        null_count = int(agg_row[0]) if agg_row else 0
+        distinct_count = int(agg_row[1]) if agg_row else 0
         null_frac = null_count / total_rows if total_rows else 0.0
+        non_null = total_rows - null_count
+        distinct_frac = distinct_count / non_null if non_null else 0.0
+        dtype_is_string = _is_string(col["dtype"])
+        dtype_is_temporal = _is_temporal(col["dtype"])
         flags = {
             "mostly_null": null_frac > 0.5,
+            "looks_like_id": (
+                dtype_is_string
+                and distinct_frac >= 0.95
+                and non_null > 100
+            ),
+            "looks_like_categorical": (
+                dtype_is_string
+                and distinct_count <= 50
+                and non_null > distinct_count
+            ),
+            "looks_like_timestamp": dtype_is_temporal,
+            "high_cardinality": distinct_frac > 0.9 and non_null > 100,
+            "constant": distinct_count == 1,
+            "mixed_dtype_suspect": False,
         }
         entry_dict: dict[str, Any] = {
             "name": col["name"],
             "dtype": col["dtype"],
             "null_count": null_count,
+            "distinct_count": distinct_count,
             "flags": flags,
         }
         if _is_numeric(col["dtype"]):
