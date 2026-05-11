@@ -125,6 +125,8 @@ def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
         if payload.kind == "ols":
             cov_type = "HC3" if payload.robust else "nonrobust"
             m = smf.ols(payload.formula, data=df).fit(cov_type=cov_type)
+        elif payload.kind == "logistic":
+            m = smf.logit(payload.formula, data=df).fit(disp=0)
         else:
             raise _FormulaError(f"kind={payload.kind!r} not yet supported")
     except Exception as exc:
