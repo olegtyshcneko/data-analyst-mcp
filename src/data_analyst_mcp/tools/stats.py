@@ -121,6 +121,8 @@ def _build_corr_matrix(
             b = df[columns[j]].to_numpy()
             if method == "spearman":
                 r = float(_sps.spearmanr(a, b).statistic)
+            elif method == "kendall":
+                r = float(_sps.kendalltau(a, b).statistic)
             else:
                 r = float(_sps.pearsonr(a, b).statistic)
             matrix[i][j] = r
