@@ -124,5 +124,29 @@ def test_setup_cell_skips_in_memory_datasets(call_tool, tmp_path, load_df_into_s
     assert "inmem" in setup_src
 
 
+def test_cells_appear_in_recording_order_with_setup_first(call_tool, tmp_path):
+    csv = Path(__file__).parent.parent / "fixtures" / "messy.csv"
+    call_tool("load_dataset", {"path": str(csv), "name": "raw"})
+    call_tool("query", {"sql": "SELECT COUNT(*) AS n FROM raw"})
+    r = call_tool("emit_notebook", {"path": str(tmp_path / "out.ipynb")})
+    assert r["ok"]
+    cells = _read_nb(r["path"]).cells
+    # setup, md(load), code(load), md(query), code(query)  => 5 cells
+    assert [c.cell_type for c in cells] == ["code", "markdown", "code", "markdown", "code"]
+    assert "Loaded dataset" in cells[1].source
+    assert "Query" in cells[3].source
+
+
+def test_three_recorded_operations_produce_seven_cells(call_tool, tmp_path):
+    csv = Path(__file__).parent.parent / "fixtures" / "messy.csv"
+    call_tool("load_dataset", {"path": str(csv), "name": "raw"})
+    call_tool("query", {"sql": "SELECT COUNT(*) AS n FROM raw"})
+    call_tool("query", {"sql": "SELECT COUNT(*) AS n FROM raw WHERE score IS NOT NULL"})
+    r = call_tool("emit_notebook", {"path": str(tmp_path / "out.ipynb")})
+    assert r["ok"]
+    # 1 setup + 3 markdown + 3 code = 7
+    assert r["n_cells"] == 7
+
+
 
 
