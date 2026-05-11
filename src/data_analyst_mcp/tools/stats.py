@@ -668,21 +668,22 @@ def _levene_p(*groups: Any) -> float:
     return float(_sps.levene(*groups).pvalue)
 
 
-def _select_two_sample_continuous(p_norm: list[float | None], p_levene: float) -> str:
-    """Pick student_t, welch_t, or mann_whitney for a 2-sample continuous compare."""
+def _select_test(
+    *, n_groups: int, p_norm: list[float | None], p_levene: float | None
+) -> str:
+    """Pure decision-tree: pick the test for a continuous-metric compare.
+
+    Returns one of ``student_t``, ``welch_t``, ``mann_whitney`` for n=2,
+    or ``anova``/``kruskal_wallis`` for n>2.
+    """
     normality_violated = any(p is not None and p < 0.05 for p in p_norm)
-    if normality_violated:
-        return "mann_whitney"
-    if p_levene < 0.05:
-        return "welch_t"
-    return "student_t"
-
-
-def _select_many_sample_continuous(p_norm: list[float | None]) -> str:
-    """Pick anova or kruskal_wallis for a >2-sample continuous compare."""
-    if any(p is not None and p < 0.05 for p in p_norm):
-        return "kruskal_wallis"
-    return "anova"
+    if n_groups == 2:
+        if normality_violated:
+            return "mann_whitney"
+        if p_levene is not None and p_levene < 0.05:
+            return "welch_t"
+        return "student_t"
+    return "kruskal_wallis" if normality_violated else "anova"
 
 
 def _record_compare_groups(payload: CompareGroupsInput, result: dict[str, Any]) -> None:
@@ -754,7 +755,7 @@ def _compare_groups_impl(payload: CompareGroupsInput) -> dict[str, Any]:
         a, b = arrays
         p_norm = [_shapiro_p(a), _shapiro_p(b)]
         p_lev = _levene_p(a, b)
-        test = _select_two_sample_continuous(p_norm, p_lev)
+        test = _select_test(n_groups=2, p_norm=p_norm, p_levene=p_lev)
         from scipy import stats as _sps
 
         if test == "mann_whitney":
@@ -788,7 +789,7 @@ def _compare_groups_impl(payload: CompareGroupsInput) -> dict[str, Any]:
     p_lev_many = _levene_p(*arrays)
     from scipy import stats as _sps
 
-    test = _select_many_sample_continuous(p_norm_many)
+    test = _select_test(n_groups=len(arrays), p_norm=p_norm_many, p_levene=p_lev_many)
     if test == "kruskal_wallis":
         r = _sps.kruskal(*arrays)
         n_total = sum(len(g) for g in arrays)
