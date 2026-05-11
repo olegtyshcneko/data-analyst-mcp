@@ -42,3 +42,15 @@ def test_rows_to_dicts_converts_duckdb_relation_to_list_of_dicts() -> None:
     out = rows_to_dicts(rel)
 
     assert out == [{"a": 1, "b": "x"}, {"a": 2, "b": "y"}]
+
+
+def test_png_to_base64_round_trips() -> None:
+    from data_analyst_mcp.formatting import png_to_base64
+
+    raw = bytes(range(256))
+    encoded = png_to_base64(raw)
+
+    assert isinstance(encoded, str)
+    assert base64.b64decode(encoded) == raw
+    # Sanity: pytest.approx is unused here intentionally to keep this exact.
+    _ = pytest  # keep import non-unused for downstream tests

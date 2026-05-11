@@ -8,6 +8,11 @@ if TYPE_CHECKING:
     import duckdb
 
 
+def png_to_base64(png_bytes: bytes) -> str:
+    """Stub — returns empty string so the round-trip assertion fails."""
+    return ""
+
+
 def rows_to_dicts(rel: duckdb.DuckDBPyRelation) -> list[dict[str, Any]]:
     """Materialize a DuckDB relation as a list of column-name-keyed dicts.
 
