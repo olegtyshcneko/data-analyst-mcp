@@ -105,3 +105,9 @@ def test_plot_violin_returns_valid_png(call_tool, load_df_into_session):
     load_df_into_session("d", _NUMERIC_DF)
     result = call_tool("plot", {"name": "d", "kind": "violin", "x": "g", "y": "y"})
     _assert_valid_png(result)
+
+
+def test_plot_heatmap_returns_valid_png(call_tool, load_df_into_session):
+    load_df_into_session("d", _NUMERIC_DF)
+    result = call_tool("plot", {"name": "d", "kind": "heatmap"})
+    _assert_valid_png(result)
