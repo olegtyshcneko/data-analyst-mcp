@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
+from data_analyst_mcp.recorder import get_recorder
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,13 @@ class PlotInput(BaseModel):
 
 def plot(payload: PlotInput) -> dict[str, Any]:
     """Render a chart to a base64-encoded PNG."""
+    result = _plot_impl(payload)
+    _record_plot(payload, result)
+    return result
+
+
+def _plot_impl(payload: PlotInput) -> dict[str, Any]:
+    """Validate inputs and dispatch to the kind-specific renderer."""
     entries = session.get_datasets()
     if payload.name not in entries:
         return build_error(
@@ -84,6 +92,116 @@ def plot(payload: PlotInput) -> dict[str, Any]:
     if payload.kind == "heatmap":
         return _plot_heatmap_tool(payload)
     return {"ok": True, "png_base64": "", "width": 0, "height": 0}
+
+
+def _record_plot(payload: PlotInput, result: dict[str, Any]) -> None:
+    """Append a markdown+code cell pair describing the plot call (on success)."""
+    if not result.get("ok"):
+        return
+    md = _plot_markdown(payload)
+    code = _plot_code(payload)
+    get_recorder().record(markdown=md, code=code, tool_name="plot")
+
+
+def _plot_markdown(payload: PlotInput) -> str:
+    """Human-readable description of the chart for the notebook recorder."""
+    bits = [f"### Plotted `{payload.kind}` of dataset `{payload.name}`"]
+    if payload.x is not None:
+        bits.append(f"- x: `{payload.x}`")
+    if payload.y is not None:
+        bits.append(f"- y: `{payload.y}`")
+    if payload.hue is not None:
+        bits.append(f"- hue: `{payload.hue}`")
+    if payload.title is not None:
+        bits.append(f"- title: {payload.title!r}")
+    if payload.bins is not None:
+        bits.append(f"- bins: {payload.bins}")
+    return "\n".join(bits)
+
+
+def _plot_code(payload: PlotInput) -> str:
+    """Render a reproducible matplotlib snippet for the given payload."""
+    table = payload.name
+    cols: list[str] = [c for c in (payload.x, payload.y, payload.hue) if c is not None]
+    select_cols = ", ".join(cols) if cols else "*"
+    base = (
+        "import matplotlib.pyplot as plt\n"
+        f'_df = con.sql("SELECT {select_cols} FROM {table}").df()\n'
+        "fig, ax = plt.subplots(figsize=(8, 6), dpi=100)\n"
+    )
+    title_line = f"ax.set_title({payload.title!r})\n" if payload.title is not None else ""
+    bins = payload.bins if payload.bins is not None else 20
+    if payload.kind == "hist":
+        body = f"ax.hist(_df['{payload.x}'], bins={bins})\nax.set_xlabel('{payload.x}')\n"
+    elif payload.kind == "bar":
+        if payload.y is None:
+            body = (
+                f"_counts = _df.groupby('{payload.x}').size()\n"
+                "ax.bar(_counts.index.astype(str), _counts.values)\n"
+                f"ax.set_xlabel('{payload.x}')\n"
+            )
+        else:
+            body = (
+                f"_means = _df.groupby('{payload.x}')['{payload.y}'].mean()\n"
+                "ax.bar(_means.index.astype(str), _means.values)\n"
+                f"ax.set_xlabel('{payload.x}')\nax.set_ylabel('avg({payload.y})')\n"
+            )
+    elif payload.kind == "line":
+        body = (
+            f"_sorted = _df.sort_values('{payload.x}')\n"
+            f"ax.plot(_sorted['{payload.x}'], _sorted['{payload.y}'])\n"
+            f"ax.set_xlabel('{payload.x}')\nax.set_ylabel('{payload.y}')\n"
+        )
+    elif payload.kind == "scatter":
+        if payload.hue is None:
+            body = (
+                f"ax.scatter(_df['{payload.x}'], _df['{payload.y}'])\n"
+                f"ax.set_xlabel('{payload.x}')\nax.set_ylabel('{payload.y}')\n"
+            )
+        else:
+            body = (
+                f"for _lab, _sub in _df.groupby('{payload.hue}'):\n"
+                f"    ax.scatter(_sub['{payload.x}'], _sub['{payload.y}'], label=str(_lab))\n"
+                f"ax.legend(title='{payload.hue}')\n"
+                f"ax.set_xlabel('{payload.x}')\nax.set_ylabel('{payload.y}')\n"
+            )
+    elif payload.kind == "box":
+        if payload.x is None:
+            body = (
+                f"ax.boxplot([_df['{payload.y}']], tick_labels=['{payload.y}'])\n"
+                f"ax.set_ylabel('{payload.y}')\n"
+            )
+        else:
+            body = (
+                f"_groups = _df.groupby('{payload.x}')['{payload.y}'].apply(list)\n"
+                "ax.boxplot(_groups.values, tick_labels=_groups.index.astype(str).tolist())\n"
+                f"ax.set_xlabel('{payload.x}')\nax.set_ylabel('{payload.y}')\n"
+            )
+    elif payload.kind == "violin":
+        if payload.x is None:
+            body = (
+                f"ax.violinplot([_df['{payload.y}']])\n"
+                f"ax.set_xticks([1])\nax.set_xticklabels(['{payload.y}'])\n"
+                f"ax.set_ylabel('{payload.y}')\n"
+            )
+        else:
+            body = (
+                f"_groups = _df.groupby('{payload.x}')['{payload.y}'].apply(list)\n"
+                "ax.violinplot(_groups.values)\n"
+                "ax.set_xticks(range(1, len(_groups) + 1))\n"
+                "ax.set_xticklabels(_groups.index.astype(str).tolist())\n"
+                f"ax.set_xlabel('{payload.x}')\nax.set_ylabel('{payload.y}')\n"
+            )
+    else:  # heatmap
+        body = (
+            f"_corr = con.sql('SELECT * FROM {table}').df().corr(numeric_only=True)\n"
+            "im = ax.imshow(_corr.values, vmin=-1, vmax=1, cmap='RdBu_r')\n"
+            "ax.set_xticks(range(len(_corr.columns)))\n"
+            "ax.set_yticks(range(len(_corr.columns)))\n"
+            "ax.set_xticklabels(_corr.columns, rotation=45, ha='right')\n"
+            "ax.set_yticklabels(_corr.columns)\nfig.colorbar(im, ax=ax)\n"
+        )
+    return base + body + title_line + "plt.show()"
 
 
 def _quote(name: str) -> str:
