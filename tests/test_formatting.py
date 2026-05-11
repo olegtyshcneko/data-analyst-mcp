@@ -17,3 +17,15 @@ def test_truncate_rows_under_limit_returns_full_rows() -> None:
     assert out["total_rows"] == 3
     assert out["truncated"] is False
     assert out["cursor"] is None
+
+
+def test_truncate_rows_over_limit_truncates_with_cursor() -> None:
+    from data_analyst_mcp.formatting import truncate_rows
+
+    rows = [{"i": i} for i in range(10)]
+    out = truncate_rows(rows, limit=3)
+
+    assert out["rows"] == [{"i": 0}, {"i": 1}, {"i": 2}]
+    assert out["total_rows"] == 10
+    assert out["truncated"] is True
+    assert out["cursor"] == 3
