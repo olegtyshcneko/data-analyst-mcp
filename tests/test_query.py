@@ -43,3 +43,16 @@ def test_query_select_returns_rows_columns_total_and_timing(call_tool: Any) -> N
     assert result["total_rows"] == 5000
     assert "execution_time_ms" in result
     assert result["execution_time_ms"] >= 0
+
+
+def test_query_explicit_limit_is_honored(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    # Explicit LIMIT 7 should win over auto-limit of 50.
+    result = call_tool(
+        "query",
+        {"sql": "SELECT customer_id FROM messy LIMIT 7", "limit": 50},
+    )
+
+    assert result["ok"] is True
+    assert len(result["rows"]) == 7
