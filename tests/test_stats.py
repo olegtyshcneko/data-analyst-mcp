@@ -354,3 +354,25 @@ def test_test_hypothesis_unknown_kind_returns_invalid_kind(call_tool):
     result = call_tool("test_hypothesis", {"kind": "bogus"})
     assert result["ok"] is False
     assert result["error"]["type"] == "invalid_kind"
+
+
+def test_test_hypothesis_records_cells_on_success(call_tool, load_df_into_session):
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("pairs", _make_two_group_df())
+    call_tool(
+        "test_hypothesis",
+        {
+            "kind": "t_test",
+            "name": "pairs",
+            "group_column": "g",
+            "metric_column": "v",
+            "group_a": "A",
+            "group_b": "B",
+        },
+    )
+    cells = get_recorder().cells
+    assert len(cells) == 2
+    assert cells[0]["cell_type"] == "markdown"
+    assert cells[1]["cell_type"] == "code"
+    assert cells[0]["metadata"]["tool_name"] == "test_hypothesis"
