@@ -9,8 +9,13 @@ if TYPE_CHECKING:
 
 
 def rows_to_dicts(rel: duckdb.DuckDBPyRelation) -> list[dict[str, Any]]:
-    """Stub — produces the wrong shape."""
-    return []
+    """Materialize a DuckDB relation as a list of column-name-keyed dicts.
+
+    Goes through the relation's column names + ``fetchall()`` so we never
+    rely on pandas dtype coercion for plain row materialization.
+    """
+    columns = rel.columns
+    return [dict(zip(columns, row, strict=True)) for row in rel.fetchall()]
 
 
 def truncate_rows(rows: list[dict[str, Any]], limit: int) -> dict[str, Any]:
