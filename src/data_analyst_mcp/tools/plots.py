@@ -90,17 +90,47 @@ def _fetch_column(table: str, column: str) -> Any:
     return df[column].to_numpy()
 
 
-def _make_figure() -> Any:
-    """Construct a fresh ``Figure`` with the project's standard size + DPI."""
+_FIGSIZE: tuple[float, float] = (8.0, 6.0)
+_DPI: int = 100
+
+
+def _apply_style(fig: Any, ax: Any) -> None:
+    """Apply the project's consistent matplotlib style to a Figure + Axes.
+
+    Stock matplotlib only — no ``seaborn`` import. Sets a white face color,
+    a light-grey major grid (under the data), spine de-emphasis, and a
+    sans-serif tick font. Called by every kind so all rendered images look
+    like they came out of the same notebook.
+    """
+    fig.set_facecolor("white")
+    ax.set_facecolor("white")
+    ax.grid(visible=True, which="major", linestyle="-", linewidth=0.6, color="#dddddd")
+    ax.set_axisbelow(True)
+    for spine_name in ("top", "right"):
+        ax.spines[spine_name].set_visible(False)
+    for spine_name in ("left", "bottom"):
+        ax.spines[spine_name].set_color("#888888")
+    ax.tick_params(colors="#444444", labelsize=9)
+
+
+def _make_figure() -> tuple[Any, Any]:
+    """Construct a fresh ``Figure`` + ``Axes`` with the project's standard style."""
     from matplotlib.figure import Figure
 
-    fig = Figure(figsize=(8, 6), dpi=100)
-    fig.set_facecolor("white")
-    return fig
+    fig = Figure(figsize=_FIGSIZE, dpi=_DPI)
+    ax = fig.add_subplot(111)
+    _apply_style(fig, ax)
+    return fig, ax
 
 
-def _encode_figure(fig: Any) -> dict[str, Any]:
-    """Render ``fig`` to a PNG and return the ``{ok, png_base64, width, height}`` envelope."""
+def _render_to_base64(fig: Any) -> dict[str, Any]:
+    """Render ``fig`` to a PNG and return the ``{ok, png_base64, width, height}`` envelope.
+
+    Uses the object-oriented ``FigureCanvasAgg`` so we never touch
+    ``pyplot``'s global state. The width and height are measured after
+    ``bbox_inches="tight"`` runs so they reflect what the client actually
+    receives.
+    """
     import io
 
     from matplotlib.backends.backend_agg import FigureCanvasAgg
@@ -131,14 +161,13 @@ def _plot_line(payload: PlotInput) -> dict[str, Any]:
         f"SELECT {_quote(payload.x)}, {_quote(payload.y)} FROM {_quote(payload.name)} "
         f"ORDER BY {_quote(payload.x)}"
     ).df()
-    fig = _make_figure()
-    ax = fig.add_subplot(111)
+    fig, ax = _make_figure()
     ax.plot(df[payload.x].to_numpy(), df[payload.y].to_numpy())
     ax.set_xlabel(payload.x)
     ax.set_ylabel(payload.y)
     if payload.title is not None:
         ax.set_title(payload.title)
-    return _encode_figure(fig)
+    return _render_to_base64(fig)
 
 
 def _plot_bar(payload: PlotInput) -> dict[str, Any]:
@@ -162,29 +191,27 @@ def _plot_bar(payload: PlotInput) -> dict[str, Any]:
         y_label = f"avg({payload.y})"
     labels = [str(r[0]) for r in rows]
     heights = [float(r[1]) for r in rows]
-    fig = _make_figure()
-    ax = fig.add_subplot(111)
+    fig, ax = _make_figure()
     ax.bar(labels, heights)
     ax.set_xlabel(payload.x)
     ax.set_ylabel(y_label)
     if payload.title is not None:
         ax.set_title(payload.title)
-    return _encode_figure(fig)
+    return _render_to_base64(fig)
 
 
 def _plot_hist(payload: PlotInput) -> dict[str, Any]:
     """Histogram of ``payload.x`` (numeric) with optional ``bins``."""
     assert payload.x is not None  # guarded by _missing_required_params
     values = _fetch_column(payload.name, payload.x)
-    fig = _make_figure()
-    ax = fig.add_subplot(111)
+    fig, ax = _make_figure()
     bins = payload.bins if payload.bins is not None else 20
     ax.hist(values, bins=bins)
     ax.set_xlabel(payload.x)
     ax.set_ylabel("count")
     if payload.title is not None:
         ax.set_title(payload.title)
-    return _encode_figure(fig)
+    return _render_to_base64(fig)
 
 
 _REQUIRES_X: frozenset[str] = frozenset({"hist", "bar", "line", "scatter"})
