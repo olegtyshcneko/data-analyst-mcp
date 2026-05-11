@@ -219,6 +219,17 @@ def test_profile_dataset_emits_heuristic_flags(call_tool: Any) -> None:
     assert login["flags"]["looks_like_timestamp"] is True
 
 
+def test_profile_dataset_returns_head_sample(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("profile_dataset", {"name": "messy", "sample_rows": 3})
+
+    assert "head" in result
+    assert len(result["head"]) == 3
+    # Each row is a dict keyed by column name.
+    assert "customer_id" in result["head"][0]
+
+
 def test_list_datasets_reports_registered_entries(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 
