@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
+from data_analyst_mcp.recorder import get_recorder
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ def fit_model(payload: FitModelInput) -> dict[str, Any]:
         )
     try:
         df = _materialize_dataframe(payload.name)
-        return _fit_dispatch(payload, df)
+        result = _fit_dispatch(payload, df)
     except _FormulaError as fe:
         return build_error(
             type="formula_error",
@@ -71,6 +72,46 @@ def fit_model(payload: FitModelInput) -> dict[str, Any]:
                 "'y ~ x + C(group)'."
             ),
         )
+    _record_fit_model(payload, result)
+    return result
+
+
+def _record_fit_model(payload: FitModelInput, result: dict[str, Any]) -> None:
+    """Append a markdown + code cell pair describing the fit_model call."""
+    if not result.get("ok"):
+        return
+    md_lines = [
+        f"### Fitted {payload.kind.upper()} model on `{payload.name}`",
+        f"- Formula: `{payload.formula}`",
+        f"- {result['interpretation']}",
+    ]
+    fit = result["fit"]
+    if "r_squared" in fit:
+        md_lines.append(f"- R² = {fit['r_squared']:.4f} (adj {fit['adj_r_squared']:.4f})")
+    elif "pseudo_r_squared" in fit:
+        md_lines.append(f"- pseudo-R² = {fit['pseudo_r_squared']:.4f}")
+    md_lines.append(f"- AIC = {fit['aic']:.2f}, BIC = {fit['bic']:.2f}")
+    if result["warnings"]:
+        md_lines.append(f"- Warnings: {', '.join(result['warnings'])}")
+    md = "\n".join(md_lines)
+    code = _code_for_fit(payload)
+    get_recorder().record(markdown=md, code=code, tool_name="fit_model")
+
+
+def _code_for_fit(payload: FitModelInput) -> str:
+    """Render a reproducible statsmodels snippet for the fit_model call."""
+    fn = {"ols": "ols", "logistic": "logit", "poisson": "poisson"}[payload.kind]
+    fit_args = ""
+    if payload.kind == "ols" and payload.robust:
+        fit_args = 'cov_type="HC3"'
+    elif payload.kind in {"logistic", "poisson"}:
+        fit_args = "disp=0"
+    return (
+        f"import statsmodels.formula.api as smf\n"
+        f'df = con.sql("SELECT * FROM {payload.name}").df()\n'
+        f'model = smf.{fn}("{payload.formula}", data=df).fit({fit_args})\n'
+        f"model.summary()"
+    )
 
 
 class _FormulaError(Exception):
