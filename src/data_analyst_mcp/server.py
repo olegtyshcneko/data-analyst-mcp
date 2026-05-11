@@ -15,6 +15,7 @@ from mcp.server.fastmcp import FastMCP
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.tools import datasets as _datasets
 from data_analyst_mcp.tools import models as _models
+from data_analyst_mcp.tools import notebook as _notebook
 from data_analyst_mcp.tools import plots as _plots
 from data_analyst_mcp.tools import query as _query
 from data_analyst_mcp.tools import stats as _stats
@@ -317,6 +318,30 @@ def plot(
         return _plots.plot(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("plot failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def emit_notebook(
+    path: str | None = None,
+    include_outputs: bool = False,
+) -> dict[str, Any]:
+    """Serialize the recorded session to a runnable Jupyter notebook.
+
+    Writes a ``.ipynb`` containing a setup cell (imports + DuckDB connection
+    + ``CREATE OR REPLACE TABLE`` reloads for every registered dataset)
+    followed by one markdown + one code cell per successfully-executed tool
+    call. When ``path`` is omitted the file lands at
+    ``./session_<YYYYmmdd_HHMMSS>.ipynb`` in the current working directory.
+    ``include_outputs`` is an API-stability placeholder: outputs are never
+    captured during MCP calls, so re-execute with ``jupyter nbconvert --execute``
+    to materialize them.
+    """
+    try:
+        payload = _notebook.EmitNotebookInput(path=path, include_outputs=include_outputs)
+        return _notebook.emit_notebook(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("emit_notebook failed")
         return build_error(type="internal", message=str(exc))
 
 
