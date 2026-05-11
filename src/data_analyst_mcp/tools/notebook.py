@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from datetime import datetime
 from typing import Any
 
@@ -46,8 +45,7 @@ class EmitNotebookInput(BaseModel):
 
 def _default_path() -> str:
     """Default destination: ``./session_<timestamp>.ipynb`` in the cwd."""
-    name = datetime.now().strftime("session_%Y%m%d_%H%M%S.ipynb")
-    return os.path.abspath(name)
+    return datetime.now().strftime("session_%Y%m%d_%H%M%S.ipynb")
 
 
 def emit_notebook(payload: EmitNotebookInput) -> dict[str, Any]:
@@ -55,7 +53,6 @@ def emit_notebook(payload: EmitNotebookInput) -> dict[str, Any]:
     nbf = _nbf()
     nb: Any = get_recorder().to_notebook(include_setup=True)
     target = payload.path if payload.path is not None else _default_path()
-    target = os.path.abspath(target)
     with open(target, "w", encoding="utf-8") as fh:
         nbf.write(nb, fh)  # type: ignore[reportUnknownMemberType]
     return {"ok": True, "path": target, "n_cells": len(nb.cells)}
