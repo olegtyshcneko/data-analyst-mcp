@@ -42,6 +42,23 @@ class LoadDatasetInput(BaseModel):
     )
 
 
+_SUPPORTED_EXTENSIONS = {".csv", ".tsv", ".parquet", ".xlsx", ".json", ".jsonl"}
+
+
+def _extension(path: str) -> str:
+    """Lowercase extension including the leading dot."""
+    import os
+
+    return os.path.splitext(path)[1].lower()
+
+
 def load_dataset(payload: LoadDatasetInput) -> dict[str, Any]:
-    """Stub — always returns ok=True so the unsupported-format test fails."""
+    """Register a file as a DuckDB table in the session."""
+    ext = _extension(payload.path)
+    if ext not in _SUPPORTED_EXTENSIONS:
+        return build_error(
+            type="unsupported_format",
+            message=f"Extension {ext!r} is not a supported tabular format.",
+            hint="Use one of .csv, .tsv, .parquet, .xlsx, .json, .jsonl.",
+        )
     return {"ok": True, "name": payload.name or "", "rows": 0, "columns": []}
