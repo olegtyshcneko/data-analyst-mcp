@@ -15,8 +15,21 @@ class NotebookRecorder:
         self.cells: list[dict[str, Any]] = []
 
     def record(self, *, markdown: str, code: str, tool_name: str) -> None:
-        """Stub — records nothing so the cell-count assertion fails."""
-        return None
+        """Append one markdown + one code cell describing a tool invocation."""
+        self.cells.append(
+            {
+                "cell_type": "markdown",
+                "source": markdown,
+                "metadata": {"tool_name": tool_name},
+            }
+        )
+        self.cells.append(
+            {
+                "cell_type": "code",
+                "source": code,
+                "metadata": {"tool_name": tool_name},
+            }
+        )
 
 
 _recorder = NotebookRecorder()
