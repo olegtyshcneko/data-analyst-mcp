@@ -136,9 +136,28 @@ class _FormulaError(Exception):
     """Internal marker for formula / patsy / column-binding failures."""
 
 
+def _coerce_bool_columns(df: Any) -> Any:
+    """Cast every boolean column to int8 so patsy can use them as numeric endog.
+
+    statsmodels.logit refuses a single-column boolean endog (it treats bool
+    as a 2-level categorical and emits a 2-column dummy matrix). CSVs that
+    encode 0/1 outcomes as ``true``/``false`` therefore fail without manual
+    casting. Coercing bool columns to int up-front lets the tool accept the
+    natural representation.
+    """
+    bool_cols = [c for c in df.columns if df[c].dtype == bool]
+    if not bool_cols:
+        return df
+    df = df.copy()
+    for c in bool_cols:
+        df[c] = df[c].astype("int8")
+    return df
+
+
 def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
     """Pick the right statsmodels entry point and translate failures."""
     smf = _smf()
+    df = _coerce_bool_columns(df)
     try:
         if payload.kind == "ols":
             cov_type = "HC3" if payload.robust else "nonrobust"
