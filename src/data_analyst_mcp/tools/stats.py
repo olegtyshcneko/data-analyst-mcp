@@ -708,7 +708,11 @@ def compare_groups(payload: CompareGroupsInput) -> dict[str, Any]:
     if payload.groups is not None:
         labels = list(payload.groups)
     else:
-        labels = _top_n_labels(payload.name, payload.group_column, 2)
+        all_labels = _all_labels(payload.name, payload.group_column)
+        if len(all_labels) > 2:
+            labels = all_labels
+        else:
+            labels = _top_n_labels(payload.name, payload.group_column, 2)
 
     arrays = [
         _materialize_group(payload.name, payload.group_column, payload.metric_column, lab)
@@ -748,9 +752,23 @@ def compare_groups(payload: CompareGroupsInput) -> dict[str, Any]:
             p_lev=p_lev,
         )
 
-    return build_error(
-        type="not_implemented",
-        message=">2-sample continuous path not wired yet.",
+    # >2 groups: only ANOVA implemented; Kruskal-Wallis added in a later cycle.
+    p_norm_many = [_shapiro_p(arr) for arr in arrays]
+    p_lev_many = _levene_p(*arrays)
+    from scipy import stats as _sps
+
+    r = _sps.f_oneway(*arrays)
+    eta = _eta_squared(arrays)
+    return _build_many_sample_response(
+        test="anova",
+        stat=float(r.statistic),
+        p=float(r.pvalue),
+        df=None,
+        effect={"name": "eta_squared", "value": eta},
+        labels=labels,
+        arrays=arrays,
+        p_norm=p_norm_many,
+        p_lev=p_lev_many,
     )
 
 
@@ -801,6 +819,65 @@ def _build_two_sample_response(
         "statistic": stat,
         "p_value": p,
         "df": df if df == df else None,  # NaN → None
+        "effect_size": effect,
+        "groups": [{"name": labels[i], "n": int(len(arrays[i]))} for i in range(len(labels))],
+        "assumption_checks": assumption_checks,
+        "interpretation": interp,
+    }
+
+
+def _build_many_sample_response(
+    *,
+    test: str,
+    stat: float,
+    p: float,
+    df: float | None,
+    effect: dict[str, Any],
+    labels: list[str],
+    arrays: list[Any],
+    p_norm: list[float | None],
+    p_lev: float,
+) -> dict[str, Any]:
+    """Assemble the standard compare_groups envelope for the >2-sample path."""
+    normality_violated = any(pn is not None and pn < 0.05 for pn in p_norm)
+    equal_var_violated = p_lev < 0.05
+    if test == "anova":
+        norm_consequence = "Normality holds; one-way ANOVA applies."
+        var_consequence = "Levene's test did not reject equal variances."
+    else:
+        norm_consequence = "Switched from ANOVA to Kruskal-Wallis."
+        var_consequence = "Rank-based test handles unequal variances."
+    assumption_checks: dict[str, Any] = {
+        "normality_test": {
+            "name": "shapiro",
+            "p": _min_non_none(p_norm),
+            "violated": normality_violated,
+            "consequence": norm_consequence,
+        },
+        "equal_variances_test": {
+            "name": "levene",
+            "p": p_lev,
+            "violated": equal_var_violated,
+            "consequence": var_consequence,
+        },
+    }
+    pretty = {"anova": "one-way ANOVA", "kruskal_wallis": "Kruskal-Wallis"}.get(test, test)
+    if p < 0.05:
+        interp = (
+            f"At least one of {labels} differs significantly ({pretty}, "
+            f"p={p:.4f}, {effect['name']}={effect['value']:.3f})."
+        )
+    else:
+        interp = (
+            f"No evidence of group differences at α=0.05 ({pretty}, "
+            f"p={p:.4f}, {effect['name']}={effect['value']:.3f})."
+        )
+    return {
+        "ok": True,
+        "test": test,
+        "statistic": stat,
+        "p_value": p,
+        "df": df,
         "effect_size": effect,
         "groups": [{"name": labels[i], "n": int(len(arrays[i]))} for i in range(len(labels))],
         "assumption_checks": assumption_checks,
