@@ -6,12 +6,40 @@ start of every case via the autouse fixture in ``tests/conftest.py``.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
-_datasets: dict[str, Any] = {}
+
+@dataclass(frozen=True)
+class DatasetEntry:
+    """One row in the session's dataset registry."""
+
+    path: str
+    read_options: dict[str, Any]
+    format: str
+    rows: int
+    columns: list[dict[str, str]]
+    registered_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
-def get_datasets() -> dict[str, Any]:
+_datasets: dict[str, DatasetEntry] = {}
+
+
+def register(
+    *,
+    name: str,
+    path: str,
+    read_options: dict[str, Any],
+    format: str,
+    rows: int,
+    columns: list[dict[str, str]],
+) -> None:
+    """Stub — does not store anything yet."""
+    return None
+
+
+def get_datasets() -> dict[str, DatasetEntry]:
     """Return the live datasets registry (mutating this mutates the session)."""
     return _datasets
 
