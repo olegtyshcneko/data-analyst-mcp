@@ -678,6 +678,13 @@ def _select_two_sample_continuous(p_norm: list[float | None], p_levene: float) -
     return "student_t"
 
 
+def _select_many_sample_continuous(p_norm: list[float | None]) -> str:
+    """Pick anova or kruskal_wallis for a >2-sample continuous compare."""
+    if any(p is not None and p < 0.05 for p in p_norm):
+        return "kruskal_wallis"
+    return "anova"
+
+
 def _record_compare_groups(payload: CompareGroupsInput, result: dict[str, Any]) -> None:
     """Append a markdown+code cell pair describing the compare_groups call."""
     if not result.get("ok"):
@@ -781,29 +788,21 @@ def _compare_groups_impl(payload: CompareGroupsInput) -> dict[str, Any]:
     p_lev_many = _levene_p(*arrays)
     from scipy import stats as _sps
 
-    if any(pn is not None and pn < 0.05 for pn in p_norm_many):
+    test = _select_many_sample_continuous(p_norm_many)
+    if test == "kruskal_wallis":
         r = _sps.kruskal(*arrays)
         n_total = sum(len(g) for g in arrays)
         eps = float(r.statistic) / (n_total - 1) if n_total > 1 else 0.0
-        return _build_many_sample_response(
-            test="kruskal_wallis",
-            stat=float(r.statistic),
-            p=float(r.pvalue),
-            df=None,
-            effect={"name": "epsilon_squared", "value": eps},
-            labels=labels,
-            arrays=arrays,
-            p_norm=p_norm_many,
-            p_lev=p_lev_many,
-        )
-    r = _sps.f_oneway(*arrays)
-    eta = _eta_squared(arrays)
+        effect = {"name": "epsilon_squared", "value": eps}
+    else:
+        r = _sps.f_oneway(*arrays)
+        effect = {"name": "eta_squared", "value": _eta_squared(arrays)}
     return _build_many_sample_response(
-        test="anova",
+        test=test,
         stat=float(r.statistic),
         p=float(r.pvalue),
         df=None,
-        effect={"name": "eta_squared", "value": eta},
+        effect=effect,
         labels=labels,
         arrays=arrays,
         p_norm=p_norm_many,
