@@ -111,5 +111,18 @@ def test_setup_cell_reloads_each_registered_dataset(call_tool, tmp_path):
     assert "read_parquet(" in setup_src
 
 
+def test_setup_cell_skips_in_memory_datasets(call_tool, tmp_path, load_df_into_session):
+    import pandas as pd
+
+    load_df_into_session("inmem", pd.DataFrame({"x": [1, 2, 3]}))
+    r = call_tool("emit_notebook", {"path": str(tmp_path / "out.ipynb")})
+    assert r["ok"]
+    setup_src = _read_nb(r["path"]).cells[0].source
+    # No reload line for in-memory datasets — they have no path to read from.
+    assert "CREATE OR REPLACE TABLE inmem" not in setup_src
+    # We do leave a hint so the reader knows the table existed in the live session.
+    assert "inmem" in setup_src
+
+
 
 
