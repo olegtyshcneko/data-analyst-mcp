@@ -53,4 +53,13 @@ def plot(payload: PlotInput) -> dict[str, Any]:
             message=f"No dataset named {payload.name!r} registered.",
             hint="Call list_datasets to see what is available.",
         )
+    entry = entries[payload.name]
+    available = {c["name"] for c in entry.columns}
+    for label, col in (("x", payload.x), ("y", payload.y), ("hue", payload.hue)):
+        if col is not None and col not in available:
+            return build_error(
+                type="column_not_found",
+                message=f"Column {col!r} ({label}) is not in dataset {payload.name!r}.",
+                hint=f"Available columns: {sorted(available)}",
+            )
     return {"ok": True, "png_base64": "", "width": 0, "height": 0}
