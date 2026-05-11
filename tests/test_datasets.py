@@ -15,3 +15,10 @@ def test_load_dataset_rejects_unsupported_extension(call_tool: Any) -> None:
     assert result["ok"] is False
     assert result["error"]["type"] == "unsupported_format"
     assert ".xyz" in result["error"]["message"] or "xyz" in result["error"]["message"]
+
+
+def test_load_dataset_reports_file_not_found(call_tool: Any) -> None:
+    result = call_tool("load_dataset", {"path": "/tmp/does_not_exist_12345.csv"})
+
+    assert result["ok"] is False
+    assert result["error"]["type"] == "file_not_found"
