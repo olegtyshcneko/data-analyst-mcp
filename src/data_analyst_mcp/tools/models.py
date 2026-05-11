@@ -137,20 +137,31 @@ class _FormulaError(Exception):
 
 
 def _coerce_bool_columns(df: Any) -> Any:
-    """Cast every boolean column to int8 so patsy can use them as numeric endog.
+    """Cast every boolean column to a numeric dtype patsy can consume.
 
     statsmodels.logit refuses a single-column boolean endog (it treats bool
     as a 2-level categorical and emits a 2-column dummy matrix). CSVs that
     encode 0/1 outcomes as ``true``/``false`` therefore fail without manual
-    casting. Coercing bool columns to int up-front lets the tool accept the
-    natural representation.
+    casting. Two flavours of boolean show up in practice:
+
+    * numpy ``bool`` — what DuckDB returns for a non-null BOOLEAN column;
+    * pandas extension ``BooleanDtype`` — what DuckDB returns when the
+      column has any NULL values.
+
+    Both are coerced to a float ``Float64`` (preserving NA as ``NaN`` so
+    statsmodels drops those rows itself) before the fit dispatch.
     """
-    bool_cols = [c for c in df.columns if df[c].dtype == bool]
+    import pandas as pd
+
+    bool_cols = [c for c in df.columns if pd.api.types.is_bool_dtype(df[c].dtype)]
     if not bool_cols:
         return df
     df = df.copy()
     for c in bool_cols:
-        df[c] = df[c].astype("int8")
+        # Float (with NaN for NA) lets statsmodels' missing-handling drop
+        # rows uniformly across endog and exog instead of barfing on a
+        # pandas extension dtype that numpy doesn't understand.
+        df[c] = df[c].astype("Float64").astype(float)
     return df
 
 
