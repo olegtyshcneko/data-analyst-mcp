@@ -387,6 +387,61 @@ def _run_fisher(payload: FisherInput) -> dict[str, Any]:
     }
 
 
+def _materialize_groups(
+    name: str, group_col: str, metric_col: str
+) -> tuple[list[str], list[Any]]:
+    """Return all distinct group labels and the per-group metric arrays."""
+    con = session.get_connection()
+    table = _quote(name)
+    label_rows = con.execute(
+        f"SELECT DISTINCT {_quote(group_col)} FROM {table} "
+        f"WHERE {_quote(group_col)} IS NOT NULL "
+        f"ORDER BY {_quote(group_col)}"
+    ).fetchall()
+    labels = [str(r[0]) for r in label_rows]
+    groups = [
+        _materialize_group(name, group_col, metric_col, lab) for lab in labels
+    ]
+    return labels, groups
+
+
+def _eta_squared(groups: list[Any]) -> float:
+    """Compute η² = SS_between / SS_total across a list of group arrays."""
+    import numpy as np
+
+    all_vals = np.concatenate(groups)
+    gm = float(all_vals.mean())
+    ssb = sum(len(g) * (float(g.mean()) - gm) ** 2 for g in groups)
+    sst = float(((all_vals - gm) ** 2).sum())
+    return ssb / sst if sst > 0 else 0.0
+
+
+def _run_anova(payload: AnovaInput) -> dict[str, Any]:
+    """One-way ANOVA across every distinct group label."""
+    from scipy import stats as _sps
+
+    labels, groups = _materialize_groups(payload.name, payload.group_column, payload.metric_column)
+    r = _sps.f_oneway(*groups)
+    eta = _eta_squared(groups)
+    p = float(r.pvalue)
+    interp = (
+        f"At least one of {labels} differs at α=0.05 (one-way ANOVA, p={p:.4f})."
+        if p < 0.05
+        else f"No evidence of group differences at α=0.05 (one-way ANOVA, p={p:.4f})."
+    )
+    return {
+        "ok": True,
+        "test": "anova",
+        "statistic": float(r.statistic),
+        "p_value": p,
+        "df": None,
+        "effect_size": {"name": "eta_squared", "value": eta},
+        "n_a": int(len(groups[0])) if groups else 0,
+        "n_b": int(len(groups[1])) if len(groups) > 1 else 0,
+        "interpretation": interp,
+    }
+
+
 def test_hypothesis(payload: Any) -> dict[str, Any]:
     """Dispatch to a kind-specific handler. ``payload`` is the validated union."""
     kind = payload.kind
@@ -400,6 +455,8 @@ def test_hypothesis(payload: Any) -> dict[str, Any]:
         return _run_chi_square(payload)
     if kind == "fisher":
         return _run_fisher(payload)
+    if kind == "anova":
+        return _run_anova(payload)
     return build_error(
         type="invalid_kind",
         message=f"Unknown kind {kind!r}.",
