@@ -280,6 +280,37 @@ def test_test_hypothesis_anova_known_answer(call_tool, load_df_into_session):
     assert result["effect_size"]["value"] == pytest.approx(0.5714285714, abs=1e-4)
 
 
+def _make_three_group_non_normal_df() -> pd.DataFrame:
+    import numpy as np
+
+    g1 = np.random.RandomState(10).standard_cauchy(20)
+    g2 = np.random.RandomState(11).standard_cauchy(20)
+    g3 = np.random.RandomState(12).standard_cauchy(20)
+    return pd.DataFrame(
+        {
+            "g": ["A"] * 20 + ["B"] * 20 + ["C"] * 20,
+            "v": list(g1) + list(g2) + list(g3),
+        }
+    )
+
+
+def test_compare_groups_picks_kruskal_three_groups_non_normal(call_tool, load_df_into_session):
+    load_df_into_session("kfix", _make_three_group_non_normal_df())
+    result = call_tool(
+        "compare_groups",
+        {"name": "kfix", "group_column": "g", "metric_column": "v"},
+    )
+    # rs.standard_cauchy(20) shapiro p << 0.05 for all three → kruskal_wallis
+    # scipy.stats.kruskal(g1, g2, g3) → H=0.3239344262, p=0.8504690883
+    # epsilon_squared = H/(60-1) = 0.0054904140
+    assert result["ok"] is True
+    assert result["test"] == "kruskal_wallis"
+    assert result["statistic"] == pytest.approx(0.3239344262, abs=1e-4)
+    assert result["p_value"] == pytest.approx(0.8504690883, abs=1e-4)
+    assert result["effect_size"]["name"] == "epsilon_squared"
+    assert result["effect_size"]["value"] == pytest.approx(0.0054904140, abs=1e-4)
+
+
 def test_test_hypothesis_kruskal_known_answer(call_tool, load_df_into_session):
     load_df_into_session("triplets", _make_three_group_df())
     result = call_tool(
