@@ -85,6 +85,20 @@ def test_list_datasets_returns_empty_on_fresh_session(call_tool: Any) -> None:
     assert result == {"ok": True, "datasets": []}
 
 
+def test_list_datasets_reports_registered_entries(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("list_datasets", {})
+
+    assert result["ok"] is True
+    assert len(result["datasets"]) == 1
+    entry = result["datasets"][0]
+    assert entry["name"] == "messy"
+    assert entry["rows"] == 5000
+    assert entry["columns"] == 12
+    assert "registered_at" in entry
+
+
 def test_load_dataset_supports_jsonl(call_tool: Any, tmp_path: Any) -> None:
     p = tmp_path / "tiny.jsonl"
     p.write_text('{"a": 1, "b": "x"}\n{"a": 2, "b": "y"}\n')
