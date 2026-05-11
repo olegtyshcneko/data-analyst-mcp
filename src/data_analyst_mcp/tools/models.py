@@ -95,7 +95,28 @@ def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
     return {
         "ok": True,
         "coefficients": _coefficients(m),
+        "fit": _fit_block(m, payload.kind),
     }
+
+
+def _fit_block(m: Any, kind: str) -> dict[str, Any]:
+    """Build the goodness-of-fit envelope.
+
+    OLS reports ``r_squared`` / ``adj_r_squared``; logistic and Poisson swap
+    those for ``pseudo_r_squared`` (McFadden's R^2 via ``m.prsquared``).
+    """
+    out: dict[str, Any] = {
+        "aic": float(m.aic),
+        "bic": float(m.bic),
+        "n_obs": int(m.nobs),
+        "df_resid": int(m.df_resid),
+    }
+    if kind == "ols":
+        out["r_squared"] = float(m.rsquared)
+        out["adj_r_squared"] = float(m.rsquared_adj)
+    else:
+        out["pseudo_r_squared"] = float(m.prsquared)
+    return out
 
 
 def _coefficients(m: Any) -> list[dict[str, Any]]:
