@@ -22,3 +22,16 @@ def test_load_dataset_reports_file_not_found(call_tool: Any) -> None:
 
     assert result["ok"] is False
     assert result["error"]["type"] == "file_not_found"
+
+
+def test_load_dataset_registers_csv_with_rows_and_columns(call_tool: Any) -> None:
+    result = call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    assert result["ok"] is True
+    assert result["name"] == "messy"
+    assert result["rows"] == 5000
+    # 12 columns per fixture spec.
+    assert len(result["columns"]) == 12
+    # Each column entry has the canonical shape.
+    for col in result["columns"]:
+        assert set(col.keys()) >= {"name", "dtype"}
