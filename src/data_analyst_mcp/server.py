@@ -244,9 +244,21 @@ def fit_model(
     and a 2-3 sentence plain-English interpretation.
     """
     try:
-        payload = _models.FitModelInput.model_validate(
-            {"name": name, "formula": formula, "kind": kind, "robust": robust}
-        )
+        from pydantic import ValidationError
+
+        try:
+            payload = _models.FitModelInput.model_validate(
+                {"name": name, "formula": formula, "kind": kind, "robust": robust}
+            )
+        except ValidationError as ve:
+            for err in ve.errors():
+                if err.get("loc") == ("kind",):
+                    return build_error(
+                        type="invalid_kind",
+                        message=f"Unknown kind {kind!r}.",
+                        hint="Allowed kinds: ['logistic', 'ols', 'poisson'].",
+                    )
+            raise
         return _models.fit_model(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("fit_model failed")
