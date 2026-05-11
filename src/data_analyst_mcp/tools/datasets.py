@@ -142,6 +142,8 @@ def describe_column(payload: DescribeColumnInput) -> dict[str, Any]:
         result["iqr"] = iqr
         result["histogram"] = _histogram(con, table, quoted, bins=payload.bins)
         result["outliers"] = _outliers(con, table, quoted, p25=p25, p75=p75)
+    elif _is_string(col_meta["dtype"]):
+        result.update(_categorical_describe(con, table, quoted))
 
     return result
 
@@ -231,6 +233,33 @@ def _build_suggestions(column_profiles: list[dict[str, Any]]) -> list[str]:
     if not suggestions:
         suggestions.append("Run describe_column on individual columns to dig deeper.")
     return suggestions[:3]
+
+
+def _categorical_describe(con: Any, table: str, quoted: str) -> dict[str, Any]:
+    """Value-counts (capped at 50 + "other" bucket) and Shannon entropy."""
+    import math
+
+    rows = con.execute(
+        f"""
+        SELECT {quoted} AS value, COUNT(*) AS c
+        FROM {table}
+        WHERE {quoted} IS NOT NULL
+        GROUP BY value
+        ORDER BY c DESC, value ASC
+        """
+    ).fetchall()
+    total = sum(int(r[1]) for r in rows)
+    entropy = 0.0
+    if total > 0:
+        for r in rows:
+            p = int(r[1]) / total
+            if p > 0:
+                entropy -= p * math.log2(p)
+    counts = [{"value": _json_safe(r[0]), "count": int(r[1])} for r in rows[:50]]
+    if len(rows) > 50:
+        other_count = sum(int(r[1]) for r in rows[50:])
+        counts.append({"value": "<other>", "count": other_count})
+    return {"value_counts": counts, "entropy": entropy}
 
 
 def _outliers(
