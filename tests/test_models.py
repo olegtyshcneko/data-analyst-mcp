@@ -475,3 +475,34 @@ def test_fit_model_poisson_returns_pseudo_r_squared_fit_block(call_tool, load_df
     assert fit["n_obs"] == 400
     assert fit["df_resid"] == 398
     assert fit["pseudo_r_squared"] == pytest.approx(0.2467755286, abs=1e-3)
+
+
+def _overdispersed_df() -> pd.DataFrame:
+    """Build an overdispersed Poisson fixture (NegBinom counts)."""
+    rng = np.random.default_rng(20260511)
+    n = 400
+    x = rng.standard_normal(n)
+    lam = np.exp(0.5 + 0.7 * x)
+    # NegBinom with mean=lam but variance > mean → overdispersion vs Poisson.
+    y = rng.negative_binomial(2, 2 / (2 + lam))
+    return pd.DataFrame({"y": y, "x": x})
+
+
+def test_fit_model_poisson_emits_overdispersion_warning(call_tool, load_df_into_session):
+    load_df_into_session("overdisp", _overdispersed_df())
+    result = call_tool(
+        "fit_model", {"name": "overdisp", "formula": "y ~ x", "kind": "poisson"}
+    )
+    # Pearson dispersion on this fixture (seed 20260511) ≈ 1.89 >> 1.5.
+    assert "overdispersion" in result["warnings"]
+
+
+def test_fit_model_poisson_no_overdispersion_warning_on_clean_fixture(
+    call_tool, load_df_into_session
+):
+    load_df_into_session("pois", _poisson_df())
+    result = call_tool(
+        "fit_model", {"name": "pois", "formula": "y ~ x", "kind": "poisson"}
+    )
+    # Pearson dispersion ≈ 0.95 on the clean fixture → no warning.
+    assert "overdispersion" not in result["warnings"]
