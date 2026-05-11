@@ -456,3 +456,22 @@ def test_fit_model_poisson_returns_pinned_coefficients(call_tool, load_df_into_s
     assert by_name["x"]["estimate"] == pytest.approx(0.7087011623, abs=1e-2)
     # m.bse:  x = 0.03469217336544108
     assert by_name["x"]["std_err"] == pytest.approx(0.0346921734, abs=1e-2)
+
+
+def test_fit_model_poisson_returns_pseudo_r_squared_fit_block(call_tool, load_df_into_session):
+    load_df_into_session("pois", _poisson_df())
+    result = call_tool(
+        "fit_model", {"name": "pois", "formula": "y ~ x", "kind": "poisson"}
+    )
+    fit = result["fit"]
+    # m.aic        = 1261.6421455062296
+    # m.bic        = 1269.6250746004455
+    # m.nobs       = 400
+    # m.df_resid   = 398
+    # m.prsquared  = 0.2467755286394614
+    assert "r_squared" not in fit
+    assert fit["aic"] == pytest.approx(1261.6421455, abs=1e-2)
+    assert fit["bic"] == pytest.approx(1269.6250746, abs=1e-2)
+    assert fit["n_obs"] == 400
+    assert fit["df_resid"] == 398
+    assert fit["pseudo_r_squared"] == pytest.approx(0.2467755286, abs=1e-3)
