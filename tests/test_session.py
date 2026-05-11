@@ -46,3 +46,29 @@ def test_get_connection_returns_singleton_duckdb_handle() -> None:
     # Smoke: the handle is usable as a DuckDB connection.
     result = con_a.sql("SELECT 1 AS x").fetchall()
     assert result == [(1,)]
+
+
+def test_reset_drops_registered_tables_and_keeps_connection() -> None:
+    from data_analyst_mcp import session
+
+    session.reset()
+    con = session.get_connection()
+    con.execute("CREATE OR REPLACE TABLE keep_me AS SELECT 1 AS x")
+    session.register(
+        name="keep_me",
+        path="(memory)",
+        read_options={},
+        format="csv",
+        rows=1,
+        columns=[],
+    )
+
+    session.reset()
+
+    # Registry is empty.
+    assert session.get_datasets() == {}
+    # Connection identity is preserved.
+    assert session.get_connection() is con
+    # And the table is gone — reset drops registered tables on the way out.
+    tables = [row[0] for row in con.execute("SHOW TABLES").fetchall()]
+    assert "keep_me" not in tables
