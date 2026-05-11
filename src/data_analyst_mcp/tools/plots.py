@@ -55,6 +55,13 @@ def plot(payload: PlotInput) -> dict[str, Any]:
         )
     entry = entries[payload.name]
     available = {c["name"] for c in entry.columns}
+    missing = _missing_required_params(payload.kind, x=payload.x, y=payload.y)
+    if missing:
+        return build_error(
+            type="missing_required_param",
+            message=f"Plot kind {payload.kind!r} requires parameter(s): {missing}.",
+            hint=f"Pass {missing} as well as `name` and `kind`.",
+        )
     for label, col in (("x", payload.x), ("y", payload.y), ("hue", payload.hue)):
         if col is not None and col not in available:
             return build_error(
@@ -63,3 +70,17 @@ def plot(payload: PlotInput) -> dict[str, Any]:
                 hint=f"Available columns: {sorted(available)}",
             )
     return {"ok": True, "png_base64": "", "width": 0, "height": 0}
+
+
+_REQUIRES_X: frozenset[str] = frozenset({"hist", "bar", "line", "scatter"})
+_REQUIRES_Y: frozenset[str] = frozenset({"line", "scatter", "box", "violin"})
+
+
+def _missing_required_params(kind: str, *, x: str | None, y: str | None) -> list[str]:
+    """Return the list of required-but-missing param names for ``kind``."""
+    missing: list[str] = []
+    if kind in _REQUIRES_X and x is None:
+        missing.append("x")
+    if kind in _REQUIRES_Y and y is None:
+        missing.append("y")
+    return missing
