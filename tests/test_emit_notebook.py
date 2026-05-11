@@ -56,5 +56,29 @@ def test_emit_notebook_errors_when_path_is_a_directory(call_tool, tmp_path):
     assert r["error"]["type"] == "write_failed"
 
 
+def _read_nb(path: str):
+    import nbformat as nbf
+
+    return nbf.read(path, as_version=4)
+
+
+def test_setup_cell_contains_canonical_imports(call_tool, tmp_path):
+    r = call_tool("emit_notebook", {"path": str(tmp_path / "out.ipynb")})
+    assert r["ok"] is True
+    nb = _read_nb(r["path"])
+    setup = nb.cells[0]
+    assert setup.cell_type == "code"
+    src = setup.source
+    for expected in (
+        "import duckdb",
+        "import pandas as pd",
+        "import numpy as np",
+        "from scipy import stats",
+        "import statsmodels.api as sm",
+        "import matplotlib.pyplot as plt",
+    ):
+        assert expected in src, f"missing canonical import: {expected!r}"
+
+
 
 
