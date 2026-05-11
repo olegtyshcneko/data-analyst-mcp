@@ -208,5 +208,18 @@ def test_default_path_changes_between_calls(call_tool, tmp_path, monkeypatch):
     assert r1["path"] != r2["path"]
 
 
+def test_emit_notebook_smoke_load_and_query_validates(call_tool, tmp_path):
+    csv = Path(__file__).parent.parent / "fixtures" / "messy.csv"
+    call_tool("load_dataset", {"path": str(csv), "name": "raw"})
+    call_tool("query", {"sql": "SELECT COUNT(*) AS n FROM raw"})
+    r = call_tool("emit_notebook", {"path": str(tmp_path / "smoke.ipynb")})
+    assert r["ok"]
+    import nbformat as nbf
+
+    nb = nbf.read(r["path"], as_version=4)
+    nbf.validate(nb)
+    assert len(nb.cells) == r["n_cells"] == 5
+
+
 
 
