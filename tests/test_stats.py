@@ -368,6 +368,16 @@ def test_compare_groups_unknown_dataset_returns_not_found(call_tool):
     assert result["error"]["type"] == "not_found"
 
 
+def test_compare_groups_unknown_column_returns_column_not_found(call_tool, load_df_into_session):
+    load_df_into_session("pairs", _make_two_group_df())
+    result = call_tool(
+        "compare_groups",
+        {"name": "pairs", "group_column": "missing", "metric_column": "v"},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "column_not_found"
+
+
 def test_test_hypothesis_records_cells_on_success(call_tool, load_df_into_session):
     from data_analyst_mcp.recorder import get_recorder
 
