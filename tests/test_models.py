@@ -396,3 +396,16 @@ def test_fit_model_logistic_emits_high_multicollinearity_warning(call_tool, load
     # variance_inflation_factor on this fixture (seed 20260511, logistic exog):
     #   vif x  ≈ 10530.5, vif xx ≈ 10530.5  → high_multicollinearity must fire
     assert "high_multicollinearity" in result["warnings"]
+
+
+def test_fit_model_logistic_interpretation_mentions_odds(call_tool, load_df_into_session):
+    load_df_into_session("logi", _logistic_df())
+    result = call_tool(
+        "fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"}
+    )
+    interp = result["interpretation"]
+    assert isinstance(interp, str)
+    # On this seeded fixture, `x` has the smallest p-value (≈ 0), so the
+    # interpretation MUST name it and report an odds-ratio change.
+    assert "x" in interp
+    assert "odds" in interp.lower()
