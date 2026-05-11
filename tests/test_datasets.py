@@ -242,6 +242,15 @@ def test_profile_dataset_returns_suggestions(call_tool: Any) -> None:
         assert isinstance(s, str)
 
 
+def test_describe_column_errors_on_missing_column(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("describe_column", {"name": "messy", "column": "nope"})
+
+    assert result["ok"] is False
+    assert result["error"]["type"] == "column_not_found"
+
+
 def test_profile_dataset_records_cell_pair_on_success(call_tool: Any) -> None:
     from data_analyst_mcp.recorder import get_recorder
 

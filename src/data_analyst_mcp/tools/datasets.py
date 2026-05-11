@@ -71,6 +71,26 @@ def _build_read_call(path: str, fmt: str) -> str:
     return f"read_csv_auto('{path}', SAMPLE_SIZE=-1)"
 
 
+class DescribeColumnInput(BaseModel):
+    """Inputs for ``describe_column``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(..., description="Registered dataset name.")
+    column: str = Field(..., description="Column name to describe.")
+    bins: int = Field(
+        default=20,
+        ge=1,
+        le=200,
+        description="Number of histogram bins for numeric columns.",
+    )
+
+
+def describe_column(payload: DescribeColumnInput) -> dict[str, Any]:
+    """Stub — always returns ok=True so the column-not-found test fails."""
+    return {"ok": True}
+
+
 class ProfileDatasetInput(BaseModel):
     """Inputs for ``profile_dataset``."""
 

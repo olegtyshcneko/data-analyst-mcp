@@ -24,6 +24,24 @@ mcp: FastMCP = FastMCP("data-analyst-mcp")
 
 
 @mcp.tool()
+def describe_column(name: str, column: str, bins: int = 20) -> dict[str, Any]:
+    """Deep-dive a single column of a registered dataset.
+
+    Numeric columns: returns the full quantile vector (1/5/10/25/50/75/
+    90/95/99), skewness, kurtosis, IQR, histogram counts honoring ``bins``,
+    and IQR + z>3 outliers with 5 example rows. Categorical columns: full
+    value counts (capped at 50 with "other" bucket) and entropy. Temporal
+    columns: counts by year/month/weekday/hour.
+    """
+    try:
+        payload = _datasets.DescribeColumnInput(name=name, column=column, bins=bins)
+        return _datasets.describe_column(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("describe_column failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
 def profile_dataset(name: str, sample_rows: int = 5) -> dict[str, Any]:
     """Produce a full EDA profile for a registered dataset.
 
