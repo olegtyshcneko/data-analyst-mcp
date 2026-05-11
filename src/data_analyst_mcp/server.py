@@ -165,6 +165,12 @@ def test_hypothesis(
     try:
         from pydantic import TypeAdapter
 
+        if kind not in _stats.ALLOWED_KINDS:
+            return build_error(
+                type="invalid_kind",
+                message=f"Unknown kind {kind!r}.",
+                hint=f"Allowed kinds: {sorted(_stats.ALLOWED_KINDS)}.",
+            )
         adapter: TypeAdapter[Any] = TypeAdapter(_stats.TestHypothesisInput)
         raw: dict[str, Any] = {"kind": kind}
         if name is not None:

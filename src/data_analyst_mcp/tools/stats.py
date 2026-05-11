@@ -213,16 +213,18 @@ TestHypothesisInput = Annotated[
 ]
 
 
-_ALLOWED_KINDS = {
-    "t_test",
-    "welch",
-    "mann_whitney",
-    "ks",
-    "anova",
-    "kruskal",
-    "chi_square",
-    "fisher",
-}
+ALLOWED_KINDS: frozenset[str] = frozenset(
+    {
+        "t_test",
+        "welch",
+        "mann_whitney",
+        "ks",
+        "anova",
+        "kruskal",
+        "chi_square",
+        "fisher",
+    }
+)
 
 
 def _materialize_group(name: str, group_col: str, metric_col: str, label: str) -> Any:
@@ -529,7 +531,7 @@ def test_hypothesis(payload: Any) -> dict[str, Any]:
     return build_error(
         type="invalid_kind",
         message=f"Unknown kind {kind!r}.",
-        hint=f"Allowed kinds: {sorted(_ALLOWED_KINDS)}.",
+        hint=f"Allowed kinds: {sorted(ALLOWED_KINDS)}.",
     )
 
 
