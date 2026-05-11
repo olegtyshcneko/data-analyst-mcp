@@ -140,7 +140,7 @@ def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
         "coefficients": coefficients,
         "fit": _fit_block(m, payload.kind),
         "diagnostics": diagnostics,
-        "warnings": _warnings(diagnostics, payload.kind),
+        "warnings": _warnings(m, diagnostics, payload.kind),
         "interpretation": _interpretation(coefficients, payload.kind),
     }
 
@@ -185,11 +185,19 @@ def _interpretation(coefficients: list[dict[str, Any]], kind: str) -> str:
     )
 
 
-def _warnings(diagnostics: dict[str, Any], kind: str) -> list[str]:
-    """Translate diagnostic numbers into a list of human-readable warning tags."""
+def _warnings(m: Any, diagnostics: dict[str, Any], kind: str) -> list[str]:
+    """Translate diagnostic numbers into a list of human-readable warning tags.
+
+    ``high_multicollinearity`` fires for any kind that has a design matrix
+    with VIF > 10 — we compute VIFs internally even for logistic/poisson so
+    the warning fires consistently, though only OLS surfaces them in the
+    ``diagnostics.vif`` block per spec.
+    """
     out: list[str] = []
     vif = diagnostics.get("vif")
-    if isinstance(vif, dict) and any(v > 10 for v in vif.values()):
+    if not isinstance(vif, dict):
+        vif = _vif_per_coefficient(m)
+    if any(v > 10 for v in vif.values()):
         out.append("high_multicollinearity")
     bp = diagnostics.get("breusch_pagan_p")
     if kind == "ols" and isinstance(bp, float) and bp < 0.05:
