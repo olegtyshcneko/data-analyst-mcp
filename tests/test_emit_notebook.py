@@ -42,3 +42,10 @@ def test_emit_notebook_reports_n_cells_matching_file(call_tool, tmp_path):
     assert r["n_cells"] == 1
 
 
+def test_emit_notebook_errors_when_parent_directory_missing(call_tool, tmp_path):
+    target = tmp_path / "does_not_exist" / "out.ipynb"
+    r = call_tool("emit_notebook", {"path": str(target)})
+    assert r["ok"] is False
+    assert r["error"]["type"] == "write_failed"
+
+
