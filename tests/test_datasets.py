@@ -242,6 +242,21 @@ def test_profile_dataset_returns_suggestions(call_tool: Any) -> None:
         assert isinstance(s, str)
 
 
+def test_profile_dataset_records_cell_pair_on_success(call_tool: Any) -> None:
+    from data_analyst_mcp.recorder import get_recorder
+
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+    rec = get_recorder()
+    cells_before = len(rec.cells)
+
+    call_tool("profile_dataset", {"name": "messy"})
+
+    assert len(rec.cells) == cells_before + 2
+    assert rec.cells[-2]["cell_type"] == "markdown"
+    assert rec.cells[-1]["cell_type"] == "code"
+    assert rec.cells[-1]["metadata"]["tool_name"] == "profile_dataset"
+
+
 def test_list_datasets_reports_registered_entries(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 
