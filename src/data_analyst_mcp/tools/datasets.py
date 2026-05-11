@@ -205,28 +205,33 @@ _STRING_DTYPES = {"VARCHAR", "CHAR", "TEXT", "BLOB", "STRING"}
 def _build_suggestions(column_profiles: list[dict[str, Any]]) -> list[str]:
     """Pick up to three actionable next-step strings from the profile."""
     suggestions: list[str] = []
-    for col in column_profiles:
-        flags = col.get("flags", {})
-        if flags.get("mostly_null"):
-            suggestions.append(
-                f"Column `{col['name']}` is mostly null — consider dropping or imputing."
-            )
-            break
-    for col in column_profiles:
-        flags = col.get("flags", {})
-        if flags.get("looks_like_categorical") and col.get("distinct_count", 0) <= 10:
-            suggestions.append(
-                f"Column `{col['name']}` looks categorical — try compare_groups across it."
-            )
-            break
-    for col in column_profiles:
-        if col.get("numeric"):
-            suggestions.append(
-                f"Numeric column `{col['name']}` is available — describe_column would surface outliers."
-            )
-            break
-    if not suggestions:
-        suggestions.append("Run describe_column on individual columns to dig deeper.")
+    null_col = next(
+        (c for c in column_profiles if c.get("flags", {}).get("mostly_null")),
+        None,
+    )
+    if null_col is not None:
+        suggestions.append(
+            f"Column `{null_col['name']}` is mostly null — consider dropping or imputing."
+        )
+    cat_col = next(
+        (
+            c
+            for c in column_profiles
+            if c.get("flags", {}).get("looks_like_categorical")
+            and c.get("distinct_count", 0) <= 10
+        ),
+        None,
+    )
+    if cat_col is not None:
+        suggestions.append(
+            f"Column `{cat_col['name']}` looks categorical — try compare_groups across it."
+        )
+    num_col = next((c for c in column_profiles if c.get("numeric")), None)
+    if num_col is not None:
+        suggestions.append(
+            f"Numeric column `{num_col['name']}` is available — "
+            "describe_column would surface outliers."
+        )
     return suggestions[:3]
 
 
