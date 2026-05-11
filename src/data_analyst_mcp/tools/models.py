@@ -123,10 +123,29 @@ def _diagnostics(m: Any, kind: str) -> dict[str, Any]:
         out["breusch_pagan_p"] = float(bp[1])
         out["durbin_watson"] = float(durbin_watson(np.asarray(m.resid)))
         out["jarque_bera_p"] = float(jb[1])
+        out["vif"] = _vif_per_coefficient(m)
     else:
         out["breusch_pagan_p"] = None
         out["durbin_watson"] = None
         out["jarque_bera_p"] = None
+        out["vif"] = None
+    return out
+
+
+def _vif_per_coefficient(m: Any) -> dict[str, float]:
+    """Compute the variance-inflation factor for each non-intercept regressor."""
+    import numpy as np
+    from statsmodels.stats.outliers_influence import (  # type: ignore[reportMissingTypeStubs]
+        variance_inflation_factor,
+    )
+
+    exog: Any = np.asarray(m.model.exog)
+    names: list[str] = list(m.model.exog_names)
+    out: dict[str, float] = {}
+    for i, name in enumerate(names):
+        if name == "Intercept":
+            continue
+        out[name] = float(variance_inflation_factor(exog, i))
     return out
 
 
