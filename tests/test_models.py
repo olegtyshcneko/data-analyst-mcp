@@ -29,3 +29,12 @@ def test_fit_model_unknown_kind_returns_invalid_kind(call_tool, load_df_into_ses
     )
     assert result["ok"] is False
     assert result["error"]["type"] == "invalid_kind"
+
+
+def test_fit_model_missing_column_returns_formula_error(call_tool, load_df_into_session):
+    load_df_into_session("tiny", pd.DataFrame({"y": [1.0, 2.0, 3.0], "x": [0.0, 1.0, 2.0]}))
+    result = call_tool(
+        "fit_model", {"name": "tiny", "formula": "y ~ nope", "kind": "ols"}
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "formula_error"
