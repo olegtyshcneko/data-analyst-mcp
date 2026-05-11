@@ -375,3 +375,24 @@ def test_fit_model_logistic_diagnostics_omit_ols_only_fields(call_tool, load_df_
     assert diag["jarque_bera_p"] is None
     # VIF is OLS-only per spec §5.9.
     assert diag["vif"] is None
+
+
+def _logistic_collinear_df() -> pd.DataFrame:
+    """Build a deliberately collinear logistic fixture (VIF >> 10)."""
+    rng = np.random.default_rng(20260511)
+    n = 500
+    x = rng.standard_normal(n)
+    xx = x + rng.standard_normal(n) * 0.01
+    y = (rng.random(n) < 0.5).astype(int)
+    return pd.DataFrame({"y": y, "x": x, "xx": xx})
+
+
+def test_fit_model_logistic_emits_high_multicollinearity_warning(call_tool, load_df_into_session):
+    load_df_into_session("logi_col", _logistic_collinear_df())
+    result = call_tool(
+        "fit_model",
+        {"name": "logi_col", "formula": "y ~ x + xx", "kind": "logistic"},
+    )
+    # variance_inflation_factor on this fixture (seed 20260511, logistic exog):
+    #   vif x  ≈ 10530.5, vif xx ≈ 10530.5  → high_multicollinearity must fire
+    assert "high_multicollinearity" in result["warnings"]
