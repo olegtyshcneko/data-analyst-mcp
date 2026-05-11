@@ -57,4 +57,4 @@ def emit_notebook(payload: EmitNotebookInput) -> dict[str, Any]:
     target = os.path.abspath(target)
     with open(target, "w", encoding="utf-8") as fh:
         nbf.write(nb, fh)  # type: ignore[reportUnknownMemberType]
-    return {"ok": True, "path": target, "n_cells": len(nb.cells)}
+    return {"ok": True, "path": target}
