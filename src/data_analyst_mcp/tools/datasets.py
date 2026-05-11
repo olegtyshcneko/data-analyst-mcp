@@ -142,6 +142,8 @@ def describe_column(payload: DescribeColumnInput) -> dict[str, Any]:
         result["iqr"] = iqr
         result["histogram"] = _histogram(con, table, quoted, bins=payload.bins)
         result["outliers"] = _outliers(con, table, quoted, p25=p25, p75=p75)
+    elif _is_temporal(col_meta["dtype"]):
+        result.update(_temporal_describe(con, table, quoted))
     elif _is_string(col_meta["dtype"]):
         result.update(_categorical_describe(con, table, quoted))
 
@@ -233,6 +235,29 @@ def _build_suggestions(column_profiles: list[dict[str, Any]]) -> list[str]:
     if not suggestions:
         suggestions.append("Run describe_column on individual columns to dig deeper.")
     return suggestions[:3]
+
+
+def _temporal_describe(con: Any, table: str, quoted: str) -> dict[str, Any]:
+    """Bucketed counts by year / month / weekday / hour."""
+
+    def _grouped(expr: str) -> list[dict[str, Any]]:
+        rows = con.execute(
+            f"""
+            SELECT {expr} AS bucket, COUNT(*) AS c
+            FROM {table}
+            WHERE {quoted} IS NOT NULL
+            GROUP BY bucket
+            ORDER BY bucket
+            """
+        ).fetchall()
+        return [{"bucket": _json_safe(r[0]), "count": int(r[1])} for r in rows]
+
+    return {
+        "by_year": _grouped(f"EXTRACT(year FROM {quoted})"),
+        "by_month": _grouped(f"EXTRACT(month FROM {quoted})"),
+        "by_weekday": _grouped(f"DAYOFWEEK({quoted})"),
+        "by_hour": _grouped(f"EXTRACT(hour FROM {quoted})"),
+    }
 
 
 def _categorical_describe(con: Any, table: str, quoted: str) -> dict[str, Any]:
