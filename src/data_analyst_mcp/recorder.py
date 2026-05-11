@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    import nbformat  # noqa: F401  (used by type-hint of NotebookNode)
+    import nbformat
 
 
 class NotebookRecorder:
@@ -13,6 +13,12 @@ class NotebookRecorder:
 
     def __init__(self) -> None:
         self.cells: list[dict[str, Any]] = []
+
+    def to_notebook(self, include_setup: bool = True) -> nbformat.NotebookNode:
+        """Stub — returns an empty notebook so the cell-count test fails."""
+        import nbformat as _nbformat
+
+        return _nbformat.v4.new_notebook()
 
     def record(self, *, markdown: str, code: str, tool_name: str) -> None:
         """Append one markdown + one code cell describing a tool invocation."""
