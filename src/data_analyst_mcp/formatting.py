@@ -11,11 +11,17 @@ def truncate_rows(rows: list[dict[str, Any]], limit: int) -> dict[str, Any]:
     Always populates ``rows``, ``total_rows``, ``truncated``, ``cursor`` so
     every row-returning tool can spread this directly into its response.
     """
-    # Minimum implementation: handles the under-limit case only. Over-limit
-    # behavior is added in the next cycle.
+    total = len(rows)
+    if total <= limit:
+        return {
+            "rows": rows,
+            "total_rows": total,
+            "truncated": False,
+            "cursor": None,
+        }
     return {
-        "rows": rows,
-        "total_rows": len(rows),
-        "truncated": False,
-        "cursor": None,
+        "rows": rows[:limit],
+        "total_rows": total,
+        "truncated": True,
+        "cursor": limit,
     }
