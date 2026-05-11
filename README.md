@@ -12,10 +12,10 @@ A reproducible data-analyst MCP server. Point Claude (or any MCP-capable agent) 
 ## Install
 
 ```bash
-uvx data-analyst-mcp
+uvx --from git+https://github.com/olegtyshcneko/data-analyst-mcp@v0.1.0 data-analyst-mcp
 ```
 
-That's it — `uvx` resolves the package, builds an isolated environment, and runs the console-script. Claude Desktop will invoke this for you once you've added the server to its config.
+`uvx` clones the tagged commit, builds an isolated environment, and runs the console-script. The package is distributed from GitHub only — there's no PyPI release. Pin to a tag (recommended) or use `@main` to track the tip; bump the ref when you want to update.
 
 ## Configure Claude Desktop
 
@@ -26,7 +26,11 @@ Add the following to your `claude_desktop_config.json`:
   "mcpServers": {
     "data-analyst": {
       "command": "uvx",
-      "args": ["data-analyst-mcp"]
+      "args": [
+        "--from",
+        "git+https://github.com/olegtyshcneko/data-analyst-mcp@v0.1.0",
+        "data-analyst-mcp"
+      ]
     }
   }
 }
@@ -127,8 +131,14 @@ This server gives the agent the **analytical reasoning** layer; [`mcp-server-mot
 ```json
 {
   "mcpServers": {
-    "data-analyst": { "command": "uvx", "args": ["data-analyst-mcp"] },
-    "motherduck":   { "command": "uvx", "args": ["mcp-server-motherduck", "--token", "${MOTHERDUCK_TOKEN}"] }
+    "data-analyst": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/olegtyshcneko/data-analyst-mcp@v0.1.0", "data-analyst-mcp"]
+    },
+    "motherduck": {
+      "command": "uvx",
+      "args": ["mcp-server-motherduck", "--token", "${MOTHERDUCK_TOKEN}"]
+    }
   }
 }
 ```

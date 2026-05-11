@@ -2,7 +2,11 @@
   "mcpServers": {
     "data-analyst": {
       "command": "uvx",
-      "args": ["data-analyst-mcp"]
+      "args": [
+        "--from",
+        "git+https://github.com/olegtyshcneko/data-analyst-mcp@v0.1.0",
+        "data-analyst-mcp"
+      ]
     }
   }
 }
