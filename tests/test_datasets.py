@@ -312,6 +312,22 @@ def test_describe_column_categorical_returns_value_counts_and_entropy(call_tool:
     assert result["entropy"] > 0
 
 
+def test_describe_column_temporal_returns_year_month_weekday_hour(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("describe_column", {"name": "messy", "column": "last_login"})
+
+    assert "by_year" in result
+    assert "by_month" in result
+    assert "by_weekday" in result
+    assert "by_hour" in result
+    assert isinstance(result["by_year"], list)
+    assert isinstance(result["by_month"], list)
+    assert isinstance(result["by_weekday"], list)
+    assert isinstance(result["by_hour"], list)
+    assert sum(item["count"] for item in result["by_year"]) > 0
+
+
 def test_profile_dataset_records_cell_pair_on_success(call_tool: Any) -> None:
     from data_analyst_mcp.recorder import get_recorder
 
