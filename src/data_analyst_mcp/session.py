@@ -65,5 +65,14 @@ def get_datasets() -> dict[str, DatasetEntry]:
 
 
 def reset() -> None:
-    """Clear the datasets registry. The DuckDB connection persists."""
+    """Drop registered tables and clear the registry. Connection persists.
+
+    The DuckDB connection is intentionally kept open so that ``con`` handles
+    held by callers (e.g. test fixtures, the live tool layer) remain valid
+    across resets. Only the registry-known tables are dropped so unrelated
+    in-memory state on the connection is left alone.
+    """
+    if _connection is not None:
+        for name in list(_datasets.keys()):
+            _connection.execute(f'DROP TABLE IF EXISTS "{name}"')
     _datasets.clear()
