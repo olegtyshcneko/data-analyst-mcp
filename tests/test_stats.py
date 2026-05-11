@@ -278,3 +278,25 @@ def test_test_hypothesis_anova_known_answer(call_tool, load_df_into_session):
     assert result["p_value"] == pytest.approx(0.0061963978, abs=1e-4)
     assert result["effect_size"]["name"] == "eta_squared"
     assert result["effect_size"]["value"] == pytest.approx(0.5714285714, abs=1e-4)
+
+
+def test_test_hypothesis_kruskal_known_answer(call_tool, load_df_into_session):
+    load_df_into_session("triplets", _make_three_group_df())
+    result = call_tool(
+        "test_hypothesis",
+        {
+            "kind": "kruskal",
+            "name": "triplets",
+            "group_column": "g",
+            "metric_column": "v",
+        },
+    )
+    # scipy.stats.kruskal([1,2,3,4,5],[3,4,5,6,7],[5,6,7,8,9])
+    #   H=8.115942028985506, p=0.017284052654398252
+    # epsilon_sq = H/(N-1) = 8.115942.../(15-1) ≈ 0.579710...
+    assert result["ok"] is True
+    assert result["test"] == "kruskal"
+    assert result["statistic"] == pytest.approx(8.1159420290, abs=1e-4)
+    assert result["p_value"] == pytest.approx(0.0172840527, abs=1e-4)
+    assert result["effect_size"]["name"] == "epsilon_squared"
+    assert result["effect_size"]["value"] == pytest.approx(0.5797101449, abs=1e-4)
