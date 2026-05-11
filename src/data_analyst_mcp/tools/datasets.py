@@ -87,13 +87,21 @@ class ProfileDatasetInput(BaseModel):
 
 def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
     """Produce a full EDA profile for the named dataset."""
-    if payload.name not in session.get_datasets():
+    entries = session.get_datasets()
+    if payload.name not in entries:
         return build_error(
             type="not_found",
             message=f"No dataset named {payload.name!r} registered.",
             hint="Call list_datasets to see what is available.",
         )
-    return {"ok": True}
+    entry = entries[payload.name]
+    return {
+        "ok": True,
+        "summary": {
+            "total_rows": entry.rows,
+            "total_columns": len(entry.columns),
+        },
+    }
 
 
 def list_datasets() -> dict[str, Any]:
