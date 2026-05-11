@@ -77,6 +77,8 @@ def plot(payload: PlotInput) -> dict[str, Any]:
         return _plot_line(payload)
     if payload.kind == "scatter":
         return _plot_scatter(payload)
+    if payload.kind == "box":
+        return _plot_box(payload)
     return {"ok": True, "png_base64": "", "width": 0, "height": 0}
 
 
@@ -153,6 +155,41 @@ def _render_to_base64(fig: Any) -> dict[str, Any]:
         "width": int(w),
         "height": int(h),
     }
+
+
+def _grouped_arrays(name: str, group_col: str, value_col: str) -> tuple[list[str], list[Any]]:
+    """Materialize per-group value arrays sorted by group label."""
+    con = session.get_connection()
+    table = _quote(name)
+    g_q = _quote(group_col)
+    label_rows = con.execute(
+        f"SELECT DISTINCT {g_q} FROM {table} WHERE {g_q} IS NOT NULL ORDER BY {g_q}"
+    ).fetchall()
+    labels = [str(r[0]) for r in label_rows]
+    arrays: list[Any] = []
+    for lab in labels:
+        df: Any = con.execute(
+            f"SELECT {_quote(value_col)} FROM {table} WHERE {g_q} = ?", [lab]
+        ).df()
+        arrays.append(df[value_col].to_numpy())
+    return labels, arrays
+
+
+def _plot_box(payload: PlotInput) -> dict[str, Any]:
+    """Box plot of ``y``. With ``x`` it groups boxes by category."""
+    assert payload.y is not None
+    fig, ax = _make_figure()
+    if payload.x is None:
+        values = _fetch_column(payload.name, payload.y)
+        ax.boxplot([values], tick_labels=[payload.y])
+    else:
+        labels, arrays = _grouped_arrays(payload.name, payload.x, payload.y)
+        ax.boxplot(arrays, tick_labels=labels)
+        ax.set_xlabel(payload.x)
+    ax.set_ylabel(payload.y)
+    if payload.title is not None:
+        ax.set_title(payload.title)
+    return _render_to_base64(fig)
 
 
 def _plot_scatter(payload: PlotInput) -> dict[str, Any]:
