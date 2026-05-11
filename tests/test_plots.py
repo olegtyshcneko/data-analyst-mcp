@@ -19,3 +19,10 @@ def test_plot_unknown_dataset_returns_not_found(call_tool):
     result = call_tool("plot", {"name": "nope", "kind": "hist", "x": "x"})
     assert result["ok"] is False
     assert result["error"]["type"] == "not_found"
+
+
+def test_plot_invalid_kind_returns_invalid_kind(call_tool, load_df_into_session):
+    load_df_into_session("tiny", pd.DataFrame({"x": [1, 2, 3]}))
+    result = call_tool("plot", {"name": "tiny", "kind": "pie", "x": "x"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "invalid_kind"
