@@ -140,3 +140,23 @@ def test_fit_model_ols_returns_pinned_core_diagnostics(call_tool, load_df_into_s
     assert diag["jarque_bera_p"] == pytest.approx(0.771233639, abs=1e-4)
     # m.condition_number = 162.8971473807718
     assert diag["condition_number"] == pytest.approx(162.8971474, abs=1e-3)
+
+
+def test_fit_model_ols_returns_pinned_vif_per_coefficient(call_tool, load_df_into_session):
+    load_df_into_session("duncan", _duncan_df())
+    result = call_tool(
+        "fit_model",
+        {
+            "name": "duncan",
+            "formula": "prestige ~ income + education",
+            "kind": "ols",
+        },
+    )
+    vif = result["diagnostics"]["vif"]
+    # variance_inflation_factor on Duncan design (intercept excluded):
+    #   income    = 2.1049004710947665
+    #   education = 2.1049004710947674
+    assert vif["income"] == pytest.approx(2.10490047, abs=1e-3)
+    assert vif["education"] == pytest.approx(2.10490047, abs=1e-3)
+    # Intercept must NOT appear in the VIF dict.
+    assert "Intercept" not in vif
