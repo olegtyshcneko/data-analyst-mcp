@@ -8,6 +8,45 @@ if TYPE_CHECKING:
     import nbformat
 
 
+_SETUP_IMPORTS = """\
+import duckdb
+import pandas as pd
+import numpy as np
+from scipy import stats
+import statsmodels.api as sm
+import matplotlib.pyplot as plt
+
+con = duckdb.connect()
+"""
+
+
+_FORMAT_TO_READER: dict[str, str] = {
+    "csv": "read_csv_auto",
+    "tsv": "read_csv_auto",
+    "parquet": "read_parquet",
+    "json": "read_json",
+    "jsonl": "read_json",
+    "xlsx": "read_xlsx",
+}
+
+
+def _build_setup_source() -> str:
+    """Compose the setup-cell body from the live session registry."""
+    from data_analyst_mcp import session as _session
+
+    lines = [_SETUP_IMPORTS]
+    for name, entry in _session.get_datasets().items():
+        reader = _FORMAT_TO_READER.get(entry.format, "read_csv_auto")
+        if reader == "read_csv_auto":
+            call = f"{reader}('{entry.path}', SAMPLE_SIZE=-1)"
+        else:
+            call = f"{reader}('{entry.path}')"
+        lines.append(
+            f"con.execute(\"\"\"CREATE OR REPLACE TABLE {name} AS SELECT * FROM {call}\"\"\")"
+        )
+    return "\n".join(lines)
+
+
 class NotebookRecorder:
     """Records one markdown + one code cell per successful tool call."""
 
@@ -24,6 +63,8 @@ class NotebookRecorder:
         import nbformat as _nbformat
 
         nb = _nbformat.v4.new_notebook()
+        if include_setup:
+            nb.cells.append(_nbformat.v4.new_code_cell(_build_setup_source()))
         for cell in self.cells:
             if cell["cell_type"] == "markdown":
                 nb.cells.append(_nbformat.v4.new_markdown_cell(cell["source"]))
