@@ -226,6 +226,19 @@ import os  # noqa: E402
 import pytest  # noqa: E402
 
 
+def test_query_recorded_code_is_executable_python(call_tool):
+    """The recorded code cell for ``query`` must be runnable Python, not bare SQL."""
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv = Path(__file__).parent.parent / "fixtures" / "messy.csv"
+    call_tool("load_dataset", {"path": str(csv), "name": "raw"})
+    call_tool("query", {"sql": "SELECT COUNT(*) AS n FROM raw"})
+    code_cells = [c for c in get_recorder().cells if c["cell_type"] == "code"]
+    query_code = code_cells[-1]["source"]
+    # Must compile as Python — bare SQL won't.
+    compile(query_code, "<query_cell>", "exec")
+
+
 @pytest.mark.slow
 def test_six_step_workflow_round_trip(call_tool, tmp_path):
     """THE load-bearing acceptance test.
