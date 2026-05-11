@@ -303,6 +303,29 @@ def _run_welch(payload: WelchInput) -> dict[str, Any]:
     }
 
 
+def _run_mann_whitney(payload: MannWhitneyInput) -> dict[str, Any]:
+    """Mann-Whitney U (two-sided)."""
+    from scipy import stats as _sps
+
+    a = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_a)
+    b = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_b)
+    r = _sps.mannwhitneyu(a, b, alternative="two-sided")
+    n_a, n_b = len(a), len(b)
+    rbis = 1.0 - 2.0 * float(r.statistic) / (n_a * n_b)
+    interp = _interpret_two_sample(payload.group_a, payload.group_b, float(r.pvalue))
+    return {
+        "ok": True,
+        "test": "mann_whitney",
+        "statistic": float(r.statistic),
+        "p_value": float(r.pvalue),
+        "df": None,
+        "effect_size": {"name": "rank_biserial", "value": rbis},
+        "n_a": int(n_a),
+        "n_b": int(n_b),
+        "interpretation": interp,
+    }
+
+
 def test_hypothesis(payload: Any) -> dict[str, Any]:
     """Dispatch to a kind-specific handler. ``payload`` is the validated union."""
     kind = payload.kind
@@ -310,6 +333,8 @@ def test_hypothesis(payload: Any) -> dict[str, Any]:
         return _run_t_test(payload)
     if kind == "welch":
         return _run_welch(payload)
+    if kind == "mann_whitney":
+        return _run_mann_whitney(payload)
     return build_error(
         type="invalid_kind",
         message=f"Unknown kind {kind!r}.",
