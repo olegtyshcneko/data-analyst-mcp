@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
+from data_analyst_mcp.recorder import get_recorder
 
 _NUMERIC_DTYPES = {
     "TINYINT",
@@ -102,6 +103,18 @@ def correlate(payload: CorrelateInput) -> dict[str, Any]:
     }
     if payload.plot:
         out["heatmap_png_base64"] = _render_heatmap_png(chosen, matrix)
+
+    md = (
+        f"### Correlation matrix on `{payload.name}` ({payload.method})\n"
+        f"- Columns: {', '.join(chosen)}"
+    )
+    cols_list = ", ".join(f'"{c}"' for c in chosen)
+    code = (
+        f"from scipy import stats\n"
+        f"df = con.sql('SELECT {cols_list} FROM {payload.name}').df()\n"
+        f"df.corr(method='{payload.method}')"
+    )
+    get_recorder().record(markdown=md, code=code, tool_name="correlate")
     return out
 
 
