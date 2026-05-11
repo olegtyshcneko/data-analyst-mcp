@@ -102,7 +102,46 @@ def describe_column(payload: DescribeColumnInput) -> dict[str, Any]:
             message=f"Column {payload.column!r} is not in dataset {payload.name!r}.",
             hint=f"Available columns: {', '.join(c['name'] for c in entry.columns)}",
         )
-    return {"ok": True, "column": payload.column, "dtype": col_meta["dtype"]}
+
+    con = session.get_connection()
+    table = _quote(payload.name)
+    quoted = _quote(payload.column)
+    result: dict[str, Any] = {"ok": True, "column": payload.column, "dtype": col_meta["dtype"]}
+
+    if _is_numeric(col_meta["dtype"]):
+        quantiles_row = con.execute(
+            f"""
+            SELECT
+                QUANTILE_CONT({quoted}, 0.01),
+                QUANTILE_CONT({quoted}, 0.05),
+                QUANTILE_CONT({quoted}, 0.10),
+                QUANTILE_CONT({quoted}, 0.25),
+                QUANTILE_CONT({quoted}, 0.50),
+                QUANTILE_CONT({quoted}, 0.75),
+                QUANTILE_CONT({quoted}, 0.90),
+                QUANTILE_CONT({quoted}, 0.95),
+                QUANTILE_CONT({quoted}, 0.99),
+                SKEWNESS({quoted}),
+                KURTOSIS({quoted})
+            FROM {table}
+            """
+        ).fetchone()
+        if quantiles_row is None:
+            return build_error(
+                type="empty_column",
+                message=f"Column {payload.column!r} has no rows.",
+            )
+        keys_pct = (1, 5, 10, 25, 50, 75, 90, 95, 99)
+        quantiles = {p: _json_safe(quantiles_row[i]) for i, p in enumerate(keys_pct)}
+        result["quantiles"] = quantiles
+        result["skewness"] = _json_safe(quantiles_row[9])
+        result["kurtosis"] = _json_safe(quantiles_row[10])
+        p25 = quantiles[25]
+        p75 = quantiles[75]
+        iqr = (p75 - p25) if (p25 is not None and p75 is not None) else 0.0
+        result["iqr"] = iqr
+
+    return result
 
 
 class ProfileDatasetInput(BaseModel):
