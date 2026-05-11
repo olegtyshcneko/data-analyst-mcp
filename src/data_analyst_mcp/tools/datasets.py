@@ -72,8 +72,18 @@ def _build_read_call(path: str, fmt: str) -> str:
 
 
 def list_datasets() -> dict[str, Any]:
-    """Stub — returns a sentinel list so the empty-list test fails."""
-    return {"ok": True, "datasets": [{"sentinel": True}]}
+    """Return every registered dataset with name, rows, columns, registered_at."""
+    entries = session.get_datasets()
+    items = [
+        {
+            "name": name,
+            "rows": entry.rows,
+            "columns": len(entry.columns),
+            "registered_at": entry.registered_at.isoformat(),
+        }
+        for name, entry in entries.items()
+    ]
+    return {"ok": True, "datasets": items}
 
 
 def load_dataset(payload: LoadDatasetInput) -> dict[str, Any]:
