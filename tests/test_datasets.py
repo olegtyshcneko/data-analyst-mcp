@@ -266,6 +266,20 @@ def test_describe_column_numeric_returns_quantiles_skew_kurt_iqr(call_tool: Any)
     assert result["iqr"] > 0
 
 
+def test_describe_column_numeric_returns_histogram_with_bins(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("describe_column", {"name": "messy", "column": "score", "bins": 10})
+
+    assert "histogram" in result
+    hist = result["histogram"]
+    assert "bin_edges" in hist
+    assert "counts" in hist
+    assert len(hist["counts"]) == 10
+    assert len(hist["bin_edges"]) == 11
+    assert sum(hist["counts"]) > 0
+
+
 def test_profile_dataset_records_cell_pair_on_success(call_tool: Any) -> None:
     from data_analyst_mcp.recorder import get_recorder
 
