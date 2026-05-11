@@ -14,6 +14,7 @@ from mcp.server.fastmcp import FastMCP
 
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.tools import datasets as _datasets
+from data_analyst_mcp.tools import query as _query
 
 _handler = logging.StreamHandler(stream=sys.stderr)
 _handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s :: %(message)s"))
@@ -21,6 +22,24 @@ logging.basicConfig(level=logging.INFO, handlers=[_handler], force=True)
 logger = logging.getLogger("data_analyst_mcp")
 
 mcp: FastMCP = FastMCP("data-analyst-mcp")
+
+
+@mcp.tool()
+def query(sql: str, limit: int = 50) -> dict[str, Any]:
+    """Run a read-only SQL query against the registered datasets.
+
+    Accepts SELECT / WITH / DESCRIBE / SHOW / EXPLAIN / PRAGMA show_tables;
+    rejects writes (INSERT / UPDATE / DELETE / DROP / CREATE / SET). A
+    LIMIT is auto-applied if not present so result rows stay bounded.
+    Returns rows + column names + total_rows (via a separate COUNT(*) over
+    the same query) + execution_time_ms.
+    """
+    try:
+        payload = _query.QueryInput(sql=sql, limit=limit)
+        return _query.query(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("query failed")
+        return build_error(type="internal", message=str(exc))
 
 
 @mcp.tool()
