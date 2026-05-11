@@ -14,6 +14,7 @@ from mcp.server.fastmcp import FastMCP
 
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.tools import datasets as _datasets
+from data_analyst_mcp.tools import models as _models
 from data_analyst_mcp.tools import query as _query
 from data_analyst_mcp.tools import stats as _stats
 
@@ -218,6 +219,37 @@ def test_hypothesis(
         return _stats.test_hypothesis(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("test_hypothesis failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def fit_model(
+    name: str,
+    formula: str,
+    kind: str = "ols",
+    robust: bool = False,
+) -> dict[str, Any]:
+    """Fit an OLS / logistic / Poisson regression with diagnostics.
+
+    ``formula`` is Wilkinson-style (patsy), e.g. ``price ~ sqft + C(area)``.
+    ``kind`` picks the model family: ``ols`` (default, linear), ``logistic``
+    (binary outcome via logit), or ``poisson`` (non-negative counts).
+    ``robust=True`` switches OLS to HC3 heteroskedasticity-robust standard
+    errors (coefficients unchanged, std errors recomputed). Returns
+    coefficients (with std errors, t / z stats, p-values, 95% CIs), fit
+    statistics (R^2 / adj-R^2 / pseudo-R^2 / AIC / BIC / n_obs / df_resid),
+    diagnostics (Breusch-Pagan, Durbin-Watson, Jarque-Bera, condition number,
+    VIF for OLS), a ``warnings`` list (``high_multicollinearity``,
+    ``heteroskedasticity``, ``non_normal_residuals``, ``overdispersion``),
+    and a 2-3 sentence plain-English interpretation.
+    """
+    try:
+        payload = _models.FitModelInput.model_validate(
+            {"name": name, "formula": formula, "kind": kind, "robust": robust}
+        )
+        return _models.fit_model(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("fit_model failed")
         return build_error(type="internal", message=str(exc))
 
 
