@@ -13,6 +13,24 @@ from data_analyst_mcp.errors import build_error
 logger = logging.getLogger(__name__)
 
 
+def _quote(name: str) -> str:
+    """Quote a SQL identifier safely for DuckDB."""
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _smf() -> Any:
+    """Return ``statsmodels.formula.api`` as an untyped module."""
+    import statsmodels.formula.api as _smf  # type: ignore[reportMissingTypeStubs]
+
+    return _smf
+
+
+def _materialize_dataframe(name: str) -> Any:
+    """Materialize a registered dataset as a pandas DataFrame via DuckDB."""
+    con = session.get_connection()
+    return con.execute(f"SELECT * FROM {_quote(name)}").df()
+
+
 class FitModelInput(BaseModel):
     """Inputs for ``fit_model``."""
 
@@ -41,7 +59,40 @@ def fit_model(payload: FitModelInput) -> dict[str, Any]:
             message=f"No dataset named {payload.name!r} registered.",
             hint="Call list_datasets to see what is available.",
         )
+    try:
+        df = _materialize_dataframe(payload.name)
+        return _fit_dispatch(payload, df)
+    except _FormulaError as fe:
+        return build_error(
+            type="formula_error",
+            message=str(fe),
+            hint=(
+                "Verify column names exist and the formula parses, e.g. "
+                "'y ~ x + C(group)'."
+            ),
+        )
+
+
+class _FormulaError(Exception):
+    """Internal marker for formula / patsy / column-binding failures."""
+
+
+def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
+    """Pick the right statsmodels entry point and translate failures."""
+    smf = _smf()
+    try:
+        if payload.kind == "ols":
+            cov_type = "HC3" if payload.robust else "nonrobust"
+            m = smf.ols(payload.formula, data=df).fit(cov_type=cov_type)
+        elif payload.kind == "logistic":
+            m = smf.logit(payload.formula, data=df).fit(disp=0)
+        else:  # poisson
+            m = smf.poisson(payload.formula, data=df).fit(disp=0)
+    except Exception as exc:
+        # Patsy / NameError / column-binding failures all bubble up here.
+        raise _FormulaError(str(exc)) from exc
+
     return build_error(
         type="not_implemented",
-        message="fit_model is not yet implemented.",
+        message=f"fit_model({payload.kind}) is not yet implemented past the smoke path.",
     )
