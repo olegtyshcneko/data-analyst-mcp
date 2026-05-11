@@ -169,11 +169,9 @@ def _json_safe(value: Any) -> Any:
     """Coerce DuckDB-returned scalars into a JSON-serializable shape."""
     import datetime as _dt
 
-    if value is None or isinstance(value, (str, int, float, bool)):
-        return value
     if isinstance(value, (_dt.datetime, _dt.date, _dt.time)):
         return value.isoformat()
-    return str(value)
+    return value
 
 
 _NUMERIC_DTYPES = {
