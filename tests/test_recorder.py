@@ -72,6 +72,18 @@ def test_to_notebook_with_setup_prepends_imports_and_reload_statements() -> None
     assert nb.cells[2].cell_type == "code"
 
 
+def test_reset_empties_the_cell_list() -> None:
+    from data_analyst_mcp.recorder import NotebookRecorder
+
+    rec = NotebookRecorder()
+    rec.record(markdown="### m", code="x = 1", tool_name="t")
+    assert rec.cells != []
+
+    rec.reset()
+
+    assert rec.cells == []
+
+
 def test_to_notebook_without_setup_returns_recorded_cells() -> None:
     import nbformat
 
