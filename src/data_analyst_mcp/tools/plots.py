@@ -81,6 +81,8 @@ def plot(payload: PlotInput) -> dict[str, Any]:
         return _plot_box(payload)
     if payload.kind == "violin":
         return _plot_violin(payload)
+    if payload.kind == "heatmap":
+        return _plot_heatmap_tool(payload)
     return {"ok": True, "png_base64": "", "width": 0, "height": 0}
 
 
@@ -175,6 +177,68 @@ def _grouped_arrays(name: str, group_col: str, value_col: str) -> tuple[list[str
         ).df()
         arrays.append(df[value_col].to_numpy())
     return labels, arrays
+
+
+_NUMERIC_DTYPES = {
+    "TINYINT",
+    "SMALLINT",
+    "INTEGER",
+    "BIGINT",
+    "HUGEINT",
+    "UTINYINT",
+    "USMALLINT",
+    "UINTEGER",
+    "UBIGINT",
+    "FLOAT",
+    "DOUBLE",
+    "REAL",
+    "DECIMAL",
+}
+
+
+def _is_numeric_dtype(dtype: str) -> bool:
+    """True when a DuckDB dtype represents a numeric column."""
+    base = dtype.split("(")[0].strip().upper()
+    return base in _NUMERIC_DTYPES
+
+
+def _plot_heatmap_tool(payload: PlotInput) -> dict[str, Any]:
+    """Render a correlation-matrix heatmap across every numeric column."""
+    entries = session.get_datasets()
+    entry = entries[payload.name]
+    chosen = [c["name"] for c in entry.columns if _is_numeric_dtype(c["dtype"])]
+    if not chosen:
+        return build_error(
+            type="no_numeric_columns",
+            message=f"Dataset {payload.name!r} has no numeric columns.",
+            hint="Heatmap visualises a correlation matrix — add at least one numeric column.",
+        )
+    from data_analyst_mcp.tools.stats import _build_corr_matrix  # type: ignore[reportPrivateUsage]
+
+    matrix = _build_corr_matrix(payload.name, chosen, "pearson")
+    fig = _build_heatmap_figure(chosen, matrix, title=payload.title)
+    return _render_to_base64(fig)
+
+
+def _build_heatmap_figure(
+    labels: list[str], matrix: list[list[float]], *, title: str | None = None
+) -> Any:
+    """Construct a correlation-heatmap figure (shared between ``plot`` and ``correlate``)."""
+    fig, ax = _make_figure()
+    # heatmaps don't want the data grid behind cells
+    ax.grid(visible=False)
+    im = ax.imshow(matrix, vmin=-1.0, vmax=1.0, cmap="RdBu_r")
+    ax.set_xticks(range(len(labels)))
+    ax.set_yticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=45, ha="right")
+    ax.set_yticklabels(labels)
+    for i, row in enumerate(matrix):
+        for j, v in enumerate(row):
+            ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=8)
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    if title is not None:
+        ax.set_title(title)
+    return fig
 
 
 def _plot_violin(payload: PlotInput) -> dict[str, Any]:
