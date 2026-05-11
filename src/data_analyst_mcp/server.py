@@ -15,6 +15,7 @@ from mcp.server.fastmcp import FastMCP
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.tools import datasets as _datasets
 from data_analyst_mcp.tools import query as _query
+from data_analyst_mcp.tools import stats as _stats
 
 _handler = logging.StreamHandler(stream=sys.stderr)
 _handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s :: %(message)s"))
@@ -115,6 +116,29 @@ def load_dataset(
         return _datasets.load_dataset(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("load_dataset failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def correlate(
+    name: str,
+    columns: list[str] | None = None,
+    method: str = "pearson",
+    plot: bool = True,
+) -> dict[str, Any]:
+    """Correlation matrix across numeric columns of a registered dataset.
+
+    Method picks Pearson (default), Spearman, or Kendall. When ``plot`` is
+    true, a base64-encoded PNG heatmap is also returned. When ``columns``
+    is omitted, every numeric column in the dataset is used.
+    """
+    try:
+        payload = _stats.CorrelateInput(
+            name=name, columns=columns, method=method, plot=plot
+        )
+        return _stats.correlate(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("correlate failed")
         return build_error(type="internal", message=str(exc))
 
 
