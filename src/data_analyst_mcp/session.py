@@ -8,12 +8,14 @@ from __future__ import annotations
 
 from typing import Any
 
+_datasets: dict[str, Any] = {}
+
 
 def get_datasets() -> dict[str, Any]:
-    """Stub — returns a sentinel so the empty-dict test fails."""
-    return {"_sentinel": True}
+    """Return the live datasets registry (mutating this mutates the session)."""
+    return _datasets
 
 
 def reset() -> None:
-    """Stub."""
-    return None
+    """Clear the datasets registry. The DuckDB connection persists."""
+    _datasets.clear()
