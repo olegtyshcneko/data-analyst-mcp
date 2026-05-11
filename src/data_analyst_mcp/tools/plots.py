@@ -79,6 +79,8 @@ def plot(payload: PlotInput) -> dict[str, Any]:
         return _plot_scatter(payload)
     if payload.kind == "box":
         return _plot_box(payload)
+    if payload.kind == "violin":
+        return _plot_violin(payload)
     return {"ok": True, "png_base64": "", "width": 0, "height": 0}
 
 
@@ -173,6 +175,27 @@ def _grouped_arrays(name: str, group_col: str, value_col: str) -> tuple[list[str
         ).df()
         arrays.append(df[value_col].to_numpy())
     return labels, arrays
+
+
+def _plot_violin(payload: PlotInput) -> dict[str, Any]:
+    """Violin plot of ``y``. With ``x`` it groups violins by category."""
+    assert payload.y is not None
+    fig, ax = _make_figure()
+    if payload.x is None:
+        values = _fetch_column(payload.name, payload.y)
+        ax.violinplot([values], showmeans=True, showmedians=False)
+        ax.set_xticks([1])
+        ax.set_xticklabels([payload.y])
+    else:
+        labels, arrays = _grouped_arrays(payload.name, payload.x, payload.y)
+        ax.violinplot(arrays, showmeans=True, showmedians=False)
+        ax.set_xticks(list(range(1, len(labels) + 1)))
+        ax.set_xticklabels(labels)
+        ax.set_xlabel(payload.x)
+    ax.set_ylabel(payload.y)
+    if payload.title is not None:
+        ax.set_title(payload.title)
+    return _render_to_base64(fig)
 
 
 def _plot_box(payload: PlotInput) -> dict[str, Any]:
