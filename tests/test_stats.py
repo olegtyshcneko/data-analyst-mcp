@@ -93,3 +93,14 @@ def test_correlate_kendall_known_answer(call_tool, load_df_into_session):
     assert m[idx["x"]][idx["y"]] == pytest.approx(0.6708203932, abs=1e-4)
     assert m[idx["x"]][idx["z"]] == pytest.approx(0.6000000000, abs=1e-4)
     assert m[idx["y"]][idx["z"]] == pytest.approx(0.2236067977, abs=1e-4)
+
+
+def test_correlate_plot_true_returns_heatmap_png_base64(call_tool, load_df_into_session):
+    import base64
+
+    load_df_into_session("xyz", _XYZ_DF)
+    result = call_tool("correlate", {"name": "xyz", "plot": True})
+    assert "heatmap_png_base64" in result
+    raw = base64.b64decode(result["heatmap_png_base64"])
+    # PNG magic bytes
+    assert raw[:8] == b"\x89PNG\r\n\x1a\n"
