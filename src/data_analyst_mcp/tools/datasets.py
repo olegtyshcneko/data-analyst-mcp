@@ -104,17 +104,23 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
     table = _quote(payload.name)
 
     column_profiles: list[dict[str, Any]] = []
+    total_rows = entry.rows
     for col in entry.columns:
         quoted = _quote(col["name"])
         null_count_row = con.execute(
             f"SELECT COUNT(*) - COUNT({quoted}) FROM {table}"
         ).fetchone()
         null_count = int(null_count_row[0]) if null_count_row else 0
+        null_frac = null_count / total_rows if total_rows else 0.0
+        flags = {
+            "mostly_null": null_frac > 0.5,
+        }
         column_profiles.append(
             {
                 "name": col["name"],
                 "dtype": col["dtype"],
                 "null_count": null_count,
+                "flags": flags,
             }
         )
 
