@@ -198,7 +198,20 @@ def _warnings(m: Any, diagnostics: dict[str, Any], kind: str) -> list[str]:
     jb = diagnostics.get("jarque_bera_p")
     if kind == "ols" and isinstance(jb, float) and jb < 0.05:
         out.append("non_normal_residuals")
+    if kind == "poisson" and _poisson_dispersion(m) > 1.5:
+        out.append("overdispersion")
     return out
+
+
+def _poisson_dispersion(m: Any) -> float:
+    """Pearson chi-squared / df_resid as the Poisson dispersion estimate."""
+    import numpy as np
+
+    resid: Any = np.asarray(m.resid_pearson)
+    df: int = int(m.df_resid)
+    if df <= 0:
+        return 0.0
+    return float(np.sum(resid * resid) / df)
 
 
 def _diagnostics(m: Any, kind: str) -> dict[str, Any]:
