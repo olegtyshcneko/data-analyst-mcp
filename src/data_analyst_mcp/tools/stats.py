@@ -34,9 +34,17 @@ def _is_numeric_dtype(dtype: str) -> bool:
     return base in _NUMERIC_DTYPES
 
 
+def _scipy_stats() -> Any:
+    """Return ``scipy.stats`` as an untyped module so strict pyright stays clean."""
+    from scipy import stats as _sps  # type: ignore[reportMissingTypeStubs]
+
+    return _sps
+
+
 def _quote(name: str) -> str:
     """Quote a SQL identifier safely for DuckDB."""
     return '"' + name.replace('"', '""') + '"'
+
 
 logger = logging.getLogger(__name__)
 
@@ -235,7 +243,7 @@ def _materialize_group(name: str, group_col: str, metric_col: str, label: str) -
         f"SELECT {_quote(metric_col)} FROM {table} WHERE {_quote(group_col)} = ?",
         [label],
     )
-    df = rel.df()
+    df: Any = rel.df()
     return df[metric_col].to_numpy()
 
 
@@ -254,15 +262,18 @@ def _cohens_d(a: Any, b: Any) -> float:
 
 def _materialize_two(payload: _TwoSampleColumns) -> tuple[Any, Any]:
     """Materialize the metric arrays for ``group_a`` and ``group_b``."""
-    a = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_a)
-    b = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_b)
+    a = _materialize_group(
+        payload.name, payload.group_column, payload.metric_column, payload.group_a
+    )
+    b = _materialize_group(
+        payload.name, payload.group_column, payload.metric_column, payload.group_b
+    )
     return a, b
 
 
 def _run_t_test(payload: TTestInput) -> dict[str, Any]:
     """Student's t-test (equal_var=True)."""
-    from scipy import stats as _sps
-
+    _sps = _scipy_stats()
     a, b = _materialize_two(payload)
     r = _sps.ttest_ind(a, b, equal_var=True)
     return {
@@ -272,29 +283,22 @@ def _run_t_test(payload: TTestInput) -> dict[str, Any]:
         "p_value": float(r.pvalue),
         "df": float(r.df),
         "effect_size": {"name": "cohens_d", "value": _cohens_d(a, b)},
-        "n_a": int(len(a)),
-        "n_b": int(len(b)),
-        "interpretation": _interpret_two_sample(
-            payload.group_a, payload.group_b, float(r.pvalue)
-        ),
+        "n_a": len(a),
+        "n_b": len(b),
+        "interpretation": _interpret_two_sample(payload.group_a, payload.group_b, float(r.pvalue)),
     }
 
 
 def _interpret_two_sample(a: str, b: str, p: float) -> str:
     """One-sentence plain-English interpretation of a two-sample p-value."""
     if p < 0.05:
-        return (
-            f"Groups `{a}` and `{b}` differ at α=0.05 (p={p:.4f})."
-        )
-    return (
-        f"No statistically significant difference between `{a}` and `{b}` at α=0.05 (p={p:.4f})."
-    )
+        return f"Groups `{a}` and `{b}` differ at α=0.05 (p={p:.4f})."
+    return f"No statistically significant difference between `{a}` and `{b}` at α=0.05 (p={p:.4f})."
 
 
 def _run_welch(payload: WelchInput) -> dict[str, Any]:
     """Welch's t-test (equal_var=False)."""
-    from scipy import stats as _sps
-
+    _sps = _scipy_stats()
     a, b = _materialize_two(payload)
     r = _sps.ttest_ind(a, b, equal_var=False)
     return {
@@ -304,18 +308,15 @@ def _run_welch(payload: WelchInput) -> dict[str, Any]:
         "p_value": float(r.pvalue),
         "df": float(r.df),
         "effect_size": {"name": "cohens_d", "value": _cohens_d(a, b)},
-        "n_a": int(len(a)),
-        "n_b": int(len(b)),
-        "interpretation": _interpret_two_sample(
-            payload.group_a, payload.group_b, float(r.pvalue)
-        ),
+        "n_a": len(a),
+        "n_b": len(b),
+        "interpretation": _interpret_two_sample(payload.group_a, payload.group_b, float(r.pvalue)),
     }
 
 
 def _run_mann_whitney(payload: MannWhitneyInput) -> dict[str, Any]:
     """Mann-Whitney U (two-sided)."""
-    from scipy import stats as _sps
-
+    _sps = _scipy_stats()
     a, b = _materialize_two(payload)
     r = _sps.mannwhitneyu(a, b, alternative="two-sided")
     n_a, n_b = len(a), len(b)
@@ -339,7 +340,8 @@ def _run_chi_square(payload: ChiSquareInput) -> dict[str, Any]:
     import math
 
     import numpy as np
-    from scipy import stats as _sps
+
+    _sps = _scipy_stats()
 
     table = np.array(payload.table, dtype=float)
     chi2, p, dof, _exp = _sps.chi2_contingency(table)
@@ -369,7 +371,8 @@ def _run_chi_square(payload: ChiSquareInput) -> dict[str, Any]:
 def _run_fisher(payload: FisherInput) -> dict[str, Any]:
     """Fisher's exact test on a 2x2 contingency table."""
     import numpy as np
-    from scipy import stats as _sps
+
+    _sps = _scipy_stats()
 
     table = np.array(payload.table, dtype=float)
     r = _sps.fisher_exact(table)
@@ -395,9 +398,7 @@ def _run_fisher(payload: FisherInput) -> dict[str, Any]:
     }
 
 
-def _materialize_groups(
-    name: str, group_col: str, metric_col: str
-) -> tuple[list[str], list[Any]]:
+def _materialize_groups(name: str, group_col: str, metric_col: str) -> tuple[list[str], list[Any]]:
     """Return all distinct group labels and the per-group metric arrays."""
     con = session.get_connection()
     table = _quote(name)
@@ -407,9 +408,7 @@ def _materialize_groups(
         f"ORDER BY {_quote(group_col)}"
     ).fetchall()
     labels = [str(r[0]) for r in label_rows]
-    groups = [
-        _materialize_group(name, group_col, metric_col, lab) for lab in labels
-    ]
+    groups = [_materialize_group(name, group_col, metric_col, lab) for lab in labels]
     return labels, groups
 
 
@@ -426,7 +425,7 @@ def _eta_squared(groups: list[Any]) -> float:
 
 def _run_anova(payload: AnovaInput) -> dict[str, Any]:
     """One-way ANOVA across every distinct group label."""
-    from scipy import stats as _sps
+    _sps = _scipy_stats()
 
     labels, groups = _materialize_groups(payload.name, payload.group_column, payload.metric_column)
     r = _sps.f_oneway(*groups)
@@ -444,15 +443,15 @@ def _run_anova(payload: AnovaInput) -> dict[str, Any]:
         "p_value": p,
         "df": None,
         "effect_size": {"name": "eta_squared", "value": eta},
-        "n_a": int(len(groups[0])) if groups else 0,
-        "n_b": int(len(groups[1])) if len(groups) > 1 else 0,
+        "n_a": len(groups[0]) if groups else 0,
+        "n_b": len(groups[1]) if len(groups) > 1 else 0,
         "interpretation": interp,
     }
 
 
 def _run_kruskal(payload: KruskalInput) -> dict[str, Any]:
     """Kruskal-Wallis H test across distinct group labels."""
-    from scipy import stats as _sps
+    _sps = _scipy_stats()
 
     labels, groups = _materialize_groups(payload.name, payload.group_column, payload.metric_column)
     r = _sps.kruskal(*groups)
@@ -471,16 +470,15 @@ def _run_kruskal(payload: KruskalInput) -> dict[str, Any]:
         "p_value": p,
         "df": None,
         "effect_size": {"name": "epsilon_squared", "value": eps},
-        "n_a": int(len(groups[0])) if groups else 0,
-        "n_b": int(len(groups[1])) if len(groups) > 1 else 0,
+        "n_a": len(groups[0]) if groups else 0,
+        "n_b": len(groups[1]) if len(groups) > 1 else 0,
         "interpretation": interp,
     }
 
 
 def _run_ks(payload: KSInput) -> dict[str, Any]:
     """Two-sample Kolmogorov-Smirnov."""
-    from scipy import stats as _sps
-
+    _sps = _scipy_stats()
     a, b = _materialize_two(payload)
     r = _sps.ks_2samp(a, b)
     p = float(r.pvalue)
@@ -497,8 +495,8 @@ def _run_ks(payload: KSInput) -> dict[str, Any]:
         "p_value": p,
         "df": None,
         "effect_size": {"name": "ks_d", "value": float(r.statistic)},
-        "n_a": int(len(a)),
-        "n_b": int(len(b)),
+        "n_a": len(a),
+        "n_b": len(b),
         "interpretation": interp,
     }
 
@@ -564,27 +562,27 @@ def _code_for_kind(payload: Any) -> str:
         equal_var = "True" if kind == "t_test" else "False"
         return (
             f"from scipy import stats\n"
-            f"a = con.sql(\"SELECT {payload.metric_column} FROM {payload.name} "
+            f'a = con.sql("SELECT {payload.metric_column} FROM {payload.name} '
             f"WHERE {payload.group_column} = '{payload.group_a}'\").df()['{payload.metric_column}']\n"
-            f"b = con.sql(\"SELECT {payload.metric_column} FROM {payload.name} "
+            f'b = con.sql("SELECT {payload.metric_column} FROM {payload.name} '
             f"WHERE {payload.group_column} = '{payload.group_b}'\").df()['{payload.metric_column}']\n"
             f"stats.ttest_ind(a, b, equal_var={equal_var})"
         )
     if kind == "mann_whitney":
         return (
             f"from scipy import stats\n"
-            f"a = con.sql(\"SELECT {payload.metric_column} FROM {payload.name} "
+            f'a = con.sql("SELECT {payload.metric_column} FROM {payload.name} '
             f"WHERE {payload.group_column} = '{payload.group_a}'\").df()['{payload.metric_column}']\n"
-            f"b = con.sql(\"SELECT {payload.metric_column} FROM {payload.name} "
+            f'b = con.sql("SELECT {payload.metric_column} FROM {payload.name} '
             f"WHERE {payload.group_column} = '{payload.group_b}'\").df()['{payload.metric_column}']\n"
             f"stats.mannwhitneyu(a, b, alternative='two-sided')"
         )
     if kind == "ks":
         return (
             f"from scipy import stats\n"
-            f"a = con.sql(\"SELECT {payload.metric_column} FROM {payload.name} "
+            f'a = con.sql("SELECT {payload.metric_column} FROM {payload.name} '
             f"WHERE {payload.group_column} = '{payload.group_a}'\").df()['{payload.metric_column}']\n"
-            f"b = con.sql(\"SELECT {payload.metric_column} FROM {payload.name} "
+            f'b = con.sql("SELECT {payload.metric_column} FROM {payload.name} '
             f"WHERE {payload.group_column} = '{payload.group_b}'\").df()['{payload.metric_column}']\n"
             f"stats.ks_2samp(a, b)"
         )
@@ -598,10 +596,7 @@ def _code_for_kind(payload: Any) -> str:
             f"stats.{fname}(*groups)"
         )
     if kind == "chi_square":
-        return (
-            f"from scipy import stats\n"
-            f"stats.chi2_contingency({payload.table!r})"
-        )
+        return f"from scipy import stats\nstats.chi2_contingency({payload.table!r})"
     return f"from scipy import stats\nstats.fisher_exact({payload.table!r})"
 
 
@@ -650,7 +645,8 @@ def _all_labels(name: str, group_col: str) -> list[str]:
 def _shapiro_p(arr: Any) -> float | None:
     """Return Shapiro-Wilk p-value, sampling at most 5000 elements; None if n<3."""
     import numpy as np
-    from scipy import stats as _sps
+
+    _sps = _scipy_stats()
 
     if len(arr) < 3:
         return None
@@ -663,14 +659,12 @@ def _shapiro_p(arr: Any) -> float | None:
 
 def _levene_p(*groups: Any) -> float:
     """Return Levene's test p-value across the given groups."""
-    from scipy import stats as _sps
+    _sps = _scipy_stats()
 
     return float(_sps.levene(*groups).pvalue)
 
 
-def _select_test(
-    *, n_groups: int, p_norm: list[float | None], p_levene: float | None
-) -> str:
+def _select_test(*, n_groups: int, p_norm: list[float | None], p_levene: float | None) -> str:
     """Pure decision-tree: pick the test for a continuous-metric compare.
 
     Returns one of ``student_t``, ``welch_t``, ``mann_whitney`` for n=2,
@@ -756,7 +750,7 @@ def _compare_groups_impl(payload: CompareGroupsInput) -> dict[str, Any]:
         p_norm = [_shapiro_p(a), _shapiro_p(b)]
         p_lev = _levene_p(a, b)
         test = _select_test(n_groups=2, p_norm=p_norm, p_levene=p_lev)
-        from scipy import stats as _sps
+        _sps = _scipy_stats()
 
         if test == "mann_whitney":
             mw = _sps.mannwhitneyu(a, b, alternative="two-sided")
@@ -787,7 +781,7 @@ def _compare_groups_impl(payload: CompareGroupsInput) -> dict[str, Any]:
     # >2 groups: ANOVA if normality holds, else Kruskal-Wallis.
     p_norm_many = [_shapiro_p(arr) for arr in arrays]
     p_lev_many = _levene_p(*arrays)
-    from scipy import stats as _sps
+    _sps = _scipy_stats()
 
     test = _select_test(n_groups=len(arrays), p_norm=p_norm_many, p_levene=p_lev_many)
     if test == "kruskal_wallis":
@@ -816,7 +810,8 @@ def _compare_groups_categorical(payload: CompareGroupsInput) -> dict[str, Any]:
     import math
 
     import numpy as np
-    from scipy import stats as _sps
+
+    _sps = _scipy_stats()
 
     con = session.get_connection()
     rows = con.execute(
@@ -832,9 +827,7 @@ def _compare_groups_categorical(payload: CompareGroupsInput) -> dict[str, Any]:
     cell: dict[tuple[str, str], int] = {(str(r[0]), str(r[1])): int(r[2]) for r in rows}
     if payload.groups is not None:
         g_labels = [g for g in g_labels if g in set(payload.groups)]
-    table = np.array(
-        [[cell.get((g, m), 0) for m in m_labels] for g in g_labels], dtype=float
-    )
+    table = np.array([[cell.get((g, m), 0) for m in m_labels] for g in g_labels], dtype=float)
     chi2, p, dof, _exp = _sps.chi2_contingency(table)
     n = float(table.sum())
     denom = n * max(min(table.shape) - 1, 1)
@@ -926,9 +919,7 @@ def _build_two_sample_response(
         var_consequence = "Switched from Student to Welch's t."
     else:
         norm_consequence = "Switched from t-test to Mann-Whitney U."
-        var_consequence = (
-            "Welch-vs-Student moot — switched to rank-based test."
-        )
+        var_consequence = "Welch-vs-Student moot — switched to rank-based test."
     assumption_checks: dict[str, Any] = {
         "normality_test": {
             "name": "shapiro",
@@ -951,7 +942,7 @@ def _build_two_sample_response(
         "p_value": p,
         "df": df if df == df else None,  # NaN → None
         "effect_size": effect,
-        "groups": [{"name": labels[i], "n": int(len(arrays[i]))} for i in range(len(labels))],
+        "groups": [{"name": labels[i], "n": len(arrays[i])} for i in range(len(labels))],
         "assumption_checks": assumption_checks,
         "interpretation": interp,
     }
@@ -1010,7 +1001,7 @@ def _build_many_sample_response(
         "p_value": p,
         "df": df,
         "effect_size": effect,
-        "groups": [{"name": labels[i], "n": int(len(arrays[i]))} for i in range(len(labels))],
+        "groups": [{"name": labels[i], "n": len(arrays[i])} for i in range(len(labels))],
         "assumption_checks": assumption_checks,
         "interpretation": interp,
     }
@@ -1022,7 +1013,9 @@ def _min_non_none(vals: list[float | None]) -> float | None:
     return min(finite) if finite else None
 
 
-def _build_interpretation_two(test: str, labels: list[str], p: float, effect: dict[str, Any]) -> str:
+def _build_interpretation_two(
+    test: str, labels: list[str], p: float, effect: dict[str, Any]
+) -> str:
     """One-sentence plain-English interpretation for a 2-sample result."""
     a, b = labels[0], labels[1]
     name_h = {
@@ -1048,8 +1041,9 @@ def _render_heatmap_png(labels: list[str], matrix: list[list[float]]) -> str:
     import matplotlib
 
     matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
+    import matplotlib.pyplot as _plt
 
+    plt: Any = _plt
     from data_analyst_mcp.formatting import png_to_base64
 
     fig, ax = plt.subplots(figsize=(4 + 0.4 * len(labels), 4 + 0.4 * len(labels)))
@@ -1071,7 +1065,7 @@ def _render_heatmap_png(labels: list[str], matrix: list[list[float]]) -> str:
 
 def _pairwise_corr(a: Any, b: Any, method: str) -> float:
     """Return the requested pairwise correlation coefficient as a float."""
-    from scipy import stats as _sps
+    _sps = _scipy_stats()
 
     if method == "spearman":
         return float(_sps.spearmanr(a, b).statistic)
@@ -1080,14 +1074,12 @@ def _pairwise_corr(a: Any, b: Any, method: str) -> float:
     return float(_sps.pearsonr(a, b).statistic)
 
 
-def _build_corr_matrix(
-    dataset_name: str, columns: list[str], method: str
-) -> list[list[float]]:
+def _build_corr_matrix(dataset_name: str, columns: list[str], method: str) -> list[list[float]]:
     """Materialize columns then compute the correlation matrix."""
     con = session.get_connection()
     table = _quote(dataset_name)
     select_cols = ", ".join(_quote(c) for c in columns)
-    df = con.execute(f"SELECT {select_cols} FROM {table}").df()
+    df: Any = con.execute(f"SELECT {select_cols} FROM {table}").df()
     n = len(columns)
     matrix: list[list[float]] = [[0.0] * n for _ in range(n)]
     for i in range(n):

@@ -11,7 +11,6 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-
 # === correlate ===
 
 
@@ -29,9 +28,7 @@ def test_correlate_unknown_column_returns_column_not_found(call_tool, load_df_in
 
 
 def test_correlate_no_numeric_columns_returns_error(call_tool, load_df_into_session):
-    load_df_into_session(
-        "strs", pd.DataFrame({"a": ["x", "y", "z"], "b": ["p", "q", "r"]})
-    )
+    load_df_into_session("strs", pd.DataFrame({"a": ["x", "y", "z"], "b": ["p", "q", "r"]}))
     result = call_tool("correlate", {"name": "strs"})
     assert result["ok"] is False
     assert result["error"]["type"] == "no_numeric_columns"

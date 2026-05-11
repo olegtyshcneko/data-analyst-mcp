@@ -133,8 +133,8 @@ def correlate(
     is omitted, every numeric column in the dataset is used.
     """
     try:
-        payload = _stats.CorrelateInput(
-            name=name, columns=columns, method=method, plot=plot
+        payload = _stats.CorrelateInput.model_validate(
+            {"name": name, "columns": columns, "method": method, "plot": plot}
         )
         return _stats.correlate(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise

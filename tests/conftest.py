@@ -99,7 +99,7 @@ def load_df_into_session():
             path="(dataframe)",
             read_options={},
             format="dataframe",
-            rows=int(len(df)),
+            rows=len(df),
             columns=cols,
         )
 
