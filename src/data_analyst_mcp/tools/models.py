@@ -82,8 +82,7 @@ def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
     smf = _smf()
     try:
         if payload.kind == "ols":
-            cov_type = "HC3" if payload.robust else "nonrobust"
-            m = smf.ols(payload.formula, data=df).fit(cov_type=cov_type)
+            m = smf.ols(payload.formula, data=df).fit()
         elif payload.kind == "logistic":
             m = smf.logit(payload.formula, data=df).fit(disp=0)
         else:  # poisson
