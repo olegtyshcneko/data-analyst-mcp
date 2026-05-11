@@ -118,3 +118,25 @@ def test_fit_model_ols_returns_pinned_fit_block(call_tool, load_df_into_session)
     assert fit["bic"] == pytest.approx(369.38444088, abs=1e-3)
     assert fit["n_obs"] == 45
     assert fit["df_resid"] == 42
+
+
+def test_fit_model_ols_returns_pinned_core_diagnostics(call_tool, load_df_into_session):
+    load_df_into_session("duncan", _duncan_df())
+    result = call_tool(
+        "fit_model",
+        {
+            "name": "duncan",
+            "formula": "prestige ~ income + education",
+            "kind": "ols",
+        },
+    )
+    diag = result["diagnostics"]
+    # statsmodels.stats.diagnostic.het_breuschpagan(m.resid, m.model.exog)[1]
+    #   = 0.7500543806429694
+    assert diag["breusch_pagan_p"] == pytest.approx(0.7500543806, abs=1e-4)
+    # statsmodels.stats.stattools.durbin_watson(m.resid) = 1.4583328622352028
+    assert diag["durbin_watson"] == pytest.approx(1.4583328622, abs=1e-4)
+    # statsmodels.stats.stattools.jarque_bera(m.resid)[1] = 0.771233639090612
+    assert diag["jarque_bera_p"] == pytest.approx(0.771233639, abs=1e-4)
+    # m.condition_number = 162.8971473807718
+    assert diag["condition_number"] == pytest.approx(162.8971474, abs=1e-3)
