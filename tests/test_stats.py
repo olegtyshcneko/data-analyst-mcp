@@ -356,6 +356,18 @@ def test_test_hypothesis_unknown_kind_returns_invalid_kind(call_tool):
     assert result["error"]["type"] == "invalid_kind"
 
 
+# === compare_groups ===
+
+
+def test_compare_groups_unknown_dataset_returns_not_found(call_tool):
+    result = call_tool(
+        "compare_groups",
+        {"name": "nope", "group_column": "g", "metric_column": "v"},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "not_found"
+
+
 def test_test_hypothesis_records_cells_on_success(call_tool, load_df_into_session):
     from data_analyst_mcp.recorder import get_recorder
 
