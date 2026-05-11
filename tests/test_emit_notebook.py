@@ -9,6 +9,7 @@ scaffolding around that single observable behavior.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 
 def test_emit_notebook_on_empty_session_writes_a_valid_notebook(
@@ -174,6 +175,37 @@ def test_emit_notebook_itself_is_not_recorded(call_tool, tmp_path):
     call_tool("emit_notebook", {"path": str(tmp_path / "out.ipynb")})
     after = len(get_recorder().cells)
     assert before == after
+
+
+def test_default_path_changes_between_calls(call_tool, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    # Pin datetime.now so we get two deterministic-but-different timestamps.
+    import data_analyst_mcp.tools.notebook as nb_mod
+
+    class _Clock:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def now(self) -> Any:  # noqa: ANN401
+            from datetime import datetime as _real
+
+            self.calls += 1
+            return _real(2026, 5, 11, 12, 0, self.calls)
+
+    clk = _Clock()
+
+    class _DT:
+        @staticmethod
+        def now() -> Any:  # noqa: ANN401
+            return clk.now()
+
+    monkeypatch.setattr(nb_mod, "datetime", _DT)
+
+    r1 = call_tool("emit_notebook", {})
+    r2 = call_tool("emit_notebook", {})
+    assert r1["ok"] and r2["ok"]
+    assert r1["path"] != r2["path"]
 
 
 
