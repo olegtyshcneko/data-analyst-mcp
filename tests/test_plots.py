@@ -133,3 +133,11 @@ def test_plot_success_records_markdown_and_code_cells(call_tool, load_df_into_se
     assert cells[1]["cell_type"] == "code"
     assert cells[0]["metadata"]["tool_name"] == "plot"
     assert cells[1]["metadata"]["tool_name"] == "plot"
+
+
+def test_plot_error_records_no_cells(call_tool):
+    from data_analyst_mcp.recorder import get_recorder
+
+    result = call_tool("plot", {"name": "nope", "kind": "hist", "x": "x"})
+    assert result["ok"] is False
+    assert get_recorder().cells == []
