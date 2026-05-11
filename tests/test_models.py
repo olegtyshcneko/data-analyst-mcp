@@ -184,3 +184,22 @@ def test_fit_model_ols_emits_high_multicollinearity_warning(call_tool, load_df_i
     assert vif["x1"] > 10
     assert vif["x2"] > 10
     assert "high_multicollinearity" in result["warnings"]
+
+
+def _heteroskedastic_df() -> pd.DataFrame:
+    """Build a deliberately heteroskedastic OLS fixture (BP p << 0.05)."""
+    rng = np.random.default_rng(20260511)
+    n = 200
+    x = rng.standard_normal(n)
+    y = x + rng.normal(0, np.abs(x) + 0.1)
+    return pd.DataFrame({"y": y, "x": x})
+
+
+def test_fit_model_ols_emits_heteroskedasticity_warning(call_tool, load_df_into_session):
+    load_df_into_session("hetero", _heteroskedastic_df())
+    result = call_tool(
+        "fit_model", {"name": "hetero", "formula": "y ~ x", "kind": "ols"}
+    )
+    # het_breuschpagan p on this fixture (seed 20260511) = 0.00014260162314631662
+    assert result["diagnostics"]["breusch_pagan_p"] < 0.05
+    assert "heteroskedasticity" in result["warnings"]
