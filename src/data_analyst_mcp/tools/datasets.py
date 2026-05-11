@@ -90,6 +90,20 @@ def _quote(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
 
 
+def _json_safe(value: Any) -> Any:
+    """Coerce DuckDB-returned scalars into a JSON-serializable shape."""
+    import datetime as _dt
+    import decimal
+
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, decimal.Decimal):
+        return float(value)
+    if isinstance(value, (_dt.datetime, _dt.date, _dt.time)):
+        return value.isoformat()
+    return str(value)
+
+
 _NUMERIC_DTYPES = {
     "TINYINT",
     "SMALLINT",
@@ -128,7 +142,7 @@ def _top_values(con: Any, table: str, quoted: str, limit: int = 5) -> list[dict[
         LIMIT {int(limit)}
         """
     ).fetchall()
-    return [{"value": r[0], "count": int(r[1])} for r in rows]
+    return [{"value": _json_safe(r[0]), "count": int(r[1])} for r in rows]
 
 _TEMPORAL_DTYPES = {"DATE", "TIMESTAMP", "TIMESTAMPTZ", "TIMESTAMP_NS", "TIMESTAMP_MS",
                     "TIMESTAMP_S", "TIME", "TIMETZ", "DATETIME"}
@@ -200,7 +214,7 @@ def _string_stats(con: Any, table: str, quoted: str) -> dict[str, Any]:
     if row is None:
         return {}
     keys = ("min_length", "max_length", "mean_length", "empty_count", "whitespace_count")
-    return {key: row[i] for i, key in enumerate(keys)}
+    return {key: _json_safe(row[i]) for i, key in enumerate(keys)}
 
 
 def _numeric_stats(con: Any, table: str, quoted: str) -> dict[str, Any]:
@@ -224,7 +238,7 @@ def _numeric_stats(con: Any, table: str, quoted: str) -> dict[str, Any]:
     if row is None:
         return {}
     keys = ("min", "max", "mean", "median", "std", "p25", "p75", "p99", "zeros", "negatives")
-    return {key: row[i] for i, key in enumerate(keys)}
+    return {key: _json_safe(row[i]) for i, key in enumerate(keys)}
 
 
 def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
@@ -292,6 +306,15 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
         entry_dict["top_values"] = _top_values(con, table, quoted)
         column_profiles.append(entry_dict)
 
+    head_rows = con.execute(
+        f"SELECT * FROM {table} LIMIT {int(payload.sample_rows)}"
+    ).fetchall()
+    head_cols = [c["name"] for c in entry.columns]
+    head = [
+        {col: _json_safe(value) for col, value in zip(head_cols, row, strict=True)}
+        for row in head_rows
+    ]
+
     return {
         "ok": True,
         "summary": {
@@ -299,6 +322,7 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
             "total_columns": len(entry.columns),
         },
         "columns": column_profiles,
+        "head": head,
     }
 
 
