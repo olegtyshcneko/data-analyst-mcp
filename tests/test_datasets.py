@@ -77,3 +77,14 @@ def test_load_dataset_supports_parquet(call_tool: Any, tmp_path: Any) -> None:
     assert result["ok"] is True
     assert result["rows"] == 3
     assert {c["name"] for c in result["columns"]} == {"a", "b"}
+
+
+def test_load_dataset_supports_jsonl(call_tool: Any, tmp_path: Any) -> None:
+    p = tmp_path / "tiny.jsonl"
+    p.write_text('{"a": 1, "b": "x"}\n{"a": 2, "b": "y"}\n')
+
+    result = call_tool("load_dataset", {"path": str(p), "name": "tinyj"})
+
+    assert result["ok"] is True
+    assert result["rows"] == 2
+    assert {c["name"] for c in result["columns"]} == {"a", "b"}
