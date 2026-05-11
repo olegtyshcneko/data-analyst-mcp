@@ -223,3 +223,37 @@ def test_fit_model_ols_emits_non_normal_residuals_warning(call_tool, load_df_int
     # jarque_bera p on this fixture (seed 20260511) = 0.0023420079865034194
     assert result["diagnostics"]["jarque_bera_p"] < 0.05
     assert "non_normal_residuals" in result["warnings"]
+
+
+def test_fit_model_ols_robust_switches_to_hc3_standard_errors(
+    call_tool, load_df_into_session
+):
+    load_df_into_session("duncan", _duncan_df())
+    plain = call_tool(
+        "fit_model",
+        {
+            "name": "duncan",
+            "formula": "prestige ~ income + education",
+            "kind": "ols",
+        },
+    )
+    robust = call_tool(
+        "fit_model",
+        {
+            "name": "duncan",
+            "formula": "prestige ~ income + education",
+            "kind": "ols",
+            "robust": True,
+        },
+    )
+    pl = {c["name"]: c for c in plain["coefficients"]}
+    rb = {c["name"]: c for c in robust["coefficients"]}
+    # Coefficients are unchanged across robust/non-robust.
+    assert rb["income"]["estimate"] == pytest.approx(pl["income"]["estimate"], abs=1e-9)
+    # HC3 std errors on Duncan (pinned via .fit(cov_type='HC3')):
+    #   income    = 0.18346773162473987
+    #   education = 0.14946918649417798
+    assert rb["income"]["std_err"] == pytest.approx(0.18346773162, abs=1e-3)
+    assert rb["education"]["std_err"] == pytest.approx(0.14946918649, abs=1e-3)
+    # And they MUST differ from the non-robust std errors.
+    assert rb["income"]["std_err"] != pytest.approx(pl["income"]["std_err"], abs=1e-6)
