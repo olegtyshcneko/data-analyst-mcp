@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.recorder import get_recorder
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,13 @@ def emit_notebook(payload: EmitNotebookInput) -> dict[str, Any]:
     nb: Any = get_recorder().to_notebook(include_setup=True)
     target = payload.path if payload.path is not None else _default_path()
     target = os.path.abspath(target)
-    with open(target, "w", encoding="utf-8") as fh:
-        nbf.write(nb, fh)  # type: ignore[reportUnknownMemberType]
+    try:
+        with open(target, "w", encoding="utf-8") as fh:
+            nbf.write(nb, fh)  # type: ignore[reportUnknownMemberType]
+    except OSError as exc:
+        return build_error(
+            type="write_failed",
+            message=f"Could not write notebook to {target!r}: {exc}.",
+            hint="Check that the parent directory exists and is writable.",
+        )
     return {"ok": True, "path": target, "n_cells": len(nb.cells)}
