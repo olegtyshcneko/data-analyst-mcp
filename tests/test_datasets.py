@@ -59,3 +59,21 @@ def test_load_dataset_records_nothing_on_error(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": "/tmp/nope.xyz"})
 
     assert rec.cells == []
+
+
+def test_load_dataset_supports_parquet(call_tool: Any, tmp_path: Any) -> None:
+    import duckdb
+
+    parquet_path = tmp_path / "tiny.parquet"
+    con = duckdb.connect()
+    con.execute(
+        f"COPY (SELECT 1 AS a, 'x' AS b UNION ALL SELECT 2, 'y' UNION ALL SELECT 3, 'z') "
+        f"TO '{parquet_path}' (FORMAT PARQUET)"
+    )
+    con.close()
+
+    result = call_tool("load_dataset", {"path": str(parquet_path), "name": "tiny"})
+
+    assert result["ok"] is True
+    assert result["rows"] == 3
+    assert {c["name"] for c in result["columns"]} == {"a", "b"}
