@@ -232,3 +232,18 @@ def test_test_hypothesis_chi_square_known_answer(call_tool):
     assert result["df"] == 2
     assert result["effect_size"]["name"] == "cramers_v"
     assert result["effect_size"]["value"] == pytest.approx(0.0543313757, abs=1e-4)
+
+
+def test_test_hypothesis_fisher_known_answer(call_tool):
+    result = call_tool(
+        "test_hypothesis",
+        {"kind": "fisher", "table": [[8, 2], [1, 5]]},
+    )
+    # scipy.stats.fisher_exact([[8,2],[1,5]])
+    #   odds_ratio=20.0, p=0.034965034965034975
+    assert result["ok"] is True
+    assert result["test"] == "fisher"
+    assert result["statistic"] == pytest.approx(20.0, abs=1e-4)
+    assert result["p_value"] == pytest.approx(0.0349650350, abs=1e-4)
+    assert result["effect_size"]["name"] == "odds_ratio"
+    assert result["effect_size"]["value"] == pytest.approx(20.0, abs=1e-4)
