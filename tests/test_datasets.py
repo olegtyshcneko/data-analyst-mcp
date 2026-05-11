@@ -157,9 +157,9 @@ def test_profile_dataset_returns_string_stats(call_tool: Any) -> None:
     s = cust["string"]
     for key in ("min_length", "max_length", "mean_length", "empty_count", "whitespace_count"):
         assert key in s
-    # CUST-XXXXXX-YYYY is always 17 chars long.
-    assert s["min_length"] == 17
-    assert s["max_length"] == 17
+    # CUST-NNNNNN-NNNN is always 16 chars long.
+    assert s["min_length"] == 16
+    assert s["max_length"] == 16
 
 
 def test_list_datasets_reports_registered_entries(call_tool: Any) -> None:

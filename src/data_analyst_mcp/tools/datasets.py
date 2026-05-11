@@ -113,6 +113,34 @@ def _is_numeric(dtype: str) -> bool:
     return base in _NUMERIC_DTYPES
 
 
+_STRING_DTYPES = {"VARCHAR", "CHAR", "TEXT", "BLOB", "STRING"}
+
+
+def _is_string(dtype: str) -> bool:
+    """True if a DuckDB dtype represents a string-shaped value."""
+    base = dtype.split("(")[0].strip().upper()
+    return base in _STRING_DTYPES
+
+
+def _string_stats(con: Any, table: str, quoted: str) -> dict[str, Any]:
+    """Per-column length stats + empty/whitespace counts."""
+    row = con.execute(
+        f"""
+        SELECT
+            MIN(LENGTH({quoted})),
+            MAX(LENGTH({quoted})),
+            AVG(LENGTH({quoted})),
+            COUNT(*) FILTER (WHERE {quoted} = ''),
+            COUNT(*) FILTER (WHERE {quoted} IS NOT NULL AND TRIM({quoted}) = '')
+        FROM {table}
+        """
+    ).fetchone()
+    if row is None:
+        return {}
+    keys = ("min_length", "max_length", "mean_length", "empty_count", "whitespace_count")
+    return {key: row[i] for i, key in enumerate(keys)}
+
+
 def _numeric_stats(con: Any, table: str, quoted: str) -> dict[str, Any]:
     """Return min/max/mean/median/std/p25/p75/p99/zeros/negatives for one column."""
     row = con.execute(
@@ -170,6 +198,8 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
         }
         if _is_numeric(col["dtype"]):
             entry_dict["numeric"] = _numeric_stats(con, table, quoted)
+        elif _is_string(col["dtype"]):
+            entry_dict["string"] = _string_stats(con, table, quoted)
         column_profiles.append(entry_dict)
 
     return {
