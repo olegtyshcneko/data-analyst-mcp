@@ -53,7 +53,13 @@ def call_tool(server: Any):
 
     async def _invoke(name: str, args: dict[str, Any]) -> Any:
         result = await server.call_tool(name, args)
-        if hasattr(result, "content"):
+        # FastMCP returns (content_list, structured_dict). Prefer structured.
+        if isinstance(result, tuple) and len(result) == 2:
+            content_list, structured = result
+            if isinstance(structured, dict) and structured:
+                return structured
+            content = content_list
+        elif hasattr(result, "content"):
             content = result.content
         else:
             content = result
