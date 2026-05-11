@@ -12,9 +12,7 @@ from pathlib import Path
 from typing import Any
 
 
-def test_emit_notebook_on_empty_session_writes_a_valid_notebook(
-    call_tool, tmp_path, monkeypatch
-):
+def test_emit_notebook_on_empty_session_writes_a_valid_notebook(call_tool, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     r = call_tool("emit_notebook", {})
     assert r["ok"] is True
@@ -94,7 +92,9 @@ def test_setup_cell_reloads_each_registered_dataset(call_tool, tmp_path):
     # one csv (already on disk) + one parquet (generated via DuckDB to avoid
     # pulling pyarrow into our dev dependencies just for this test)
     parquet = tmp_path / "tiny.parquet"
-    duckdb.sql(f"COPY (SELECT 1 AS a, 4 AS b UNION ALL SELECT 2, 5) TO '{parquet}' (FORMAT PARQUET)")
+    duckdb.sql(
+        f"COPY (SELECT 1 AS a, 4 AS b UNION ALL SELECT 2, 5) TO '{parquet}' (FORMAT PARQUET)"
+    )
     csv = Path(__file__).parent.parent / "fixtures" / "messy.csv"
 
     r = call_tool("load_dataset", {"path": str(csv), "name": "raw"})
@@ -187,7 +187,7 @@ def test_default_path_changes_between_calls(call_tool, tmp_path, monkeypatch):
         def __init__(self) -> None:
             self.calls = 0
 
-        def now(self) -> Any:  # noqa: ANN401
+        def now(self) -> Any:
             from datetime import datetime as _real
 
             self.calls += 1
@@ -197,7 +197,7 @@ def test_default_path_changes_between_calls(call_tool, tmp_path, monkeypatch):
 
     class _DT:
         @staticmethod
-        def now() -> Any:  # noqa: ANN401
+        def now() -> Any:
             return clk.now()
 
     monkeypatch.setattr(nb_mod, "datetime", _DT)
@@ -290,7 +290,9 @@ def test_six_step_workflow_round_trip(call_tool, tmp_path):
         text=True,
         cwd=os.getcwd(),
     )
-    assert result.returncode == 0, f"nbconvert failed:\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+    assert result.returncode == 0, (
+        f"nbconvert failed:\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+    )
 
 
 def test_emit_notebook_is_registered_as_an_mcp_tool(server):
@@ -299,7 +301,3 @@ def test_emit_notebook_is_registered_as_an_mcp_tool(server):
     tools = asyncio.run(server.list_tools())
     names = {t.name for t in tools}
     assert "emit_notebook" in names
-
-
-
-
