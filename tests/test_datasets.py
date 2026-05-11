@@ -35,3 +35,27 @@ def test_load_dataset_registers_csv_with_rows_and_columns(call_tool: Any) -> Non
     # Each column entry has the canonical shape.
     for col in result["columns"]:
         assert set(col.keys()) >= {"name", "dtype"}
+
+
+def test_load_dataset_records_markdown_and_code_cell_pair(call_tool: Any) -> None:
+    from data_analyst_mcp.recorder import get_recorder
+
+    rec = get_recorder()
+    assert rec.cells == []
+
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    assert len(rec.cells) == 2
+    assert rec.cells[0]["cell_type"] == "markdown"
+    assert rec.cells[1]["cell_type"] == "code"
+    assert "CREATE OR REPLACE TABLE" in rec.cells[1]["source"]
+    assert "messy" in rec.cells[1]["source"]
+
+
+def test_load_dataset_records_nothing_on_error(call_tool: Any) -> None:
+    from data_analyst_mcp.recorder import get_recorder
+
+    rec = get_recorder()
+    call_tool("load_dataset", {"path": "/tmp/nope.xyz"})
+
+    assert rec.cells == []
