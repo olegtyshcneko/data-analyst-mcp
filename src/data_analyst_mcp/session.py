@@ -35,8 +35,14 @@ def register(
     rows: int,
     columns: list[dict[str, str]],
 ) -> None:
-    """Stub — does not store anything yet."""
-    return None
+    """Insert (or replace) a dataset entry under ``name``."""
+    _datasets[name] = DatasetEntry(
+        path=path,
+        read_options=dict(read_options),
+        format=format,
+        rows=rows,
+        columns=list(columns),
+    )
 
 
 def get_datasets() -> dict[str, DatasetEntry]:
