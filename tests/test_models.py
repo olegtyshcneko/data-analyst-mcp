@@ -409,3 +409,17 @@ def test_fit_model_logistic_interpretation_mentions_odds(call_tool, load_df_into
     # interpretation MUST name it and report an odds-ratio change.
     assert "x" in interp
     assert "odds" in interp.lower()
+
+
+def test_fit_model_logistic_records_markdown_and_code_cells(call_tool, load_df_into_session):
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("logi", _logistic_df())
+    call_tool(
+        "fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"}
+    )
+    cells = get_recorder().cells
+    assert len(cells) == 2
+    assert cells[0]["cell_type"] == "markdown"
+    assert cells[1]["cell_type"] == "code"
+    assert "smf.logit" in cells[1]["source"]
