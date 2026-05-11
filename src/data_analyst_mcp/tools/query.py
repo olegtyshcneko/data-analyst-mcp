@@ -121,8 +121,7 @@ def query(payload: QueryInput) -> dict[str, Any]:
         )
 
     con = session.get_connection()
-    auto_limited = not _has_explicit_limit(payload.sql)
-    final_sql = _apply_limit(payload.sql, payload.limit) if auto_limited else payload.sql
+    final_sql = _apply_limit(payload.sql, payload.limit)
 
     started = time.perf_counter()
     cursor = con.execute(final_sql)
@@ -136,8 +135,6 @@ def query(payload: QueryInput) -> dict[str, Any]:
     except Exception:
         total = len(rows)
 
-    truncated = auto_limited and len(rows) >= payload.limit and total > len(rows)
-
     md = f"### Query\n\n```\n{payload.sql.strip()}\n```\n\n- {len(rows)} rows returned"
     code = final_sql
     get_recorder().record(markdown=md, code=code, tool_name="query")
@@ -148,5 +145,5 @@ def query(payload: QueryInput) -> dict[str, Any]:
         "columns": columns,
         "total_rows": total,
         "execution_time_ms": elapsed_ms,
-        "truncated": truncated,
+        "truncated": False,
     }
