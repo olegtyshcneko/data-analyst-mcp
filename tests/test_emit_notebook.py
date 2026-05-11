@@ -148,5 +148,22 @@ def test_three_recorded_operations_produce_seven_cells(call_tool, tmp_path):
     assert r["n_cells"] == 7
 
 
+def test_include_outputs_is_a_documented_noop(call_tool, tmp_path):
+    csv = Path(__file__).parent.parent / "fixtures" / "messy.csv"
+    call_tool("load_dataset", {"path": str(csv), "name": "raw"})
+    a = tmp_path / "a.ipynb"
+    b = tmp_path / "b.ipynb"
+    call_tool("emit_notebook", {"path": str(a), "include_outputs": False})
+    call_tool("emit_notebook", {"path": str(b), "include_outputs": True})
+    nb_a = _read_nb(str(a))
+    nb_b = _read_nb(str(b))
+    code_a = [c for c in nb_a.cells if c.cell_type == "code"]
+    code_b = [c for c in nb_b.cells if c.cell_type == "code"]
+    # Outputs are never captured at record time, so both flavours emit empty
+    # outputs lists on every code cell.
+    for cell in code_a + code_b:
+        assert cell.outputs == []
+
+
 
 
