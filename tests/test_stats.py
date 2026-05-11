@@ -116,3 +116,42 @@ def test_correlate_records_markdown_and_code_cells(call_tool, load_df_into_sessi
     assert cells[0]["cell_type"] == "markdown"
     assert cells[1]["cell_type"] == "code"
     assert cells[0]["metadata"]["tool_name"] == "correlate"
+
+
+# === test_hypothesis ===
+
+
+def _make_two_group_df() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "g": ["A"] * 5 + ["B"] * 5,
+            "v": [1.0, 2.0, 3.0, 4.0, 5.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+        }
+    )
+
+
+def test_test_hypothesis_t_test_known_answer(call_tool, load_df_into_session):
+    load_df_into_session("pairs", _make_two_group_df())
+    result = call_tool(
+        "test_hypothesis",
+        {
+            "kind": "t_test",
+            "name": "pairs",
+            "group_column": "g",
+            "metric_column": "v",
+            "group_a": "A",
+            "group_b": "B",
+        },
+    )
+    # scipy.stats.ttest_ind([1,2,3,4,5], [3,4,5,6,7], equal_var=True)
+    #   statistic=-2.0, p=0.08051623795726262, df=8.0
+    # Cohen's d (pooled, ddof=1) = -1.2649110640673518
+    assert result["ok"] is True
+    assert result["test"] == "t_test"
+    assert result["statistic"] == pytest.approx(-2.0, abs=1e-4)
+    assert result["p_value"] == pytest.approx(0.0805162380, abs=1e-4)
+    assert result["df"] == pytest.approx(8.0, abs=1e-9)
+    assert result["effect_size"]["name"] == "cohens_d"
+    assert result["effect_size"]["value"] == pytest.approx(-1.2649110641, abs=1e-4)
+    assert result["n_a"] == 5
+    assert result["n_b"] == 5
