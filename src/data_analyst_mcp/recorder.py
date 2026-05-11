@@ -15,10 +15,21 @@ class NotebookRecorder:
         self.cells: list[dict[str, Any]] = []
 
     def to_notebook(self, include_setup: bool = True) -> nbformat.NotebookNode:
-        """Stub — returns an empty notebook so the cell-count test fails."""
+        """Render the recorded cells as a ``nbformat.v4`` notebook.
+
+        When ``include_setup`` is true a setup cell with imports + a DuckDB
+        connection + ``CREATE OR REPLACE TABLE`` statements for every
+        currently-registered dataset is prepended (added in a later cycle).
+        """
         import nbformat as _nbformat
 
-        return _nbformat.v4.new_notebook()
+        nb = _nbformat.v4.new_notebook()
+        for cell in self.cells:
+            if cell["cell_type"] == "markdown":
+                nb.cells.append(_nbformat.v4.new_markdown_cell(cell["source"]))
+            else:
+                nb.cells.append(_nbformat.v4.new_code_cell(cell["source"]))
+        return nb
 
     def record(self, *, markdown: str, code: str, tool_name: str) -> None:
         """Append one markdown + one code cell describing a tool invocation."""
