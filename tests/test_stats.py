@@ -247,3 +247,34 @@ def test_test_hypothesis_fisher_known_answer(call_tool):
     assert result["p_value"] == pytest.approx(0.0349650350, abs=1e-4)
     assert result["effect_size"]["name"] == "odds_ratio"
     assert result["effect_size"]["value"] == pytest.approx(20.0, abs=1e-4)
+
+
+def _make_three_group_df() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "g": ["A"] * 5 + ["B"] * 5 + ["C"] * 5,
+            "v": [1.0, 2.0, 3.0, 4.0, 5.0, 3.0, 4.0, 5.0, 6.0, 7.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+        }
+    )
+
+
+def test_test_hypothesis_anova_known_answer(call_tool, load_df_into_session):
+    load_df_into_session("triplets", _make_three_group_df())
+    result = call_tool(
+        "test_hypothesis",
+        {
+            "kind": "anova",
+            "name": "triplets",
+            "group_column": "g",
+            "metric_column": "v",
+        },
+    )
+    # scipy.stats.f_oneway([1,2,3,4,5],[3,4,5,6,7],[5,6,7,8,9])
+    #   F=8.0, p=0.0061963977594369675
+    # eta_sq = SS_between / SS_total = 0.5714285714285714
+    assert result["ok"] is True
+    assert result["test"] == "anova"
+    assert result["statistic"] == pytest.approx(8.0, abs=1e-4)
+    assert result["p_value"] == pytest.approx(0.0061963978, abs=1e-4)
+    assert result["effect_size"]["name"] == "eta_squared"
+    assert result["effect_size"]["value"] == pytest.approx(0.5714285714, abs=1e-4)
