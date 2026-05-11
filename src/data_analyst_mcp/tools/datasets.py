@@ -54,11 +54,20 @@ def _extension(path: str) -> str:
 
 def load_dataset(payload: LoadDatasetInput) -> dict[str, Any]:
     """Register a file as a DuckDB table in the session."""
+    import os
+
     ext = _extension(payload.path)
     if ext not in _SUPPORTED_EXTENSIONS:
         return build_error(
             type="unsupported_format",
             message=f"Extension {ext!r} is not a supported tabular format.",
             hint="Use one of .csv, .tsv, .parquet, .xlsx, .json, .jsonl.",
+        )
+    is_remote = payload.path.startswith(("s3://", "http://", "https://"))
+    if not is_remote and not os.path.exists(payload.path):
+        return build_error(
+            type="file_not_found",
+            message=f"No file at {payload.path!r}.",
+            hint="Check the path is absolute or relative to the server's cwd.",
         )
     return {"ok": True, "name": payload.name or "", "rows": 0, "columns": []}
