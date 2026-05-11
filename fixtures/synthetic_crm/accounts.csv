@@ -1,0 +1,2001 @@
+account_id,account_name,industry,country,employees,arr,created_at,churned
+94f4dbb7-3293-365f-328d-ac2dded26fdf,"Carter, Andersen and Nichols",Logistics,PL,180,33937.97,2022-03-23,false
+27b0edbf-2a6c-475e-0e8b-d5ac865d7a2b,Gutierrez PLC,Education,SE,241,24176.30,2022-09-02,false
+8744b561-e477-d368-d461-504b50b4c971,Hall-Jones,Manufacturing,FR,76,15141.80,2025-10-08,false
+1d55f2f1-f778-6a30-0651-3239722b6346,Holt-Rodriguez,Logistics,FI,129,241785.71,2021-12-29,false
+1b0f007f-8361-066d-ca34-7e9f5bc53281,"Lopez, Bowers and Cardenas",Manufacturing,NL,12,16096.03,2024-01-06,false
+74ec0890-6c7d-f8b8-8c81-1b85d3257423,Norton PLC,Logistics,SE,1300,111975.91,2025-10-22,false
+fd00e4c9-23a2-faee-d42c-3dccf78c1fba,Proctor Ltd,Manufacturing,FR,123,6934.92,2024-03-27,false
+0413088a-cd92-1193-2cc0-bd980c7dd844,"Perry, Fleming and Myers",Manufacturing,SE,130,234087.36,2021-08-01,false
+d464e855-5830-8e6e-c1ef-c1f3fc28dfd3,Russell-Perry,Software,ES,492,281277.12,2023-01-31,false
+5e46c5ba-73e9-8f7f-ccba-b90e4c1ffe0f,"Lewis, Ray and Henderson",Education,SE,237,23325.49,2023-06-04,false
+548f6568-f438-6397-fe20-ad7e5196f3ad,Mueller Group,Logistics,SE,391,34410.26,2024-08-07,false
+2968431a-915a-3473-0fa6-143a9c08b3f2,Davis LLC,Finance,FR,92,25689.77,2023-07-27,false
+ca5a76d2-7720-a9a7-3a52-c94eef02731a,Richards Ltd,Logistics,ES,74,20802.64,2024-12-26,false
+712eea40-712f-5a73-8917-bda74f2e14df,Hamilton-Alvarez,Logistics,NO,256,57439.42,2024-05-13,false
+74e4166b-0441-b74b-73f8-3346be26c358,Ayala Ltd,Energy,FR,149,23440.27,2024-11-29,false
+1fd433e2-9a98-3172-383f-937f1d8de604,Reyes and Sons,Software,FR,249,87779.29,2021-09-19,false
+c8727a82-b3de-2f67-c50b-f4b46a3f3014,"Gay, Wallace and Johnson",Healthcare,GB,133,8751.02,2021-07-17,false
+a8a074d5-8a53-d473-57a1-741d81761754,Baker-Ortiz,Healthcare,UA,94,887997.64,2021-08-25,false
+ca487384-4561-0e18-967c-27f83ec95caf,Weiss-King,Healthcare,FR,63,10762.99,2026-01-30,false
+528a524c-1e08-c1b6-647a-35f613f628f5,Perry and Sons,Manufacturing,US,52,332545.53,2022-12-02,false
+1beeaa4a-c601-02e0-647b-15815609f326,"Rogers, Diaz and Rivera",Logistics,FI,148,135860.85,2026-01-01,false
+c57d14e5-8788-c411-4eaf-3c4f4d8f1c0f,"Aguirre, Pineda and King",Software,FI,8,85178.25,2024-06-04,true
+2f8f4ecb-4e18-ad57-95c7-8e9efd1b80df,Thomas Ltd,Manufacturing,PL,251,21128.09,2023-05-22,true
+36f2eeb0-299e-5bfe-d471-c85bcb3137f5,Fox and Sons,Manufacturing,NL,59,57894.15,2025-02-23,false
+a29360ad-21ab-dd35-9854-8d2c906ddcbc,Horn Inc,Retail,FR,172,61843.86,2023-04-03,false
+21daef3a-51e8-ad6d-3022-75b4989d24a7,Cannon-Dougherty,Healthcare,NO,95,25834.31,2022-04-15,false
+194b2fee-5b60-4431-083b-6109cea18292,"Perkins, Wright and Graham",Energy,FR,22,90946.26,2021-10-18,false
+e7980254-1645-a25a-7c32-d589f6e6dfa8,Lee LLC,Finance,IT,55,25106.07,2024-06-18,false
+af025047-ca1a-9922-d620-826f63bcd69e,Hernandez-Lynn,Retail,GB,50,30179.44,2021-07-05,false
+db27a033-aa43-05fd-c373-30459221aa79,Jackson and Sons,Education,PL,125,104144.50,2024-06-03,false
+891fac37-edc4-b1e1-98a5-9d3a5f54a8c7,Yoder-Smith,Retail,IT,35,41270.21,2025-11-09,false
+68286b37-a661-1db4-e3ca-11dfadc9ed66,Long LLC,Energy,ES,15,60146.18,2026-03-11,false
+a64c8985-f9f7-6a0c-1482-53a9c82f62d6,Williams Inc,Retail,US,261,200277.18,2025-04-17,false
+450221b8-7872-68eb-7e3b-a4e1a23096b8,Christian-Fisher,Healthcare,ES,89,10568.02,2024-05-08,false
+f4a2e25e-565a-741d-4b19-a9f56ae169f2,Ruiz Ltd,Education,IT,139,63045.85,2022-01-30,false
+4cc88a7c-eb1e-146f-7393-f79b1544c6b9,"Vasquez, Yates and Franklin",Education,NO,38,297940.61,2024-06-13,false
+c44b4344-04d4-2bfa-28d0-cb42c9b88c9a,Howe LLC,Software,ES,62,24619.89,2022-06-11,false
+0dbab0e7-397c-f2c9-dd43-0ca2cece2665,Wong LLC,Finance,IT,89,46209.00,2023-02-25,false
+5b71d087-cbeb-b8f1-f55a-df6cc110efc4,Avila Inc,Software,UA,72,82308.42,2023-04-19,false
+2360a133-4c3b-eabe-5df6-94238f0d4c66,"Gonzalez, White and Williams",Finance,GB,17,75683.40,2024-12-29,false
+1678896a-eda2-e3d8-7bbc-9d4eaff542ef,Moyer Inc,Education,FI,82,5822.75,2025-04-03,false
+ee3156d7-197b-e98b-7a25-2a084c52c1cf,Carter PLC,Retail,US,67,54371.02,2025-08-27,true
+5ecc231d-37be-4447-c9a0-a7947c69ffcc,"Wall, Chambers and Brooks",Healthcare,FR,19,45012.93,2022-03-24,false
+23f36ccd-697a-c018-3356-023996aff102,Lynch Inc,Finance,FR,77,151322.54,2024-04-07,false
+0b8d8a63-72da-a6cf-95cb-c90d04072de1,"Hernandez, Harris and Rodriguez",Logistics,UA,144,37864.87,2025-01-15,false
+a0010d3c-6fc6-4b4e-484e-b7bf590cf676,"Fitzgerald, Hunt and Chandler",Software,NL,36,456636.21,2021-05-24,false
+9cdbaa42-24ad-553c-12de-dd6144b1d826,Valentine Inc,Software,FI,44,253935.67,2024-06-15,false
+dc6f6ff9-4c13-c95e-82de-9343b874f271,Hensley and Sons,Retail,UA,677,330763.63,2022-10-13,false
+dd80601b-f598-5df9-2bb8-d6c516dee891,"Wells, Garcia and Williams",Healthcare,NO,137,128700.16,2025-06-16,false
+496cf213-ffbe-9622-3151-ef3152ee3068,"Potter, Smith and Pugh",Manufacturing,US,19,118606.20,2021-12-03,false
+ae5f8718-915d-c8d1-7a40-dd2e736bba3d,Perkins Group,Logistics,NL,84,76504.56,2023-09-14,false
+b5459a1b-2ce6-6d2e-b083-c9b684a9de0a,Richard-Peterson,Finance,DE,393,6836.80,2024-12-31,false
+1f42ca4f-b77e-0ceb-21a7-f74aae063214,Hernandez Group,Logistics,DE,96,22295.88,2026-02-10,false
+8e201abc-645f-6711-75d2-e49353980519,Vasquez-Estrada,Manufacturing,IT,1339,44985.07,2024-12-10,false
+d8958491-9629-292e-91b7-93fb03abc500,James-Moore,Software,PL,156,44083.50,2025-06-29,false
+04b9845b-a65f-6a09-f75b-5a4dcb211302,Jones Inc,Manufacturing,FR,63,199065.17,2025-03-12,false
+aeb38ed4-33cb-3e33-52d6-464a199b88e2,Jones-Curtis,Healthcare,ES,222,51170.19,2022-06-04,false
+6b4e985a-e68f-79db-2008-af87a9e4b4f8,Taylor PLC,Healthcare,FR,70,112867.71,2024-12-24,false
+a59f8e38-1ca7-5716-8926-fe50e2d7afbe,Ross-Newman,Healthcare,FI,134,178278.46,2022-10-23,false
+4f0f1367-2d8f-c653-ee89-9dbb27b90677,Turner-Andrews,Manufacturing,GB,130,178090.79,2025-12-18,false
+48322f9f-59f0-c5be-b150-5eea8504979f,Austin and Sons,Energy,NO,208,18953.23,2026-02-06,true
+53942cda-56fd-1084-2ffa-83d49444a2de,Hartman-Rocha,Retail,US,80,36555.05,2021-07-12,false
+693d4c78-14b6-e45c-b0f6-02a9662ba19a,"Simpson, Carlson and Ramirez",Finance,FI,90,39416.83,2026-04-02,false
+8beea1ba-5554-7518-75f9-8ba598b03739,"Burnett, Grant and Green",Manufacturing,DE,194,3314.36,2025-01-02,false
+740daafe-3987-0216-4909-2b61306e853b,Swanson-Johnson,Software,SE,34,12953.56,2024-03-01,false
+76d1d916-4623-4fcc-207b-b06100e09af9,"Sutton, Diaz and Hill",Manufacturing,NL,90,11964.58,2022-12-31,false
+b0aef63f-5e64-880f-30e2-fa71740c69c1,Wilkinson-Wilson,Energy,SE,35,887222.17,2025-07-06,false
+88eacfab-4888-7da8-5c76-685916621a93,"Thompson, Taylor and Garcia",Software,FI,117,172301.20,2021-07-12,false
+d9e6d21a-6e92-0c57-4554-680a2a59524f,Hanson-Coleman,Manufacturing,FI,24,17818.24,2024-10-26,true
+27f5c064-cfd9-6134-0fb0-85417901a18c,Montgomery Inc,Healthcare,US,196,30552.73,2023-11-12,false
+16ad1fbd-ce62-a79d-6823-97b336534af8,Anderson-Myers,Education,US,78,235331.09,2025-06-09,false
+e0726acd-48c5-ee9c-30b3-b1cc59d23015,Craig Inc,Software,DE,213,107010.62,2024-12-10,false
+e47e066d-3736-883c-9a4e-436a4ee54ca5,Miller-Bradford,Healthcare,PL,70,12312.80,2023-04-29,false
+269147ec-e92b-31d9-f704-d05c47041193,Ramos-Ayala,Logistics,UA,79,138553.84,2023-11-22,false
+e091e4fe-4f5d-f279-5ae7-f4b0fd7514fe,Thomas-Miller,Retail,FI,58,32336.84,2021-11-03,false
+721cef58-d306-ea8f-e638-03fd1ba18045,Obrien-Wilson,Education,NL,34,21005.58,2023-01-16,false
+c5952f1f-53d3-8bef-427c-3ab264a3c147,Sanders-Spence,Energy,PL,150,118496.98,2023-05-23,true
+5d4c7570-ef25-4b9b-ec53-5f3d3b93068f,Sanchez-Hill,Retail,GB,433,54686.03,2023-04-03,false
+bcf71581-8e8b-b1b0-d894-14448d17ca03,Woods Ltd,Manufacturing,NL,25,67454.77,2022-12-07,false
+25ffbbd8-926b-5d9b-bd38-92e2439c12fd,Hunt-Cannon,Retail,FI,211,22744.63,2022-01-22,false
+0ff547a8-04d6-46e7-96e6-ac87f60f6787,Smith-Johnson,Software,PL,57,98480.68,2025-08-10,false
+58237fc6-0752-9043-596a-93f2e5859408,"Serrano, Johnson and Sweeney",Manufacturing,PL,616,2156283.27,2024-10-22,true
+91f003cc-ffb0-438a-9373-a814451c336d,"Scott, Solis and Mercado",Retail,FI,26,42599.77,2026-01-25,false
+428d9dbe-91dc-6f9f-7d8e-20bb506a43db,"Morris, James and Hutchinson",Finance,NL,33,10679.11,2023-08-15,false
+ed69bb1e-d90f-ace9-3049-91dc706568b2,"Torres, Williams and Johnson",Healthcare,PL,287,101707.61,2025-07-30,false
+82b6241d-53e2-be93-3dd3-3a3c3a1e7d20,"Rodriguez, Brown and Padilla",Software,FR,194,106587.66,2026-03-10,false
+08e077df-615b-59ae-ae6d-aa0c01b5c533,Smith-Coleman,Finance,NL,10,1834.44,2025-02-16,false
+ce890028-2dfe-7ec1-5544-cbe240909c92,"Carey, Smith and Walker",Retail,IT,132,460309.71,2023-12-21,false
+d5bebed1-df22-062d-ba7b-43f75b1e239e,"Jenkins, Lamb and Adams",Manufacturing,US,109,314155.64,2023-01-06,false
+79f247c3-122c-c1f6-0851-5d3c63f39c27,Williams PLC,Finance,FR,173,52710.95,2022-02-24,false
+4e51dc92-f7e3-c8eb-813a-4b168c9652d5,"Patterson, Boone and Harris",Energy,US,23,273452.66,2021-11-11,false
+0794ea61-5ff0-0950-c18c-a5c57c08af23,Garrison Ltd,Software,NL,26,38788.40,2022-06-24,false
+40f09f24-9748-c659-2c0c-6533b8f4c496,Spence-Moore,Manufacturing,SE,34,48826.42,2023-07-21,false
+f678ce03-6230-6b3b-4653-856b75b84314,Green Inc,Retail,IT,76,1691313.56,2025-03-06,false
+002de9b6-d738-3236-d949-6b8be68075cc,Hicks-Robertson,Manufacturing,NL,28,12955.49,2025-09-13,false
+8c751790-f0ce-a18a-a561-5202f02e138e,"Kim, Glover and Bowman",Healthcare,PL,156,50619.51,2023-01-26,false
+8f9e6a1d-b2d2-21b0-5ae0-7357d0dc0f03,Kane-Myers,Logistics,NL,219,11514.34,2023-01-22,false
+2e010e9f-4a69-70fd-f0cb-2df6a99b52d3,Rodriguez-Andersen,Retail,PL,39,21256.38,2022-04-03,false
+293cbb37-216e-c446-f4a6-9c1a8f941c9b,"Davis, Escobar and Graham",Logistics,FI,67,38656.29,2021-05-19,false
+374870be-479a-fd32-7554-6afd4d1fc7db,"Huffman, Boyle and Martinez",Healthcare,ES,65,301529.21,2024-05-04,false
+52c7d73b-a7db-9ef7-2bff-c086ed694c6f,Perry and Sons,Logistics,ES,95,292670.00,2021-08-13,false
+a93a39c7-63b9-1df6-f6a8-bff25a5dab8d,Li-Harris,Education,GB,65,142857.45,2022-11-23,false
+c9d0b225-4e90-0a8f-13c1-40e403e04756,"Haley, Ramsey and Diaz",Software,GB,132,24319.15,2024-12-29,false
+2290192b-a2b4-730d-2489-aa476ac0fce0,"Miles, Sanchez and Schmitt",Logistics,NO,20,91664.92,2026-04-02,false
+74f28a62-fd45-383c-89ca-a5a2cef31b6b,Boyd-Scott,Manufacturing,PL,42,74595.47,2025-10-05,false
+7b85af54-55b0-fe2b-3e27-939de027d4ee,"Mendoza, Sutton and Oliver",Education,ES,14,172475.56,2024-11-18,false
+24e2be42-e10c-caf6-cd97-868ef6ca7fbf,"Simpson, Ross and Harper",Education,NO,290,69333.74,2021-12-14,true
+2eae8290-563a-259f-0689-9b80b03fb9aa,Watson-Johnson,Energy,FR,113,125941.21,2025-03-05,false
+13bea558-1f6e-11aa-6369-9a6404297fb7,Anderson-Mason,Energy,GB,209,33411.34,2022-05-01,true
+281598dd-f459-48e4-55e2-fc4ee738e716,Webb Group,Energy,US,19,171453.17,2021-10-22,false
+3c258503-9f61-6239-ab06-391b8da568dc,Grant Group,Energy,IT,12,421949.37,2024-01-29,false
+18ba2fce-b0b1-f284-e3b1-50e25c942570,Vega-Diaz,Education,FR,131,186634.65,2025-08-31,false
+2aa1a555-ac96-1044-e72b-4c14197dd385,"Bonilla, Rios and Hart",Energy,FR,74,711520.89,2025-10-05,false
+a93f83aa-f12b-1ce1-6503-5a60c586eec0,Jacobson-Robinson,Manufacturing,PL,305,92440.73,2024-08-07,false
+6871f390-f1d2-6f86-9e7e-8c00e9a4f801,Watts Ltd,Education,UA,9,45126.42,2022-10-06,false
+d05515ac-3046-eba4-3957-e7b37bad8116,Rowe-Randolph,Energy,US,665,28941.70,2023-11-17,false
+94e3b0e6-bec2-533c-4f6c-c78f24819854,"Rhodes, Anderson and Stone",Logistics,FR,966,86826.65,2021-08-11,false
+8650176e-5ccd-9ab8-a7c8-00e33c020e6a,Gardner LLC,Finance,PL,33,16447.45,2026-04-11,false
+bc34ada4-41d3-e062-bec9-07fe7910bf58,"Lee, Turner and Robertson",Healthcare,FI,41,57233.55,2024-12-14,true
+d54497eb-340d-8efb-a7ee-5ca2bee51f7f,Murray-Dixon,Retail,PL,91,9126.27,2024-11-30,false
+cdb3d853-f895-35d6-5ac1-edd0c1e8b6b9,Stanton Group,Healthcare,PL,219,163988.94,2025-08-11,false
+cbc2b869-df01-67d2-da4d-825c58a1229c,Beck Group,Logistics,SE,36,351601.13,2021-06-27,false
+11a71e10-3b98-3729-51da-e12e4924b0f4,Williams PLC,Manufacturing,IT,84,228716.21,2025-04-08,false
+d1ad435c-62e1-4c9c-ce75-a3cd4d258b73,Daniels Inc,Energy,US,27,23987.39,2024-04-07,false
+ba0bacf4-fe88-b162-a000-7af5f240f86b,"Herrera, Heath and Rios",Retail,FR,32,221804.37,2024-11-12,true
+07990841-e1c0-ae82-9500-f17cfc595a24,"Fisher, Graves and Mcclain",Software,GB,30,452849.94,2023-09-22,false
+33025cff-4c3d-095c-009d-be5470269f35,Hebert and Sons,Software,PL,103,70956.56,2022-08-17,false
+98c087c3-30b1-1f60-eb7d-4ab1af6a1785,Bishop-Garcia,Software,IT,162,13332.34,2025-11-23,false
+16366672-d5e0-f1e6-e1d5-16d411d95d30,Mcpherson Ltd,Finance,FI,36,188990.23,2024-11-30,false
+43b48c2b-e6ba-90b5-4288-de2cde56c95c,"Phillips, Lyons and Rivera",Education,UA,34,774359.55,2026-05-09,false
+3eb79c86-93d6-923c-511b-e1dd654819c3,"Anderson, Wright and Morton",Education,SE,86,112385.19,2023-02-13,false
+80e64bc2-2082-e224-9d8a-f1fa603e29c0,"Woods, Peterson and Bernard",Energy,DE,303,23198.90,2022-04-13,true
+1713ee85-7837-07f9-354f-0e8e73442a71,Taylor Inc,Healthcare,ES,31,79651.33,2024-08-04,false
+8e5fefd1-5eb4-530f-2d0a-e504d10b26e1,Carter-Price,Manufacturing,GB,135,149990.38,2023-04-11,false
+9105713a-3150-d80e-f9e8-058a91063050,"Dawson, Smith and Adams",Finance,FR,103,192367.53,2022-05-12,false
+71e6d107-1931-f661-6237-1087ea182ea5,Ruiz Group,Finance,ES,17,29010.62,2024-04-30,false
+ff1fa1d8-3248-ad51-0a08-e1ca43f9648d,Rogers-Sullivan,Software,IT,92,25717.06,2022-10-28,false
+d03387d7-f213-de74-9bab-8cb6e1540c88,Grant Ltd,Finance,IT,12,180509.03,2025-07-22,false
+32c76a77-4dcd-79a3-51c6-87169dfe7972,"Gamble, Rhodes and Hall",Software,UA,102,102703.56,2024-05-01,false
+9fe8286b-bf0e-e325-ddd9-4c620584ef7c,"Ryan, Jones and Short",Manufacturing,NO,419,17015.83,2025-03-03,false
+c1118969-ae5f-887b-525e-13d974bc22c7,"Dawson, Marquez and Smith",Energy,FI,61,16356.22,2026-03-29,false
+52a576aa-5e90-409b-1b61-69e2400191a9,Turner-Sosa,Education,FR,168,40601.37,2022-09-01,false
+bc8b5d13-c156-3728-4916-b869459a2f6f,Reid-Davies,Energy,US,78,25215.98,2022-12-24,false
+0b72097d-02b3-cdac-8897-77bab585fe88,"Wright, Nguyen and Hunt",Logistics,SE,131,76180.10,2026-01-07,false
+4b84a0bf-4831-4887-e137-9fed904b0858,Huff LLC,Logistics,NL,70,17568.47,2021-05-15,false
+2a9397fd-7979-ef3d-1c3c-11627611d5d5,"Hernandez, Castro and Lozano",Manufacturing,GB,207,796206.25,2022-11-25,false
+a2845920-770b-b07d-398b-2bb935207611,"York, Smith and Sanchez",Finance,FI,200,56986.57,2024-03-08,false
+2fe942e0-f637-b5f0-339a-5ed6e30d45c8,Rivera PLC,Healthcare,NL,99,20939.62,2023-09-28,false
+f083dec3-8a5c-347f-ec31-27c50e057110,Calderon-Gray,Software,SE,23,40934.74,2026-04-28,false
+cfeb13f0-2d2e-d1f7-5f1d-b5cae12bfc12,Jones Group,Finance,US,439,212368.85,2022-10-07,false
+2d9658fe-dec6-b30d-23e9-ffd02e9135e3,"Gibson, Thomas and French",Retail,SE,154,20291.85,2024-03-29,false
+926edc44-2d3b-8a12-f6b3-eb737059f38c,Rubio Ltd,Energy,ES,1523,114549.12,2025-11-23,false
+c0a9aacf-1cce-16a3-b421-c1711c2b02c9,Jones and Sons,Retail,PL,117,38801.90,2023-04-30,false
+72337c93-4294-8765-e3cc-ac89aaea2fe8,Nixon-Sanchez,Manufacturing,NO,27,103027.45,2022-12-06,false
+27c29284-eb61-e489-5111-d7a604114cf8,Gregory-Phillips,Finance,PL,156,166000.16,2026-01-23,false
+868847b0-4cec-3e48-b0c4-ff93896ce356,Ramsey LLC,Education,ES,220,192969.55,2022-12-16,false
+97d45f50-21aa-95b9-fd02-f73c45eea38a,"Perry, Cooper and Barrett",Finance,NL,326,23557.74,2021-12-14,false
+654eab3c-9030-e8ea-426d-442425e04f97,Davis-Chavez,Logistics,FI,193,92902.73,2025-10-17,true
+3e73d045-d568-2fd9-3a65-04df9de03b48,Perry Group,Retail,US,59,41109.04,2024-06-23,false
+647f2fa1-054f-4fec-3bd8-39d08a8f1c4b,"Fisher, Walker and Bush",Software,DE,60,39298.30,2025-03-31,false
+7d44e98f-fbba-cb7c-a001-cab7e286849f,Browning Group,Education,SE,88,100973.56,2022-02-18,false
+7468446b-0177-e079-4ad3-665bb12025a8,"Ferguson, Williams and Lee",Manufacturing,DE,22,21077.12,2024-05-18,false
+cc7e7e51-7a08-f906-2597-970a45258889,Watson Ltd,Logistics,IT,812,89257.12,2025-07-05,false
+894d7de9-465a-11af-2bed-ac5571d99236,Hernandez Inc,Healthcare,PL,41,104613.14,2021-07-28,false
+c284ddb6-eb16-2595-6225-6fcd0c664297,Macias-Higgins,Logistics,NO,76,410772.02,2024-07-14,true
+2f0d6b6d-f904-4bdc-1773-088055f33a45,"Gross, Roth and Wright",Education,ES,12,62177.67,2022-12-10,false
+cf4e959b-9370-0746-2ba7-8204823f2d37,Kramer-Holmes,Logistics,UA,194,50165.47,2023-07-05,false
+8bcb870b-5db7-17c5-5ca0-478f7d044688,Wheeler and Sons,Education,SE,45,60454.36,2023-08-15,false
+5c67d265-7138-b787-7f2b-95e948c083ce,"Clark, West and Kane",Manufacturing,ES,93,124900.90,2024-04-08,false
+2d8465bb-6082-5f6f-6a20-17eec5a93bfc,Murillo Ltd,Healthcare,SE,47,50169.96,2021-06-08,false
+3d97c0d1-5cbd-ff39-64b0-45fecc7f62aa,Gordon-Walton,Logistics,FR,16,17445.89,2023-01-22,false
+4e7f44a6-28fb-2d9d-a86a-d3d00dabe798,"Scott, Callahan and Alvarez",Logistics,FI,49,265627.18,2022-02-01,false
+8e3c77bd-3dd5-5edf-fb21-7d9e9e25dbc6,Alvarez and Sons,Logistics,GB,78,17938.93,2023-03-10,true
+d369e47c-9c95-d9e6-8000-2f4b320b7e7d,"Garrison, Herring and Murray",Healthcare,FI,268,6924.28,2026-03-06,false
+7c3b9959-08ca-ee02-709e-e7a0523fece1,Ramsey-Mitchell,Healthcare,GB,34,96039.71,2024-05-06,false
+6bdcc6ac-56da-9176-11a0-08f65bbb2265,"Davis, Roach and Brown",Finance,NL,27,54751.68,2023-01-18,false
+b8f08bfc-54d5-2103-dd6e-2e4954437902,"Patel, Sherman and Martinez",Finance,PL,33,19340.97,2022-01-08,false
+f629bb62-33f4-bf80-6000-54e9de73978a,Garcia-Sims,Healthcare,NO,169,48070.47,2024-10-31,false
+eb1562f5-19f2-0f71-4d99-d91397bc53a7,Garza Ltd,Healthcare,PL,429,28310.15,2021-10-09,false
+b631293c-9d00-be2c-469f-d1b5950c9562,Jordan Group,Finance,IT,24,160838.21,2023-09-13,false
+f818e267-0901-e0b2-12f7-58237b3a462d,Singleton-Casey,Manufacturing,UA,272,281320.80,2025-04-01,false
+b4e70391-0518-c11b-0f72-7b32c463d928,Ortega Inc,Logistics,SE,48,130526.85,2024-08-06,false
+305302e9-96aa-689a-65cd-3b84e286b6c3,Rivera LLC,Education,NO,95,100751.47,2022-12-27,false
+4d646e10-8ebe-7737-97a8-e9d72cfa0c2c,Blevins PLC,Software,GB,42,23393.86,2022-05-08,false
+a5fcecb0-53cf-4880-e261-78197ccba8b6,Jacobs LLC,Manufacturing,US,91,117672.02,2022-05-12,true
+64136192-9b06-c630-e006-1b773df2abf0,Diaz PLC,Manufacturing,SE,134,56905.26,2024-07-09,false
+a3cff0e8-800d-b6cd-d8d2-34a6e2806e0e,Gross-Carroll,Retail,ES,29,13871.35,2023-01-07,false
+35e590b3-5053-cc3e-996b-0218e3c2d993,"Stevens, Herring and Faulkner",Retail,PL,21,58947.61,2025-11-19,false
+f1bfcb1f-7975-2590-81eb-eb38bc92e0f4,"Bright, Willis and Gonzalez",Manufacturing,FI,362,15499.03,2022-09-17,true
+1d16a372-b658-4e8b-8984-84a30cad9a9b,"Allen, Thompson and Reed",Logistics,NO,173,9036.11,2021-11-19,false
+258c24f1-7250-6825-06a4-cccddb8e7829,Diaz and Sons,Manufacturing,US,155,46116.12,2021-07-28,false
+8b8f33b4-f3cd-5836-3265-f36c3b263c7f,Murphy Inc,Software,PL,268,62946.88,2025-02-19,false
+5271fba3-4b5d-2c3d-87b9-eb0786a73cf4,"Bowman, Martinez and Williams",Software,ES,35,110447.58,2022-09-09,false
+23f846d7-b3c1-4f73-5d71-8f2d457c9213,"Wise, Bridges and Johnson",Retail,US,32,149250.03,2023-05-16,false
+140f7f9d-fd4d-cb72-ea8b-0189d434d7c7,Shelton-Bond,Healthcare,ES,11,28675.33,2025-03-21,false
+f267bf59-7039-9f64-2a9f-92f72c4cafff,Perkins-Johnson,Finance,DE,191,243790.10,2023-03-17,false
+fdc2d01b-ac79-0979-20e2-eaa18c359545,Downs Group,Software,NL,34,115027.39,2022-11-22,false
+21937007-aca8-2599-e3e5-141ec889acc9,Willis LLC,Manufacturing,IT,366,44530.03,2025-04-07,false
+da61df22-f7f6-0a06-2295-f149bab05886,Martin-Garcia,Energy,PL,183,273678.63,2026-03-23,false
+8e539386-65a2-cd1e-7777-790d070d03b1,"Cooke, Martinez and Martinez",Finance,UA,41,80016.10,2023-07-01,false
+3b4112a3-df41-0eee-5639-542ea9cc1255,"Hall, Gilmore and Krueger",Manufacturing,US,325,5189.32,2021-10-31,false
+5f562734-b198-f89d-adb3-45e6b57593a6,Willis and Sons,Finance,ES,37,357453.58,2026-01-12,false
+5999747b-3e55-5cb1-b2e9-f286e1e4f760,Bryan LLC,Manufacturing,DE,168,78502.48,2022-07-19,false
+d05d16d0-ebec-f248-9c10-79a5168e9f4e,Perez Inc,Education,US,221,92563.31,2022-03-16,true
+73d44107-5d95-ebd5-8bf5-c30bc91a412b,Thompson and Sons,Finance,IT,241,13490.45,2025-05-24,true
+e6808011-2095-2872-60ce-30b7248084b1,Taylor and Sons,Healthcare,FI,193,28353.09,2023-03-15,false
+83bae901-843c-528b-2fbf-3fa148ebccde,Greene-Forbes,Manufacturing,NL,35,56597.67,2022-08-07,false
+c75405a6-982c-ea18-2b45-55b52dae4d6d,"Shaffer, Craig and Day",Retail,SE,74,4250.10,2023-12-31,false
+1b7da7be-6779-3369-f552-cb03a3ca1944,Leonard Ltd,Finance,GB,102,119608.88,2022-06-01,false
+17d7b0c0-b0ea-84bf-673a-d6ffd8787ea6,Pierce-Anderson,Software,IT,168,94945.12,2022-04-05,false
+f6c9b78f-d6b5-3562-fd82-e7c6939e119d,Herrera Inc,Education,ES,34,6234.46,2023-06-14,false
+f564553c-935d-40c8-f6d9-9ac851a143f4,Faulkner-Marks,Retail,UA,61,5670.52,2022-11-28,true
+216baaad-a854-d5e2-ae9d-993db16396f5,Evans-Shepherd,Finance,SE,168,171872.70,2021-08-22,false
+e95f3f28-718c-f8e8-a589-39a83377057b,"Bennett, Sanchez and Snyder",Logistics,DE,80,186901.96,2022-12-29,false
+5cffb008-2477-d85d-500d-399bad2232a9,Chavez Ltd,Healthcare,US,190,22287.21,2024-11-06,false
+5c662046-d830-78e2-5484-f460bc53d286,"Abbott, Espinoza and Myers",Retail,PL,122,50822.20,2024-02-05,false
+ab8245d5-78ab-ab57-8c4c-812b8191edbb,Jimenez-Anderson,Finance,DE,180,77699.13,2022-11-16,false
+5e23f3ee-a311-1705-d61b-ef41ab9860ca,White-Wagner,Manufacturing,FR,61,58630.06,2025-11-20,false
+e1ebe169-b079-cbd4-caf1-b802ca78bfec,"Castaneda, Miles and Jones",Energy,PL,298,39650.67,2023-06-22,false
+b858a921-17dd-e56d-cc4b-01024e2398fa,Chen-Rios,Education,FI,142,210384.62,2024-10-17,false
+7b404687-c9bb-2830-1883-e0b2c40c994b,"Thompson, Jones and Myers",Finance,NL,41,273888.54,2023-02-17,false
+fbcab478-7c6b-8b94-76d3-291e2cfb79f4,Durham Group,Software,UA,48,23181.79,2021-07-28,false
+c0024883-ed95-6a9f-1459-c3ec76fb20da,Holloway PLC,Healthcare,IT,95,73191.93,2022-01-03,false
+ecccb88a-ae3e-d807-b3eb-cc2a3ed5497b,"Padilla, Gray and Mcgrath",Healthcare,ES,4,115067.67,2024-02-16,false
+b96b8922-ea89-5172-fd97-fe0181517c68,Malone and Sons,Education,PL,19,36662.83,2022-11-09,false
+2e67b7b6-f744-a57d-bf76-5af2a59d290e,Morris Inc,Software,NO,11,50390.16,2025-05-20,false
+2f049349-b322-32f2-7997-55fdc95c97aa,Peters and Sons,Healthcare,ES,53,14128.35,2021-12-04,false
+548cdeff-43b0-4b92-092d-3735d49d1a07,Christian Group,Retail,UA,598,138050.29,2022-05-16,false
+2ee2c824-6d62-5d9f-2cc0-b2a8183a8003,Fuller LLC,Retail,GB,190,1196896.50,2024-03-23,true
+e4e31af3-099f-22e6-d8a9-6c06cda83c61,Mcgrath-Thompson,Energy,UA,151,22394.75,2024-03-25,false
+821a4e35-ca7c-c7e8-dc89-f490440af304,Valdez-Williams,Healthcare,SE,470,35161.66,2025-08-06,false
+e402a96e-d90a-dfc6-c480-cf2ba0af1b3b,"Doyle, Brooks and Campos",Retail,PL,60,17033.40,2021-08-31,false
+173d1211-5107-2d45-0c6f-3ea7f9c8491f,"Bryant, Peterson and Sharp",Software,ES,66,7469.98,2024-07-17,false
+377897e9-0449-4fa1-466c-72e2e42c9230,Gonzalez-Downs,Healthcare,PL,83,150865.06,2025-03-10,false
+f1ba7847-ff09-d438-c4a3-bf0e82c5dfde,"Fuller, Maynard and Cohen",Logistics,GB,169,68002.48,2023-07-22,false
+0e2592ba-317c-f36d-4942-594a690a139a,"West, Smith and Franklin",Energy,PL,425,136801.02,2023-01-18,false
+c0dde9ec-5cb6-4639-7e8e-c9e95ffc9e23,Moore LLC,Energy,SE,550,71751.00,2025-05-14,false
+d89d2b1d-592f-7e37-a8a6-fa0feb062387,Martin Inc,Energy,FR,148,139698.42,2022-07-30,false
+d5e4227c-9d7b-96f4-2209-c9b094056bd1,Lopez Inc,Energy,IT,255,175498.87,2022-06-10,false
+8ac607f4-3219-7d8a-af43-6b824d7a9098,Jimenez-Rodriguez,Energy,DE,10,13923.63,2025-08-05,false
+cc02b5b9-0ac6-2ff1-f3cd-b5d8e41528ae,Clayton Ltd,Manufacturing,NL,287,129349.08,2021-09-25,false
+04f7856c-b3a1-48b6-e0b4-d5bd0330eef7,White-Coleman,Retail,IT,54,36373.50,2024-02-20,false
+d2b74f91-e956-91e4-28fe-97260a74f7d5,Anderson Group,Retail,SE,65,47063.87,2021-11-26,false
+54731ad6-f3a6-ce3b-ef57-927feedf60b9,"Bush, Hill and Hawkins",Retail,PL,363,501569.39,2022-10-19,false
+973da6a5-5ce9-dd23-fffe-bc402819ada2,Ramirez-Matthews,Retail,FI,29,211010.04,2024-10-16,false
+69daa679-4dd3-2cd0-17a4-98d9f07f6b89,"Camacho, Williams and Stone",Software,SE,225,101731.98,2024-01-08,false
+300ba1d1-d136-2aa8-a371-8959727e24a6,"Nichols, Owens and Lambert",Energy,NL,30,8644.73,2025-03-09,false
+fd909d7a-6cab-86d1-e915-cbc590ae9b50,Martinez-Hoffman,Logistics,GB,121,92211.82,2023-03-20,false
+e49c0e6e-dc48-12fd-48dc-ebf41c1f4d4b,Hernandez-Mathews,Education,FR,174,43784.88,2022-01-19,false
+b20dd553-fac8-6045-e60f-08a5ac340f57,Gentry-Mccoy,Education,FR,134,13566.28,2025-02-21,false
+054943df-b22d-5c1a-343f-b7052372b451,Farmer-Montgomery,Retail,UA,21,29511.22,2023-02-23,false
+057dcf8e-cc32-d9be-7622-400dc87431c3,"Savage, Ramsey and Kerr",Manufacturing,NO,8,249111.14,2026-02-21,false
+fa9e08aa-06a4-3ae2-478f-7c6b5717cc42,Payne-Johnson,Logistics,IT,177,8164.74,2022-04-11,false
+55a5dc50-2241-cc62-5ce9-9530f040b3fd,Freeman LLC,Software,FR,156,540098.69,2025-02-23,false
+fe499d81-e784-eeed-c70b-196273fa80d0,"Burns, Cervantes and Powell",Retail,NO,83,364457.51,2024-01-09,true
+c0af2e1b-e086-25c7-624a-804362d5c147,Oliver Ltd,Healthcare,ES,89,93902.22,2023-06-10,true
+47a8a305-9761-04a7-f9bb-768c3088ece8,Brown-King,Education,GB,407,34016.62,2022-06-09,false
+ba8e5955-3822-d46c-1dc1-66b590eba294,Rios-Callahan,Energy,SE,263,826475.21,2024-01-11,false
+058ebd6c-44b6-c007-3d05-d4270fe3c333,"Greene, Harper and Cooley",Manufacturing,SE,7,199915.13,2025-02-24,false
+4aac5143-8411-4e23-86fe-6cae2473d8b7,"Thompson, James and Wright",Retail,IT,63,17279.10,2022-03-01,false
+9ac9366c-2c72-57d3-f92c-5f3cb09e41ba,"Bryant, Sandoval and Hampton",Energy,GB,64,101883.55,2025-02-26,false
+36dee8a1-277d-4242-1a2b-faffee7053bf,Mendoza-Brown,Logistics,NL,19,157917.10,2026-01-08,false
+851af21e-324c-5586-14e0-19f00671169a,Nelson-Hawkins,Software,UA,23,199405.36,2024-09-16,false
+76f7833c-b3ae-3896-f0c9-98c994ca460b,"Simmons, Ward and Strickland",Education,PL,43,48725.59,2026-01-29,false
+13af8554-2f66-6ba0-1330-3adcab218ee7,Garcia and Sons,Finance,NO,96,150181.05,2023-08-09,false
+8e8dc9a3-7da6-33d1-7f95-831408712ef4,Melendez-Jones,Manufacturing,PL,92,12429.95,2025-11-02,false
+9ea7ff43-f9c3-ad6e-b8ec-126ed5c9605d,Fleming-Mckee,Energy,NL,54,108680.19,2024-11-17,false
+c7e88696-9194-cccd-60ea-c11fa9b3f3aa,"Smith, Phillips and Dodson",Education,DE,93,5249.75,2023-02-18,false
+c98a6058-6085-c177-b91a-f60a793c4c76,Shelton-Cooper,Manufacturing,ES,242,90774.80,2022-12-12,false
+3dd23e37-7e5c-e0e4-2692-6b3c2bcfcbb3,Perry-Wright,Energy,FI,177,150201.80,2021-07-21,false
+9d3d8225-6d46-67da-c6c5-ca8f557dc3fb,Myers PLC,Energy,NL,211,23328.19,2021-09-16,false
+cad87a0e-bf8d-19e8-ae90-ecfec0011f2c,Reed Ltd,Logistics,FI,132,23505.39,2024-03-24,false
+a9506353-7cfd-ad97-9de5-942b96c049b4,"Brooks, Horn and Joseph",Retail,FI,99,33560.76,2023-03-17,false
+85cd3bd7-54c7-b8b7-844e-b57b8e33befa,"Hall, Lawson and Martin",Retail,FI,57,100046.95,2023-08-05,true
+5c5919e8-42d7-07ea-5432-98c8bd1ee765,"Rodriguez, Edwards and Carter",Energy,US,76,32201.72,2025-02-03,false
+b16e13ad-7d19-6d6a-8f40-e2ad7bfaa012,Dunn Inc,Logistics,DE,131,244053.43,2022-01-06,false
+0af932f7-39ce-ecc5-fa76-0706e32855fc,House-Velazquez,Education,FR,114,256285.86,2025-08-29,false
+ebff054f-6a76-8c17-1222-6750134d6316,Bartlett PLC,Finance,PL,72,77562.53,2024-02-03,false
+b3fcef6f-3f38-427f-5c3e-533dbe95b2e8,"Rivera, Jacobs and Webster",Education,NL,235,23999.05,2023-10-05,false
+b66086cf-fdbb-1855-0a2f-549ec3fabdc9,Coleman-Garcia,Finance,SE,186,45884.51,2021-09-03,false
+4016664b-93d4-1832-1fd3-71b60a891ebc,"Collins, Hill and Bradley",Retail,FR,939,34452.72,2022-11-12,false
+74650f0b-9be7-7df4-35bb-b68712633c82,"Thomas, Schmidt and Waller",Manufacturing,PL,30,17464.65,2025-12-30,true
+ff95c138-166e-7a2f-73f1-15d4e0d043dd,Miller-Gilmore,Retail,FI,66,98829.24,2025-12-17,false
+d9714aaa-b724-c467-4598-7ae8217af5db,Johnson-Gonzalez,Education,US,86,130616.70,2026-03-17,false
+9d7c1afe-e48b-b7cd-b25d-d1b070804a4a,"Burch, Sanders and Steele",Education,GB,64,14053.43,2025-02-22,false
+29190739-16b7-aa42-5f5e-4e4c861c4fd7,Zhang-Vazquez,Finance,IT,187,93423.52,2026-02-13,false
+3302d2a1-f7c3-2fe8-c2b7-ff9b532e76f0,Davis-Wolfe,Retail,ES,45,130055.50,2022-08-01,false
+9a5bfea1-45f9-2fb3-a14f-3874620a766b,"Mendez, Larson and Butler",Logistics,NL,631,6071.00,2024-03-21,true
+110412de-65e2-d6dc-8bf7-80f75c9f36df,Cobb-Rios,Logistics,ES,12,27924.17,2021-06-20,false
+ae6b6496-bd78-f59c-f6dd-d94efbd8f394,Knight-Thompson,Manufacturing,ES,40,3664.72,2024-11-20,false
+2e5ab261-151e-a495-1209-4942d16637ac,Estrada Group,Retail,GB,11,9790.69,2022-11-27,false
+db213081-79eb-832f-2132-8fa0972a4aa4,"Moreno, Faulkner and Cooper",Healthcare,DE,40,159920.00,2025-12-31,true
+4cd79e80-b5bc-1eab-a008-51cfcb6ea0a4,Blevins-Clark,Software,FI,495,69471.58,2026-05-04,false
+3ea1792c-96dd-1ae5-1101-f5e63664b23e,"Henderson, Smith and Hale",Retail,DE,9,51331.95,2021-09-29,true
+bc6afc6b-8570-1646-f8be-8bbfc56fdc32,"Jones, Hall and Thompson",Energy,IT,96,45780.09,2025-12-07,false
+d580ce6a-84f1-5a20-77e2-808c77149283,Valdez LLC,Retail,PL,196,191883.12,2026-03-09,false
+c7f48804-6858-f94d-8197-dbd3a9cd20e6,"Green, Petersen and Roberts",Energy,IT,179,9518.08,2026-03-15,false
+ffbb404e-0b72-d5ca-b3d2-4fb19a62b0c4,Acevedo-Davis,Education,IT,38,55607.97,2026-04-24,false
+370b2e26-ed25-c70a-7a68-c1e9ad4ed172,May LLC,Manufacturing,SE,17,85679.11,2021-07-21,false
+80687df1-21c2-0a19-af20-1b5d3171105f,"Robinson, Hernandez and Brown",Finance,NO,61,52895.29,2023-08-28,false
+252af079-df76-f081-6a51-89ca08429b79,Berry LLC,Healthcare,IT,35,198961.78,2023-04-22,false
+0b64d7df-68cc-3899-12a2-2114489ac8ec,"Dunn, Jones and Whitaker",Manufacturing,IT,39,207778.46,2021-09-10,false
+47bd30fe-b3fe-6ce8-e218-0b3809dd92d6,Reeves-Benson,Healthcare,NO,387,38123.52,2025-04-19,false
+fd59138a-4f5d-0ee6-a8ce-7f533d620e56,Larson and Sons,Education,NO,52,1462487.68,2021-09-28,false
+731bd373-c9ad-22c7-c12a-953da84bd969,Anderson Ltd,Logistics,GB,431,44946.56,2021-09-24,false
+38f42b5c-c525-572d-7e3f-a87fb74c147b,"Vaughn, Rodriguez and Willis",Energy,SE,25,109733.67,2022-10-15,false
+3d410b3d-c7fe-2a05-9f3f-7944b163204e,Johnson PLC,Healthcare,SE,121,7356.13,2024-11-02,false
+57771fa0-9315-c81e-a0c2-360a13c6b2d2,Christian PLC,Finance,GB,26,25568.42,2024-02-21,false
+ba701cd5-8893-2dd2-599f-edc00f1e291b,Lewis-Nichols,Manufacturing,NL,109,151137.33,2025-08-09,true
+357f1fbe-f98f-220c-3915-09cc05a9e543,"Hoffman, Cruz and Peterson",Energy,FR,24,74142.14,2022-09-01,false
+5937ec24-5204-e8d0-503c-49ebb0a60c8d,"Campbell, Torres and Miller",Logistics,SE,68,142739.20,2023-08-17,true
+9c51afe4-355b-33ff-d9c2-292e8ea69053,Parrish-Walker,Energy,US,42,16240.06,2021-05-20,true
+5ba2f4af-c917-3c33-628e-715beacb76c8,Bernard-Johnson,Software,GB,464,179533.07,2023-04-22,false
+11079557-baff-2f9c-c676-a6a124f2f289,"Hammond, Anderson and Sexton",Energy,NO,34,1160084.42,2022-04-01,false
+f55974ca-9889-09a8-0976-38d5291af0fc,Clark PLC,Education,NL,106,41194.06,2023-02-15,false
+27c7a884-85ac-9c83-33a8-bf902a5bf539,White Inc,Healthcare,US,55,14163.36,2021-06-06,false
+f1d7b7d5-0371-fc43-ac4d-3b756e113580,Stewart Group,Healthcare,UA,68,85299.39,2025-02-21,false
+f17a6adc-2221-ab6d-528d-83e4698e5463,Miller Ltd,Software,US,40,22862.27,2024-06-20,false
+1e1b239f-27ed-403e-7878-bcb5da0d75b2,"Lopez, Marquez and Mitchell",Manufacturing,GB,175,16856.47,2025-06-13,false
+dc4ef3cf-fc48-50ef-be95-23129f4fbc65,Gibson Ltd,Retail,PL,106,172015.98,2022-02-05,false
+d8df4d93-b1df-d922-4124-e8f02c538597,"Harris, Mendoza and Kirk",Manufacturing,SE,81,49738.64,2023-09-19,false
+2be52e55-9a27-b674-0592-716290d6f5f3,Craig-Vaughn,Healthcare,PL,101,21209.00,2021-08-15,false
+3413c9fa-46c5-3757-24d3-9088fb42203f,Spencer-Jimenez,Manufacturing,PL,288,73032.34,2023-05-17,false
+55dc8a5f-5484-3d9a-4457-99fea87ab164,Smith-Mason,Education,IT,22,8698.46,2025-12-11,false
+ad6935fe-2b65-afc8-4622-68774c5f3946,Rowland Inc,Manufacturing,GB,347,1737.70,2023-01-20,false
+4058ed36-b410-852c-d133-dd3b7a126efb,"Taylor, Long and Flores",Logistics,ES,206,16409.50,2025-09-05,false
+ccabfdbf-9327-7a0e-e788-80ddf13721ae,Boyd LLC,Finance,NL,208,124480.40,2022-11-27,false
+5faccac2-13bc-2ade-2ebc-2878a5bedbde,Cross-Jones,Retail,FR,60,18575.43,2022-02-04,false
+760b1d17-a91b-b4eb-6220-6847481c18d1,"Fisher, Gonzalez and Mathews",Manufacturing,SE,49,14317.99,2022-07-08,false
+54deabe0-bc51-c165-721b-3c316f39f490,Hayden-Clark,Healthcare,UA,190,19561.00,2023-04-15,false
+0dbdb39c-29ce-2b30-3086-9a5fb76d325d,"Stephens, Roth and Banks",Logistics,FR,52,172636.61,2021-06-26,false
+73de9818-d6e2-b005-f355-201203ef8296,Ross-Hayden,Logistics,UA,105,107285.16,2022-11-01,false
+f602167d-6202-6f5f-f61b-cf71039ccee5,"Saunders, Ryan and Stephens",Finance,DE,29,121103.12,2025-08-18,false
+8e7b04e7-f292-2937-a7ea-d8ddb7268b78,Campbell PLC,Finance,NO,55,7468.16,2024-09-04,false
+3a41ec89-8210-3a2f-785b-72965383654f,Johnson-Ingram,Retail,IT,70,50608.38,2025-10-15,false
+b64114cb-26ca-ce3e-524c-4f4b91ac3ffa,Ellison-Howard,Finance,NL,51,137836.02,2022-08-07,true
+e11f47db-8201-0558-ddd5-28ac5ce64921,"Moss, Ferguson and Johnson",Finance,FI,120,31544.77,2024-09-01,false
+35d717b6-7584-2606-3d77-720c4d3d6c82,Brewer LLC,Retail,NO,13,28133.33,2021-06-15,false
+e3d4e3ff-00e3-2b62-64f0-ed6f9d7fdb2b,Jacobs-Taylor,Retail,FR,40,17915.54,2022-01-08,false
+b09a9148-c52a-97dc-9e5d-18098fba060b,Smith and Sons,Logistics,US,87,41230.77,2023-11-09,false
+a200b10d-6f64-26a6-ce61-c4c9bab1820d,"Greer, Hartman and Lawrence",Education,GB,376,45646.75,2026-01-21,false
+182a7046-7bf3-0745-4d7e-307c6a659d8c,Graham-Barrett,Software,DE,67,62510.63,2023-12-10,false
+828351ff-8642-ac3e-d284-b941599a063a,Schmidt Inc,Retail,GB,80,39356.58,2025-10-30,false
+0a8ee8b4-4330-6ed2-527a-acfd5c8f8d7c,Smith and Sons,Logistics,NO,64,38551.92,2021-06-28,false
+f5209b2c-30da-db23-8614-123bf67243e0,"White, Jones and Johnson",Manufacturing,FR,170,85414.73,2021-06-27,false
+18cb23ff-1f0e-af24-cd41-cf8bac52e6a5,"Wheeler, Robinson and Leblanc",Retail,IT,48,15128.29,2022-08-18,false
+0c3ba21d-fb4e-6d14-5f49-93a55162d5b3,"Rivera, Baker and Brown",Finance,GB,274,140884.45,2022-10-15,false
+3ba4f593-7a35-5551-0fd5-acbe70db6319,Sullivan-Hood,Energy,NL,165,54313.79,2026-02-09,false
+bf0a001b-95b5-3f2d-f2ec-0a4377f9a6db,Brady Group,Education,FI,189,309762.67,2026-01-17,false
+15ae0276-d137-fb1e-73f2-1eb28a0c124b,Ross-Thomas,Finance,FR,180,365915.42,2025-05-14,false
+3ce52fad-84c3-330e-8319-2b9aaaa80aa7,Williams-Brown,Finance,GB,102,40986.99,2024-03-19,true
+091e99c8-61b6-a756-6ad1-a4257cb0d60d,Adams-Simon,Retail,GB,111,23025.82,2024-05-02,false
+c0ab8450-0861-31b5-5a67-557522c4d203,"Lopez, Little and Garcia",Healthcare,NL,69,14083.97,2022-08-06,false
+b4f82dab-d6b9-1427-c332-91169b3f25ba,"Peterson, Giles and Stafford",Manufacturing,FI,209,175903.39,2022-08-20,false
+d8a26278-7f0d-89aa-cc23-6da01265f63e,"Jackson, Stewart and Hunt",Healthcare,GB,15,63303.29,2024-03-31,true
+5acbf050-63f1-e04e-e0c8-5094bcbd3f47,"Reyes, Fox and Mays",Logistics,GB,36,9375.64,2023-02-04,false
+d4287dbf-dd2a-3029-fc48-76220cb518d9,Pham Group,Manufacturing,SE,78,132729.37,2021-06-19,false
+0e1c1cd1-96b9-1184-06b0-5b35ecc8654b,"Jensen, Ortega and Lee",Healthcare,SE,140,119254.71,2021-10-11,false
+adafb434-e3ff-984e-7482-3c52c564d2c3,"Adams, Vargas and Greene",Retail,GB,168,23860.07,2026-03-12,false
+40b1a193-299c-d677-6e56-abc22ac42d88,Gonzalez-Wood,Finance,UA,33,133963.52,2025-11-28,false
+309b53b2-89ae-72ac-560c-60722413c3d5,Wise LLC,Energy,IT,301,50493.18,2024-04-25,false
+4902ea23-2aac-b7b8-788e-4e5ec67ec019,Lee PLC,Healthcare,NO,53,123291.15,2025-01-12,false
+240f86fb-590d-dc5b-5605-16b4ed979a96,"Spence, Butler and Chan",Logistics,PL,83,217603.07,2025-02-11,false
+04ab84af-d912-c3ca-1c66-28b8a935be74,Ellis Inc,Manufacturing,US,120,39580.00,2023-11-30,false
+d821c7b8-49f0-c0cf-4bcc-b2b5867c67ee,Zimmerman-Kent,Healthcare,NL,70,34193.55,2022-04-17,false
+58de4ce2-8135-d9d6-5622-74ffed9663d8,Fernandez Group,Education,PL,17,45175.57,2022-04-14,false
+86598526-f180-45aa-7e3e-d41873a8915d,Murphy-Hughes,Finance,IT,145,43573.10,2025-02-24,false
+dd5a8142-62c4-69d0-3484-59c0c9f4ad19,Greene-Benitez,Retail,GB,57,229771.22,2022-07-28,false
+b4dbde6a-4ff8-f791-7b4f-5a1bccee07f3,"Butler, Franklin and Gould",Logistics,US,81,64805.84,2022-01-15,false
+f40de47d-4d88-8e72-dc11-64c697e4c379,Ortiz-Ferguson,Finance,PL,81,5296.05,2022-12-28,false
+3a17177c-b518-aaae-6a1f-ba927cab650d,Copeland and Sons,Healthcare,NL,76,30736.86,2025-12-17,false
+b40cd075-3b31-080d-579f-df181e205b4a,Adams-Michael,Finance,PL,120,61182.92,2022-12-11,false
+d1f3ff09-ac82-fcac-b517-edf0684bdc51,Lopez-Crawford,Education,NL,288,65478.03,2023-04-10,false
+75d551de-7d39-e832-fa0a-3e6b1815a5fa,Arroyo-Jacobs,Education,UA,280,117199.05,2025-03-14,false
+ff09e8f6-b2dc-0cca-6eb3-19cfb3323852,"Bradley, Oneal and Smith",Logistics,ES,162,40375.04,2023-12-30,true
+5e2f2340-b752-c211-f3af-772d5c51c3d8,"Duran, Johnson and Farmer",Finance,DE,46,35515.54,2022-12-21,false
+adbd02db-a29b-1064-8d65-ae178cf61725,"Terry, Barrett and Hinton",Energy,FI,81,30920.59,2024-01-30,false
+fd1d6b43-c0e5-d331-d4a3-5adf2a662b83,"Martin, Chase and Hoffman",Software,SE,74,87827.87,2024-10-24,false
+160f30c9-fb0a-86dd-a2b3-53f4b4d56599,Bowen-Fernandez,Manufacturing,IT,69,54949.56,2024-01-22,false
+3f2bc2f7-80e1-d2af-a3f8-115dfac4e414,Mclean-Jones,Finance,US,29,176575.71,2025-05-08,false
+3007c3a4-484f-7ac7-d3f9-17edc4d2b42d,"Webb, Orr and Lee",Finance,UA,89,13267.18,2023-04-02,false
+4aa2bac2-2027-f23f-e85f-929a57f9dc4e,"Bird, Bradford and Haynes",Manufacturing,UA,154,27838.41,2024-04-05,false
+f3a906be-58fb-0dd9-eed8-7b6c5d174a24,Hernandez and Sons,Logistics,FI,510,62306.41,2025-08-01,false
+dc694c14-37fe-7d1f-8af1-d58d5d2fca64,"Romero, Hardy and Jones",Manufacturing,ES,153,117033.96,2023-02-18,false
+6532a7be-0d50-d806-34d4-c230795b08c3,"Brown, Morrison and Nelson",Education,DE,234,175060.90,2021-06-15,false
+d68c5015-5316-d8d4-87e3-ed0cd354df04,Chang-Houston,Software,NO,36,18957.52,2025-10-20,false
+01c5104e-92bb-10a1-5fd3-29b719a47e7a,Carroll Inc,Education,GB,99,25620.53,2026-03-25,false
+d89fb65a-ed27-8c70-5a3d-939234f5ce23,Baker LLC,Software,SE,210,39739.14,2023-10-12,false
+ea3b0c28-465d-bdd9-b579-77931122d3a5,"Lynch, Pham and Wilson",Education,ES,128,143498.75,2022-08-28,false
+4603f652-01cc-d546-1b7f-9a4c747e1339,"Harvey, Nicholson and Anderson",Logistics,GB,7,32548.12,2023-01-25,false
+47e4acd2-ba7a-aceb-9132-a59a2d421f96,"Alexander, Estrada and Wang",Finance,GB,217,42341.33,2022-04-22,false
+08904d70-9711-6d35-f0f2-be0c540b9df7,Hayden Ltd,Manufacturing,GB,88,78628.83,2021-07-07,false
+0a9cb682-01eb-78df-199c-e156b4c88977,"Johnson, Lewis and Bowman",Software,IT,97,101193.83,2025-06-12,false
+f53c5d82-8968-dd06-8e38-c8375659a09f,Adams-Waters,Software,FR,39,219235.68,2023-03-11,true
+7c474f00-81a9-c924-7cbf-c72674980e92,Hamilton Group,Finance,FR,61,8822.74,2024-04-17,false
+48a49e66-b1b4-1f5d-e9bf-501abfb1187d,"Thomas, Brown and Benjamin",Software,NL,796,177264.24,2021-05-16,false
+0fad35c1-f7e2-84de-1f22-fc63f049bcc8,"Miller, Payne and White",Energy,ES,190,14712.29,2026-01-24,false
+31c1af29-0dc5-cadb-edac-70f28ee7a2c9,Moore and Sons,Finance,FI,140,184836.85,2023-09-19,true
+67f81e99-264f-df98-96e3-9503f0e583bd,Brown Group,Logistics,FI,90,33198.53,2024-08-11,true
+2f47a54e-e677-fb17-2332-e2a073969e8e,Cooper PLC,Healthcare,US,24,126558.27,2023-09-22,false
+6c7d95fc-a49f-43d2-9de9-794165d36d2f,Flores-Holder,Software,NL,71,194746.47,2026-01-17,false
+03312f56-5f80-6a8d-6756-2714f863c7d1,Martin-Edwards,Education,IT,56,24914.52,2022-04-06,true
+93247837-e1cf-bf0b-ed94-997e2a63adb3,"Chambers, Ferguson and Roberts",Finance,ES,54,27590.21,2025-12-08,false
+dbadd68e-5e0c-4228-89b8-f7dbf19c1984,"Harrison, Anderson and Ramos",Healthcare,ES,55,79504.50,2025-04-21,false
+c10d66c6-cb50-4783-c573-c56143a2d51d,Price LLC,Education,GB,122,26301.95,2023-12-25,false
+7d2220f2-8e53-4d72-07bd-e3a86b48284b,"Hill, Cooper and Hall",Energy,US,107,66239.32,2024-12-14,false
+705602ac-a58d-6bff-ea03-d08571df436b,"Bennett, Gomez and Atkinson",Education,US,26,148045.54,2024-09-26,false
+fe14b94b-c15b-b3a3-b0dd-bd9d7e507baa,"Dunn, Lin and Johnson",Healthcare,UA,71,82071.81,2024-05-23,false
+b4d44c4a-7b24-761e-94a3-a06b1bc37159,"Hart, Clark and Kennedy",Software,NL,145,22146.95,2023-10-08,false
+b0766cda-6001-d9a0-d792-ac83a98f7176,Turner Inc,Logistics,GB,89,15196.22,2025-03-24,false
+b05df87e-67f1-6f57-1738-973f1d10356b,"Stanton, Nichols and Simpson",Software,US,96,287910.54,2022-05-15,false
+0529f31b-8d34-2019-b8f9-32d0661d6038,"Perez, Bell and Lucas",Retail,US,60,13563.29,2022-06-10,false
+a9513558-98d6-5b16-2e1c-82ca68b2b57b,Franklin PLC,Healthcare,IT,79,51204.72,2022-06-06,false
+a54bd8c9-ce39-f5ca-915d-3cb9e1c0d3c2,"Martinez, Bates and Carpenter",Retail,DE,127,222906.96,2024-05-17,false
+9a3defc5-40e9-a799-9e07-584e4642c7e2,"Harris, Osborn and Mitchell",Healthcare,IT,1218,8900.11,2026-01-16,false
+33966dca-ab64-08c5-8465-4eb205ac97e1,Contreras-Taylor,Manufacturing,FI,126,353948.34,2023-02-06,false
+5463db95-e7ee-f9b6-376b-256665fe6f7a,Garza-Garcia,Education,DE,49,8561.50,2023-12-29,false
+02d6bbee-15fd-1ab1-8ee9-594f59421ba4,Anderson PLC,Energy,US,38,231256.17,2026-01-18,false
+0f2012a8-4772-34c8-45f9-d357d97b0b5b,"Griffith, Jenkins and Taylor",Logistics,FI,60,13840.31,2022-03-04,false
+e3b0ad18-52bf-66a7-25c2-815b5a2eb82d,"Cooper, Kennedy and Rios",Healthcare,ES,35,128691.31,2023-02-01,false
+93b21981-8ef0-70ca-ce3c-ab0598bc215b,"Wise, Miller and Shepherd",Manufacturing,SE,50,82387.53,2022-04-14,false
+615daf5d-f428-00bf-bb7f-44ac48f53c8f,"Lane, Mccarthy and Smith",Healthcare,SE,90,92825.00,2023-01-11,false
+4c10585e-effd-427b-2974-b8c67135ba14,Hurst-Glover,Energy,ES,182,103320.37,2024-01-02,false
+b09d0157-e960-dd3f-6eef-c903b8fb01fb,"Bell, Mann and Brooks",Manufacturing,IT,68,233874.27,2023-11-13,false
+0604c302-49ca-c436-33bf-1f09e6de2659,Adams-Mccormick,Logistics,FR,42,43389.65,2023-06-30,false
+e39f5b89-2eb3-9b5e-0206-9042ea5b12d6,Wilcox-Cruz,Software,DE,130,259503.28,2022-06-22,false
+c460c57e-2d20-e564-ab37-65a904c53f22,"Mccarty, Orozco and Lee",Retail,SE,157,19582.57,2025-11-29,false
+f0f2d469-6575-6340-d659-1227db0a35ee,Johnson-Hamilton,Education,FR,172,33386.94,2022-04-18,false
+3d528a1b-54cb-11e1-94eb-8180dd5647e6,Bentley-Morgan,Education,IT,34,75717.84,2023-10-14,false
+fcc65a57-ae33-9e09-cb8b-38025900918d,Maxwell-Hayes,Education,IT,105,33090.80,2025-02-09,false
+c8b06928-644a-9090-f2ae-955df20d2784,"Garcia, Mclean and Petty",Finance,NL,20,47751.46,2023-05-03,false
+09ccbb8a-d478-77b4-682f-01dd69a00d41,Gill-Trujillo,Retail,GB,45,144445.81,2025-12-01,false
+bce6122b-a0d5-4e2f-44ab-18da902d07c7,"Davis, Barton and Herrera",Healthcare,PL,58,22427.09,2026-01-31,false
+a96dfe5b-82ad-757e-d75d-53846593655d,Le-Martinez,Finance,ES,134,139056.74,2025-07-23,false
+2688d2a7-43ff-b227-921b-3a097902dcbc,Craig-Jones,Retail,FR,50,15670.71,2025-03-27,true
+406b46e8-f1c0-6933-2a9a-563f52507a00,"Sanders, Vega and Riley",Education,DE,221,60126.60,2024-08-07,false
+f600e996-1ad8-142b-e6a3-fbd38f91174c,"Bennett, Small and Jones",Education,FI,110,25285.67,2023-05-14,false
+ba7f8e28-5524-d5f0-2402-f266f66a6e24,"Hampton, Harris and Tate",Education,NO,80,155652.83,2022-08-24,true
+d45fcad7-8b0a-1d00-d9e1-1f0e0647b1d3,Cunningham-Hanna,Healthcare,FR,359,297542.73,2022-09-13,true
+ccc5c524-a983-45c9-8d72-1a695173e5cf,Bowman-Walsh,Finance,DE,68,50227.61,2023-11-07,false
+4612ec47-1024-3d0e-6a18-e52e56735bff,Mcgee-Williams,Finance,NL,108,84362.12,2025-08-09,false
+5c45d13b-7791-359b-4c80-bb8619173792,Johnson-Gallagher,Healthcare,US,75,88642.61,2025-08-08,false
+a9c098e3-35f3-9570-4d9b-a0b345091304,Kelly-Robbins,Software,DE,588,115313.91,2024-11-24,false
+4f646769-bbe7-f7fb-3ba4-6f27f0d6a5e1,Chen-Leach,Logistics,IT,276,201762.86,2022-12-11,false
+47b51367-1982-d097-789b-c683d7c47070,"Williams, Woods and Mcneil",Manufacturing,UA,12,194183.96,2021-08-19,false
+e2de59b0-e2cf-e90a-fa31-3ce021b21eaa,Cook Group,Logistics,ES,16,135373.98,2024-02-23,false
+941a3b73-5f35-346a-2def-0e96b752ea70,Robinson-Lara,Software,NL,35,7077.54,2025-07-07,false
+3d002d28-7aa7-c698-4eea-f840c124661b,"Cabrera, Ross and Maxwell",Education,US,137,83575.33,2022-09-24,false
+e7fea252-d50e-e3ef-b02c-0fac8b135096,"Hancock, Lamb and Smith",Finance,DE,60,9764.90,2023-06-10,false
+fdb72152-67d5-2409-c946-1fc0141df13a,"Ramos, Cervantes and Hernandez",Manufacturing,UA,360,170159.29,2023-09-08,false
+d1a1e055-abdf-0c1a-3e24-b9683d4d2610,Combs-Williams,Healthcare,NL,112,1324814.31,2025-12-06,false
+bb627310-9f9b-57db-62b2-a55a37cb0349,"Kelley, Matthews and Singh",Healthcare,NL,67,84776.64,2024-04-14,false
+556eca30-6832-5e50-d642-991f48490186,"Lee, Meyers and Murphy",Software,IT,470,102853.16,2024-08-14,false
+8c8d663e-724e-d44c-9a8b-363d1cd4b4bd,"Hull, Patel and Brown",Retail,GB,71,53731.75,2022-01-21,false
+04bf5210-5e6b-4a85-35e6-7b18320b231d,"Knox, Burgess and Buck",Education,FR,41,146265.60,2021-05-22,false
+2c857386-59a1-d4e3-7525-3b18a0ccb3f4,Garcia-Hendricks,Retail,SE,35,61710.35,2022-10-03,true
+3e970725-55dd-90ad-22c1-99211182a388,Ford-Grant,Healthcare,ES,108,16199.91,2021-06-08,false
+81efa9ee-f737-aaf7-c95e-db90ed38d6b8,Crane-Barron,Logistics,IT,184,319685.60,2024-01-11,false
+4e225dfd-4f15-6ee0-bb14-581d1e55b55c,Chang Group,Manufacturing,DE,76,48087.07,2022-12-12,false
+0607d068-8fea-860e-1f34-92ee6c9aea27,"Robinson, Thomas and Holmes",Education,DE,66,19625.54,2025-09-15,false
+0424cd20-4cd3-eed2-34b0-d43641eec070,Ramirez Inc,Manufacturing,FR,1270,73993.12,2024-01-09,false
+154fbecf-89db-b97b-4550-65295ffa6969,"Simmons, Goodwin and Sanders",Retail,FI,125,84226.95,2021-09-02,false
+b098b057-5fe4-c36c-c496-6cd82794d044,Wong LLC,Retail,UA,853,26356.61,2021-10-23,false
+3c6f7a89-0128-aec6-ec34-1bb83893984d,Williams-Sanchez,Retail,PL,109,19288.86,2022-09-17,false
+b28005df-de72-7eeb-462b-fd18b565908c,Santos-Andrews,Healthcare,US,48,43606.21,2025-09-21,false
+bab492f6-98f8-3895-04f1-fbc260b31a41,Morgan Group,Healthcare,FI,118,52605.16,2025-10-05,false
+2f8be8b5-1280-413d-89f3-4c80a4b9fe50,"Farmer, Mann and Jones",Retail,IT,61,63052.26,2025-09-11,false
+30000868-7ec7-5bf4-f196-fea56280bca8,Martinez-Ellison,Logistics,UA,79,134303.65,2024-03-21,false
+9fbf8418-4073-18df-eba4-f5ca9471e859,Espinoza-Duncan,Manufacturing,SE,115,30223.54,2023-01-21,false
+846452c9-ce83-9fba-0805-190c96ef0b29,Reed-Brooks,Energy,NL,115,68670.83,2025-02-03,false
+2fd0a8c0-93b7-1d50-f78b-4d973a082d5a,Thomas-Keller,Healthcare,GB,75,26751.30,2024-05-28,false
+ce8ac6bb-9569-1d49-f8ec-5110b54de5f7,Wilkins-Wells,Logistics,SE,139,65234.61,2021-11-11,false
+e61b5fb4-413e-9fa9-9e01-cb52c75533a6,Spears Inc,Healthcare,DE,15,42075.66,2023-03-24,false
+42a4d177-7ca3-7c70-7116-7d15de81261b,"Bradford, Webb and Richardson",Software,PL,1178,282535.02,2022-12-28,false
+ce514d21-84df-2b6f-940f-c1c909c2db2c,"Newman, Gallagher and Grant",Finance,UA,94,720490.55,2022-08-31,false
+1f26cad2-0666-d3b8-4694-d2c4653a8357,Rodriguez-Johnson,Software,US,103,129805.82,2022-10-05,false
+4d50bf58-19b6-a1ab-6244-9a54cabe16d3,Herrera Group,Healthcare,ES,138,24791.32,2025-12-13,false
+628f3b35-965f-60ad-6f60-ed0b0dbbab46,Brown PLC,Manufacturing,UA,83,136109.12,2024-06-23,false
+d9e0ab1b-8094-28d8-0227-30214f98a720,Mejia Group,Healthcare,DE,188,6749.28,2023-02-23,false
+6e4a28f5-268a-93c2-28b8-bcd775d67375,"Moreno, Adams and Chapman",Education,ES,151,14230.17,2021-12-07,false
+5d75fb0e-193e-3db1-c987-1676f9efb779,"Atkinson, Sanchez and Matthews",Retail,DE,59,83157.13,2022-09-17,false
+d3c67364-7e8a-005b-489d-c464f99d868c,Collier-Hansen,Software,ES,80,10818.73,2026-02-12,false
+2cd234bf-8e37-adf5-29d9-43ab8dfed984,Estrada LLC,Software,PL,348,35503.42,2023-09-12,false
+e7cba325-14d3-cfef-b415-8b7f8df002c8,"Smith, Nelson and Gilmore",Software,PL,40,534295.14,2024-09-30,false
+515cb6a9-33de-d855-5a11-281294e58c39,Sullivan Ltd,Retail,NO,18,4433.98,2023-06-06,false
+c041e81a-33b9-48b5-e0ed-a1b48106b304,Romero Inc,Manufacturing,PL,177,9130.86,2021-11-08,false
+b68a7977-7aa9-2363-1c81-f01146053bc5,"Patrick, Cruz and Koch",Manufacturing,FI,70,106508.32,2025-08-03,false
+9d032376-4d98-9c8d-8c91-6c935d3f2297,Hess-Alvarez,Healthcare,UA,289,171174.77,2021-08-17,false
+5944c5ee-3469-4ca2-ff49-dec506118c7c,Cameron and Sons,Manufacturing,GB,62,10037.27,2025-09-18,false
+10a26bf8-cd41-1472-d620-ff9a53ca0b71,"Gonzales, Chandler and Mack",Education,GB,46,38521.22,2026-05-04,false
+84dae3f3-8ba8-f833-3e94-95808f06d184,"Reyes, Jones and Morrison",Finance,UA,122,96148.24,2022-04-20,false
+03f8181d-1675-7ff7-5b7d-09a964ca1cb3,"Cherry, Greene and Hester",Software,NL,61,307537.42,2025-11-07,false
+5287750a-b85c-7177-534f-b1dffe1b43ba,Hall Group,Education,NO,368,172946.56,2021-07-27,false
+69df0706-cd17-c0f3-07e2-01b648d0ae34,"Sandoval, Bruce and Taylor",Manufacturing,UA,47,70337.96,2021-12-15,false
+7abd505c-f99e-2b1f-b9ca-9cece813691b,"Gregory, Maldonado and Torres",Education,SE,23,14076.66,2025-02-26,false
+a6ceafc6-c876-654e-3d70-5a75c780a387,Cook LLC,Energy,NL,145,28055.16,2021-09-25,false
+849d4c31-15a2-b9a6-6d7c-d22a0e65ac62,Allen Group,Retail,US,63,596343.17,2022-05-03,false
+995f9abd-0fc2-552c-db74-5a08fd82df08,Leach Group,Education,GB,72,20517.18,2021-09-30,false
+db528ef7-a280-1d58-33e5-3c4ce2235d8f,"Harrison, Mills and Lindsey",Manufacturing,NL,156,6595.95,2025-08-28,false
+602ab0a0-a030-1f26-7929-a5f42e7c90d5,Mendez LLC,Education,NO,37,51543.42,2025-08-01,false
+95040e37-1d81-93f8-2fe0-cd6f7443e0ae,"Warren, Wilson and Blake",Finance,SE,85,53680.64,2024-07-30,false
+f59fa32b-a048-818b-8435-a1f5fd04fa91,Wilkins Group,Energy,NO,173,16169.84,2023-07-27,false
+80153729-a741-a3cc-5847-2b03e0df44a9,Gonzalez-Collins,Energy,GB,53,76331.13,2024-01-06,false
+995248f1-9b06-1c0a-b15e-a8eb267a5425,Rivera Group,Manufacturing,SE,245,66059.42,2024-07-24,false
+c3b4b00b-6899-9233-6289-ac75306e5b5e,Ray PLC,Manufacturing,NL,101,295375.12,2024-06-27,false
+3a23a744-b119-1250-6b39-3e2dda1d89d1,Baker Inc,Software,FI,90,143451.49,2022-07-02,false
+61d35281-a4a7-82ea-f780-8926e31c2a55,Roman and Sons,Energy,GB,37,49377.26,2026-01-16,false
+469951bf-a04c-8910-8c7c-ff9c5dcb604b,Casey Inc,Healthcare,NL,206,165457.07,2025-02-08,false
+530e5704-7243-1419-a38b-86f3ccfb460f,"Rodriguez, Silva and Ortega",Software,GB,75,27243.26,2023-12-12,false
+550bd345-d813-4489-d85b-3dfb1d534ee4,Fitzpatrick-Robinson,Education,NO,176,46239.06,2021-11-29,false
+dea0067b-52a3-9776-ef73-9ea48cf49825,"Harper, Simpson and Williams",Software,DE,573,22493.11,2026-01-16,false
+d7a6ae25-7a8a-217d-e041-8e9b39acaef4,Stone LLC,Energy,FR,87,83659.43,2022-04-05,false
+8531f8f5-13df-828e-694d-514b7167f9ae,Petersen Ltd,Manufacturing,SE,56,49030.67,2021-10-03,true
+3465a388-010e-4bc4-6bce-8564d0d30b7d,Russell-Parsons,Education,FI,23,59786.81,2022-08-26,false
+c91f216f-10bb-1bfb-1f95-c8a33e72e2b1,Cameron-Lee,Manufacturing,DE,79,193073.25,2023-12-03,false
+4f3f1634-062c-3533-a3fd-be986a76aa28,Brown LLC,Manufacturing,NO,196,16770.52,2022-04-20,false
+230dd2e8-04e5-6c55-fed6-b392ef891364,Valdez-Rowe,Healthcare,UA,66,92130.34,2023-03-29,false
+329e5d0c-a3cf-402b-4331-031fe294c7b3,"Gray, Webb and Roberts",Education,IT,35,8807.51,2022-02-13,false
+3a49065e-f320-c6b6-7746-ff617d5195e1,"Thompson, Price and Powell",Healthcare,NL,107,5271.65,2024-03-20,false
+86ca935a-e243-d228-81ee-54c33811286b,Blevins-Frazier,Manufacturing,UA,108,20277.73,2023-09-24,false
+f2957b6a-4647-b19e-dc65-e135dd22c75f,Welch Inc,Logistics,NO,51,273276.03,2022-01-22,false
+729246d5-3a5e-2c62-d415-8e02bc9dbf0d,"Rosales, Lloyd and Allen",Education,GB,104,29979.68,2023-08-09,false
+72edad10-62d3-1644-84f3-b33805cdbddc,"Kim, Stevens and Giles",Manufacturing,UA,48,15605.79,2021-11-06,false
+54837c00-4723-b7f3-256f-ac9e3995c74f,"Russell, Robinson and Johnson",Logistics,US,32,94577.17,2024-02-10,true
+b79e49ff-aa8c-6cfc-6b28-486b8863a0b8,Smith Group,Energy,IT,21,26645.58,2022-05-10,false
+80ae74f9-1dc2-9587-dad9-a5df2ecda617,"Garcia, Gregory and Gilbert",Healthcare,ES,151,2284790.39,2021-09-17,false
+3d51df1b-9f4c-57a8-da0c-6ee11914e60c,"Johnston, Long and Black",Energy,NO,26,148014.33,2026-05-02,false
+57047156-f88a-8cf8-9f01-46cc0a202a8c,Campos-Fuentes,Education,NL,33,66567.14,2024-04-28,false
+7173faaf-48df-d4ce-971f-d6ccd3be51ce,Galvan and Sons,Healthcare,SE,47,41792.43,2022-03-22,false
+1cc48e92-69cd-8c5e-7826-ad7120a95f7b,Nunez-Chaney,Healthcare,NL,45,42692.34,2026-02-14,false
+45a1c0b3-21c5-e3f8-9c19-3ca25d16026e,Jimenez-Roberts,Finance,NO,79,175947.28,2025-05-10,false
+796936a3-a80f-597f-b055-9e3b23d483b3,Foster Group,Education,FR,114,39978.99,2022-11-16,false
+e4d175ea-4c94-22a6-7604-c8169e9fa1c4,Walker Inc,Healthcare,FR,80,576487.74,2023-10-30,false
+c4dd077b-f3ed-edf8-2d62-dd4d06694076,"Brown, Collins and Coffey",Education,GB,20,30805.46,2021-10-06,true
+33965a95-7794-179f-65eb-c275229a5ba0,Barnes-Cook,Logistics,FR,199,172565.83,2023-11-21,false
+3aeb7edf-6fd5-6a66-ada5-1ab931e9aa19,Moss Inc,Logistics,DE,352,32647.15,2025-08-02,false
+9da15940-eea6-1204-fb4f-d118541fdcf5,"Marsh, Stewart and Donaldson",Healthcare,SE,48,54544.85,2022-04-29,false
+e0149650-1994-10ab-d65b-039f6db4d364,Rosales-Marsh,Manufacturing,SE,120,18259.08,2022-11-27,false
+32b58b38-dd0a-58c5-7316-3c7b31be67ed,Fletcher Inc,Logistics,DE,106,58068.23,2021-12-08,false
+c015da8a-ec1e-e536-7cdc-9393175b97d3,Williams-Butler,Software,NL,127,66159.20,2021-11-22,false
+92df1ba6-302a-ff55-88f6-7f4a1533a4c1,Coleman-Patterson,Healthcare,NO,280,3245.52,2025-05-28,false
+f7926e33-e51b-d27f-f793-959e4f856519,Williams and Sons,Software,IT,73,44611.54,2021-07-15,false
+fdb1c19c-f091-2cc2-3514-cd3c48ba33c9,Reed Inc,Education,SE,58,70922.57,2025-11-06,false
+97422d07-3d57-96a1-3c64-622c838f746e,"Larson, Scott and Lee",Software,DE,275,219297.17,2025-01-20,false
+0c216f76-350b-cf07-ee04-42c770b2c3fd,"Haas, Conner and Gallagher",Logistics,DE,54,101330.69,2022-10-07,false
+6af3a34f-2d83-7ce6-6b3e-ff630f5975dd,Harris-Davidson,Education,SE,20,98952.83,2024-08-28,false
+29d9132a-0131-55e7-ec2d-1df408627f29,Lewis-Cortez,Finance,GB,147,6741.06,2023-02-08,false
+9b2d2d07-c2db-4b31-2a5c-0d9e129c8d88,Cannon-Sandoval,Finance,NL,147,53525.10,2023-12-15,false
+c9532180-8c70-92d1-2f6d-f460a147ff14,"Lawson, Campbell and Sanders",Healthcare,NO,232,61569.86,2023-08-14,false
+1b80c580-0d36-f0da-2a29-4eb317f5ab21,"Johnson, Sanders and Snow",Retail,US,136,23080.21,2024-06-27,false
+10d33785-6fc6-b1ca-3ca0-580423d1d545,Baker-Davis,Software,SE,102,24664.21,2023-04-14,false
+b5bfbdce-a37b-5d9d-2b3e-02b5dfdf78b2,"Santana, Carter and Rodriguez",Healthcare,US,11,21181.22,2021-12-27,false
+8f69bda6-c8a3-3cfd-7187-7413b67e6bb9,"Thomas, Watson and Scott",Retail,DE,111,134555.86,2025-11-06,false
+504bf328-f908-b2b1-312a-9f3c94a1c351,Anderson Inc,Retail,FR,130,126875.71,2024-04-21,false
+962278e5-e10b-2125-2c46-be09c9c229d2,"Perez, King and Sanchez",Software,FR,111,22543.89,2024-04-28,false
+80c01cfe-5795-3879-448c-ba790a7d44ce,Simmons-Smith,Finance,ES,162,125558.05,2024-02-23,false
+6d5b380b-bc18-c693-81b5-eb739aaa7fb9,"Krueger, Johnson and Kennedy",Healthcare,FR,335,334648.88,2022-01-03,false
+7be77eaf-89d7-af73-f81c-fb45cb313068,Scott-Martin,Retail,FR,52,253119.50,2021-12-18,true
+0233db48-f8a5-0fbe-4b7b-2cdad1a8b386,Mitchell-Brown,Energy,SE,266,29276.61,2022-05-20,false
+536a09ae-1124-b2b3-bcb1-0c99cdc14ab7,Hayden-Nelson,Energy,NL,307,45022.06,2024-05-20,false
+a71f2fa6-4a41-aec0-7022-494d31e8a402,Hughes Ltd,Retail,SE,105,36120.91,2022-07-05,false
+79c2f404-3932-6dc5-c4d7-92f31865f8ab,Herrera PLC,Retail,PL,40,24984.65,2022-10-29,false
+5cb9b48b-291f-9e4f-fcdf-b22fd2b9f90b,York Group,Energy,IT,97,113529.29,2022-07-23,false
+92cdb808-d12e-9c4a-8b7c-63bf820e4448,Griffin-Collins,Energy,US,580,142685.63,2025-08-13,true
+af8d7f97-970e-cecb-d9e4-e6910ba2794d,"Brown, Stephens and Martinez",Manufacturing,NL,179,62832.30,2022-01-27,false
+2e0d6599-194a-ef48-8ce6-640e0fb21006,"Taylor, Steele and Dean",Finance,IT,94,39489.99,2021-12-18,true
+bede63ef-c70c-d0cd-e37a-41f52443f6bc,"Snyder, Schultz and Schneider",Retail,UA,150,384596.87,2025-12-11,false
+f13b61f8-9489-b67d-914f-1f862a275ba2,Harrison-Carroll,Manufacturing,IT,57,128852.91,2025-08-21,false
+9e34aa6d-046e-54f2-c222-963461caf27b,Meyers-Faulkner,Retail,US,319,25999.68,2022-06-06,false
+24359d3b-1cdd-6518-3fe6-d9cf4eac8244,Davis Inc,Finance,NO,35,25082.31,2022-12-03,false
+547e8766-ddfd-2110-2cc7-15fb31d0c87f,Thompson Inc,Manufacturing,FR,464,12785.84,2022-11-28,false
+c267e341-6f9d-df70-d7da-3448515ceb60,Kennedy-Petersen,Retail,DE,30,55175.93,2023-04-21,false
+25909afc-44e6-54cf-8dee-359583483429,White Inc,Manufacturing,IT,73,92491.04,2022-09-28,false
+f6b0d99a-2be7-b45a-ffa2-6bf1274db592,"West, Guzman and Mcdonald",Education,US,298,33386.03,2022-08-07,false
+04a351f9-8792-d673-4063-f05e7e19bdce,Smith and Sons,Education,NL,291,18452.90,2025-09-01,false
+ba89d197-d823-7714-02c3-31382efa8b7e,Garcia-Oliver,Logistics,FI,352,346146.32,2025-05-04,false
+aa4cbabc-e47c-701a-0186-0d4711ae2b4f,"Moran, Johnson and Murray",Energy,SE,136,70778.17,2023-04-03,false
+9fedbf08-7ff5-abd4-6772-25bedb22fe74,Nelson-Williams,Education,US,26,66879.90,2022-01-07,false
+f1514ec1-7664-2241-89a4-e30530fc7fe0,Romero-Lopez,Healthcare,NL,87,96185.75,2021-10-18,true
+a6b80044-3708-c276-d983-907ee57586e6,Eaton-Long,Manufacturing,ES,49,106649.60,2025-11-15,false
+e9ee86e9-4a94-cd4d-2a68-37de0f26f9a9,"Riley, Williams and Manning",Healthcare,FR,168,108430.34,2021-11-24,false
+f0ac0384-16eb-a3df-2854-59a741161ea1,Arias Group,Logistics,UA,13,217857.55,2025-02-16,false
+800f05e7-e4c2-bd9a-c169-16d421b4e906,Moss-Alexander,Software,US,22,58796.64,2022-03-20,false
+0d43a5cb-6bb5-0425-fb08-ffc3f3b44b23,Davis LLC,Software,FI,33,107881.35,2024-11-12,false
+76cf0dad-ee51-920d-6a66-aba9023bb446,Nguyen-Carey,Healthcare,PL,71,77125.50,2021-10-23,false
+8d6c6a56-3a6a-3feb-456e-7b0356ae06cb,"Perry, Ross and Diaz",Healthcare,GB,117,51341.51,2024-06-03,false
+9eca4e3c-053c-66c4-07bc-dc97abaadefc,White LLC,Logistics,SE,17,10698.86,2025-01-05,false
+4cc6985a-1373-a02a-4f5c-bf3ac7922b59,Reed Ltd,Retail,GB,70,122166.01,2023-08-04,true
+23e26a4d-319e-7615-f74a-7e466b153e9e,"Grant, Haynes and Austin",Energy,FR,244,12389.86,2021-05-22,false
+07d37bb3-062a-c610-3a8f-25369429e948,Mayo Group,Software,DE,826,10235.20,2024-04-30,false
+68fc55af-1084-17a7-5492-05887330a56c,"Davis, Bailey and Humphrey",Manufacturing,FI,685,38195.51,2025-09-24,true
+02b957a4-80c5-a98e-7e1d-98ddf27e07e7,"Vang, Mclean and Garcia",Manufacturing,UA,183,50038.90,2023-06-03,true
+0235c1f2-88ec-f240-a927-4f0e424e2cea,Braun-Kelly,Energy,DE,166,360460.14,2026-04-09,false
+e2b7bfe6-f4ce-29ed-3444-02d313b6b1fc,"Adams, Logan and Taylor",Software,FI,118,79525.48,2023-05-01,false
+8c819cc9-fdf7-586b-3bfc-1839793a1258,Key-Barnes,Finance,FR,366,76451.37,2021-06-27,false
+377b8750-b5a6-ebb9-efe4-30f61f506eec,Mcclure-Morgan,Finance,NO,37,67107.10,2021-07-11,false
+a92ed3df-3726-2139-b063-dddca30e972d,"Baker, Hanna and Crawford",Software,NL,8,94526.60,2021-08-27,false
+3c11a2c7-1e13-c76a-24ae-7f7cb11ee1a2,"Carpenter, Miller and Humphrey",Retail,NO,30,145489.83,2022-11-08,false
+0c9cbd46-5050-52eb-5412-f028f137e9bf,Holt Group,Healthcare,US,42,20613.53,2021-06-20,false
+a091d07b-7088-b9a6-75dd-2271d75c8883,Allen-Zuniga,Education,DE,102,148160.40,2025-12-27,false
+3bae5553-a994-c514-0d78-9c34d5f9f259,"Dudley, Smith and Price",Finance,US,22,1896542.15,2022-04-06,false
+3c7bee12-dea7-f544-f9c0-fad92633f336,Spence-Jones,Logistics,IT,92,43623.34,2023-03-31,false
+26de4c69-9bee-f16c-c7d3-af2482a5cfbd,"Brown, Grant and Lutz",Retail,UA,89,171767.52,2024-02-15,false
+99937761-4726-780c-7f28-c9323c4ad124,"Weeks, Palmer and Tucker",Education,FR,71,128294.78,2024-10-19,false
+3bfed777-5b12-951b-54ea-4001cc29930b,Lyons and Sons,Healthcare,DE,223,124274.47,2025-02-17,false
+8a77a18d-fdd7-64e3-317e-d1162531000e,"Nguyen, Neal and Cole",Logistics,DE,82,16632.99,2022-01-24,false
+4ef207d1-49de-6ca2-589e-7b9afe8a088e,"Smith, Andrews and Nash",Energy,UA,218,93613.65,2024-02-09,false
+9cd17c75-a18d-50bc-7786-e2da264bddb3,Williams Ltd,Manufacturing,FI,229,9957.90,2023-04-18,false
+c0188920-b1d0-51c6-3824-277a2d2771ed,"Wheeler, Martin and Ford",Logistics,NO,23,50063.14,2024-07-13,true
+4bf5209a-7044-49e7-c05e-7bb0d7584727,"Allison, Smith and Hale",Finance,FI,100,22335.40,2022-05-27,false
+d03e0f50-5945-bda5-752e-192ea710b1cf,"Keller, Stone and Huynh",Energy,FI,53,86834.96,2025-12-21,false
+a2528527-1839-f190-cd40-a89c35a2c8e7,Carlson-Moore,Software,SE,88,28108.73,2022-06-02,false
+965515b1-d625-24a0-5744-8444379f77dd,Gonzalez-Wright,Finance,SE,145,125080.87,2023-01-22,false
+1d04cc7f-1cbb-b61e-c141-e4b1bd822372,Williams PLC,Manufacturing,ES,20,109075.85,2022-05-07,false
+aa4d5c69-24c8-108b-4d93-092dbe5d0aa6,"Greer, Deleon and Jones",Healthcare,PL,18,78573.97,2024-03-20,false
+9c943878-928e-ed22-a32f-7cac2d734a95,"Ellis, Hernandez and Wilson",Software,PL,138,123176.54,2025-07-06,false
+3a890a62-5b21-d4a3-b17e-172173e71e3c,Burton LLC,Retail,PL,170,19389.27,2023-12-12,false
+4cd715c3-f558-4bc8-e8df-e00acb3a68c4,Smith-Brown,Finance,NO,111,42241.66,2022-06-23,false
+e9cadc55-b4e4-233d-6c26-8dcf4487fa10,"Collins, Miller and Page",Retail,SE,25,345772.53,2023-01-10,false
+c574ef15-28c0-af04-d91e-1f633eb95a0b,"Guzman, Hill and Sosa",Education,SE,29,255177.43,2022-12-14,false
+b5222f96-df10-a144-7810-bf5cbc154adc,"Brandt, Mcdaniel and Campbell",Manufacturing,NL,51,18103.79,2024-10-30,false
+d6fb7d5f-0646-f8a9-002d-96b103f4ecbe,Bradshaw LLC,Logistics,US,71,245311.01,2026-01-16,false
+b178764e-bfb0-211c-81e9-42cc91268a66,"Gonzalez, Gilmore and Turner",Education,GB,102,36568.02,2022-08-30,false
+382a1b77-76b4-33da-b1f5-07c53ea67739,Yoder Ltd,Healthcare,FI,56,91186.38,2021-09-29,false
+177f8368-73c9-92e0-4435-13f25997213d,Abbott-Gilbert,Education,SE,118,32002.64,2025-01-24,false
+725fee51-76e0-1c2b-1792-e5288613ece9,"Gonzales, Williams and Diaz",Software,IT,419,162299.08,2021-05-21,false
+35a6f8ec-e6d4-b2ca-a63c-d342cf75a203,"Wright, Abbott and Wilson",Finance,SE,156,52389.67,2022-09-12,false
+f89859c8-ed55-f2e2-e0b4-2fd05af42864,Richardson-Garcia,Logistics,IT,179,14963.85,2022-02-14,false
+e5c2d968-1e7d-c1a8-2e15-69f906057919,"Hicks, Boyle and Howard",Retail,UA,98,44345.29,2024-04-25,false
+f2e11b50-083c-f348-2d22-d45d8d1b6c3a,"Foster, Christian and Marquez",Software,UA,15,27289.74,2025-04-04,false
+97b59a2f-8d22-a072-2d89-821f92eabf8e,Smith Inc,Healthcare,GB,277,44976.21,2022-12-23,true
+3c0c0abb-8020-10b5-d3d2-4615e4c7d097,Estes and Sons,Finance,FR,81,12822.05,2022-08-23,false
+b195fd31-e1c9-3697-c47f-0383c74677ef,"Kelly, Hill and Horn",Energy,UA,190,142941.81,2026-05-01,false
+f74312fc-b031-a758-65e9-f3f876c47980,Gomez LLC,Manufacturing,GB,78,390546.11,2023-07-03,false
+23a991d0-100e-52a7-ea20-884be827f103,"Clark, Simpson and Hayden",Manufacturing,GB,155,112445.50,2023-01-10,true
+8304f07a-fd48-2de8-f72c-9aebb65d21fb,Grant-Campbell,Logistics,FI,519,1016308.47,2025-03-29,false
+2db6031f-48f7-916d-e2de-6a5de2910634,Palmer Ltd,Retail,NL,41,68029.21,2026-05-10,false
+9a9a1988-6fd4-a123-4979-2e8737b2a828,Thompson-Thomas,Education,US,167,24837.52,2025-09-12,false
+8962f7dd-0ddc-c40a-618e-94ea6a028d20,"Sullivan, Wyatt and Reed",Logistics,IT,55,115891.89,2025-07-27,false
+0eebb469-c5ad-2791-f330-84d8ad8e3e93,Williams Inc,Healthcare,NL,33,194494.02,2024-08-14,false
+0c0878c0-a150-2eba-5168-f950bb0b02e4,"Smith, Sutton and Rodriguez",Retail,PL,26,83389.29,2024-01-28,false
+3523f5df-1b76-8e98-c136-f16624632d97,"Edwards, Cole and Hudson",Manufacturing,ES,51,249422.49,2025-09-01,false
+a5c0c89d-fbad-6315-4c30-c70fa9806785,Rice Group,Energy,FI,31,19411.31,2023-07-06,false
+87d67971-1264-86a5-1631-7f4e668917fa,Vance-Pitts,Energy,NO,13,23552.43,2024-11-05,false
+442cf4a6-8d08-565e-0f69-396f37995945,Hughes Ltd,Retail,FI,64,32106.90,2024-11-15,true
+564ef18a-c6e5-7c5d-c209-d5cdd15e6ae7,Fields PLC,Healthcare,ES,316,79169.27,2025-11-26,false
+a6b77f4e-13bd-a066-7bc3-a5fd85fef8b3,"Watkins, Pugh and Stone",Retail,NL,331,9093.78,2025-06-26,false
+5589ca86-620d-da8b-5377-112d447f4117,Lopez Group,Manufacturing,NL,527,147646.20,2021-11-19,false
+24262f9e-ba1e-ba46-78cc-b47d90f3fb4c,"Clark, Bond and Taylor",Energy,DE,75,22509.08,2026-02-10,false
+c16ebc90-5801-8377-bf72-3925bd3fac2e,"Pierce, Anderson and Marsh",Education,NL,161,67678.89,2024-02-12,false
+67c3b921-d719-ee5d-e54e-d0cd31817f62,Rosario-Strong,Logistics,PL,65,471740.97,2022-09-04,false
+7e9c4f1c-2fd8-c8ed-1234-8c83edcc4e60,Torres LLC,Software,DE,203,319649.84,2022-04-20,false
+b7f6e747-c482-e143-6573-0f9fd84e6fe8,Green-Ramirez,Logistics,DE,84,122933.15,2024-03-26,false
+680fd72d-f608-84bc-4ce2-36dcf4a21a46,"Miller, Solomon and Werner",Retail,ES,206,117203.61,2021-12-23,false
+c5b3adfe-6544-31f9-44a1-51b12f5017aa,Wood Group,Healthcare,GB,312,34961.20,2023-06-04,false
+3c6294eb-d901-e92d-9134-7ae03b6d9afc,Solis-Delgado,Logistics,PL,69,15608.66,2024-06-04,false
+2f0ac883-ab62-589d-befb-406606eba61c,"Hawkins, Shepard and Moore",Education,FI,29,696854.87,2021-07-23,false
+c1cca232-bab0-bd52-1eb0-9e2e908330d3,"Conway, Mckinney and Ramirez",Manufacturing,NL,75,57304.97,2022-01-20,false
+af3833ce-5639-973f-3f07-8e3e7612ae3c,Black-Frye,Manufacturing,US,13,22116.27,2022-05-25,false
+70b33213-0fc1-a8a3-5838-aa41161527ce,Daniels-Perkins,Manufacturing,NL,233,9963.31,2025-03-11,true
+e49bf759-e211-5997-8ddf-6cee3b43313b,"Jones, Smith and Koch",Energy,FI,42,43589.56,2025-02-02,false
+e4783044-0e49-4c04-c366-0beb92531aa3,Bentley-Morris,Finance,GB,100,24804.31,2024-04-22,false
+97733803-51a1-2c5c-5813-71f61e89b8dd,Wright-Harper,Energy,DE,8,15035.95,2025-12-25,false
+de6b4a06-86b8-cbb6-6f62-216e73934f75,Ford-Gomez,Finance,NL,115,237318.54,2022-04-28,false
+6f4a7113-b0b6-3227-8feb-0cb02b958167,"Henry, Brewer and Eaton",Energy,PL,71,50245.30,2025-11-16,false
+f3b89568-25a2-b480-9e7f-8746affe5bce,Wood and Sons,Software,ES,68,46001.71,2022-03-25,false
+ba6a9110-af75-21e8-09b8-19eeb2b35308,Skinner-Green,Finance,NO,348,50139.61,2023-10-01,false
+f8cba8d3-32d3-3085-c178-8ae8e4f1781b,Weaver-Ramirez,Retail,FR,14,33420.87,2025-04-01,false
+3aeb00d6-12cd-6fe7-0b1d-3103937eb5c1,Cook-Thompson,Software,PL,25,45455.35,2026-02-26,true
+ae2793b0-3bcc-b7f7-9c3b-b8868c720ac0,"Perez, Koch and Lopez",Manufacturing,SE,229,17215.71,2025-09-20,false
+f7079445-5028-1a0f-e6a4-e0c1225a41e5,"Huber, Stokes and Soto",Energy,FI,30,85315.85,2023-04-28,false
+c5681f6c-c427-d549-4f39-84a61dc550f0,Jimenez Group,Manufacturing,FR,402,20937.34,2022-06-28,false
+058ee0a1-6128-7b05-06e0-8898f091bf50,Smith Group,Software,IT,20,264725.02,2021-12-06,false
+9095f06c-1a56-981f-2806-21628f37e1f0,Reynolds and Sons,Energy,UA,614,15256.39,2023-07-12,false
+c9375b67-ace6-23f0-1cf9-8c16272e5d9f,Simpson-Ramos,Software,DE,34,36649.65,2026-04-17,false
+c84ac2dc-eebe-c8e8-3209-dc9d87a21a00,Mckinney and Sons,Energy,NO,106,5161.53,2022-07-09,false
+97a89bcc-4260-4694-734d-3cb65203538a,Lester-Kennedy,Healthcare,IT,18,455601.96,2022-04-16,false
+8450403d-1eac-ff2b-2953-22a0c8b04c9f,Davis and Sons,Logistics,DE,47,33502.56,2022-07-02,false
+d1fd2edc-d2c9-30bb-9e2d-fd18892c40ae,"Holland, Walker and Kim",Education,SE,46,187510.55,2024-04-05,false
+2f51c416-62f1-192e-77c6-624a3896305a,"Henry, Burke and Greene",Software,SE,93,1643667.73,2026-03-01,false
+485febbd-cdae-fb94-bfa7-e57ea2218d82,"Boone, Berry and Nichols",Healthcare,IT,104,151156.00,2026-02-03,false
+086419b6-bcd8-c92f-4769-5c682ee5ed5a,"Horne, White and Owens",Healthcare,UA,138,104479.48,2024-01-31,false
+a64396e8-bf3a-60b5-3e82-71c7e63c0c62,"Johns, Sheppard and Roberts",Software,NL,14,90290.03,2022-08-20,false
+e7513144-16bf-d5de-e8ef-b5d935a9572e,Kerr-Orr,Manufacturing,NL,108,336371.06,2022-01-29,true
+5b960c94-78c4-8f6b-d488-0e2eb158ad49,Cox LLC,Finance,US,50,354386.82,2025-03-05,false
+35b4e980-6d95-63f7-ed15-43d96a4b6af7,Liu Ltd,Software,DE,178,8868.75,2022-07-18,false
+451cd3ff-aea6-4a30-ef5e-ee2cbe61694a,"Garrett, Sanchez and Nicholson",Retail,NO,109,34645.58,2023-11-10,true
+052fe8c3-8776-a834-7ba3-b00122a3d496,Anderson-Wang,Healthcare,IT,20,50698.73,2021-11-27,false
+73904cdd-d1bc-0674-56e3-405c28acc698,"King, Friedman and Faulkner",Energy,ES,277,29113.46,2025-07-18,true
+50e23b2d-f96e-c9fa-2162-f5e7c885fb51,"Jones, Evans and May",Energy,IT,1388,52291.85,2023-06-27,false
+1a84bbc4-c250-1b42-26fc-d050271c78cb,Davidson Group,Logistics,NL,48,45259.82,2021-11-17,false
+dff5473d-d207-07eb-2c13-5646cb86b938,"Black, Smith and Frazier",Energy,ES,55,37901.35,2023-02-20,true
+88c88e37-6fc5-b2bd-5047-7e8546184c5e,Jackson-Wheeler,Software,UA,273,224385.13,2024-12-23,false
+a70e3d31-050c-a91a-285e-caf708938f9f,Gibson-Beard,Retail,NL,117,1804413.75,2023-12-12,false
+b77b8b20-ab56-aa17-708e-8deed1b9de8a,Gallagher-Martin,Software,GB,117,129120.12,2025-10-05,false
+27a551ed-4666-267d-39c1-29b8487bbcc7,"Jackson, Stevens and Newton",Software,PL,47,46810.04,2024-11-20,false
+45c96b17-5221-283c-6518-f9e3d7669545,"Garrett, Martin and Kemp",Finance,NL,65,104116.23,2023-05-06,false
+395521ce-58a9-a5a9-a2de-458699230814,Ortega LLC,Retail,PL,21,166683.89,2022-02-04,false
+dd4835d3-cb03-b422-8ecd-f4be424a6600,"Hall, Mccarty and Bruce",Healthcare,NO,84,21047.63,2024-05-17,false
+7f1a3e6f-55fa-f25c-e211-ae32fb08bd34,"Hatfield, Rodriguez and Thomas",Retail,UA,351,127392.09,2021-05-19,false
+58cb28f6-000c-2711-d76c-63cc072b8b5d,Colon-Flores,Energy,FI,981,245319.27,2022-06-06,false
+20e2b257-0088-8b0c-2780-8fc1ddb55945,Frey Ltd,Finance,ES,164,19369.10,2021-12-26,false
+a36b8bf4-d968-562a-fa99-2dee4b57a936,Kennedy Group,Education,US,75,84873.17,2025-07-04,false
+294056e8-0554-4454-661c-467a9759115e,Smith and Sons,Energy,FR,132,27818.96,2021-08-07,false
+ed5faafe-c595-08e2-377b-fa1864bc7df7,Schmidt Ltd,Education,SE,280,610683.35,2025-10-15,false
+1d4d8a07-a607-b8c1-ed00-b2c6635c0fb3,Roberson-Stewart,Education,UA,97,60777.86,2025-05-08,false
+fe918645-9812-4f23-437f-90516affc429,Jenkins and Sons,Logistics,PL,25,433544.51,2022-10-05,false
+352dbade-1dfa-d26f-8e77-4144885a949b,Hernandez-Hernandez,Healthcare,GB,68,51112.26,2025-09-06,true
+bbf60cef-c96d-3344-c840-27a1ad180fdc,"Cook, Andrews and Jenkins",Energy,IT,285,7334.22,2024-01-13,false
+214467ce-ccf9-4185-f575-f688eab8f39e,"Alexander, Mason and Fuentes",Finance,US,152,20035.78,2025-12-20,false
+b94f409d-6325-8f90-b860-4ce15edf5673,Floyd LLC,Energy,ES,132,48308.32,2026-01-14,false
+a3fe7118-72c8-7cd8-e0a5-194b6e84e7e6,Coleman Group,Logistics,PL,75,20760.20,2023-06-15,false
+c8e880ca-d25a-2c30-1f1f-95ce9017d7b3,Barrera PLC,Healthcare,NO,263,109385.42,2023-10-16,false
+fab3748c-cf93-eef1-2a03-153b126e2a9a,Brown-Garrison,Education,NL,296,96548.61,2023-11-09,false
+9baf8637-6921-8afe-e255-c5fc24435765,Alexander and Sons,Finance,IT,180,105184.53,2026-01-01,false
+3524ab7b-221d-e75f-9444-88c53b41d204,Bean-Wade,Software,UA,140,83664.42,2024-11-04,false
+a05dada0-9ca3-fb4e-b361-0d7428723694,Horne and Sons,Healthcare,UA,414,25060.43,2024-08-19,false
+d1226fae-cd41-6af7-4313-de121f32fbc3,"Oliver, Yates and Mcintyre",Finance,US,89,73429.39,2024-06-30,false
+be2333cb-41fd-358a-89b8-ba6bc1124d45,"Cunningham, Brown and Blackburn",Software,ES,133,91255.75,2024-11-17,false
+2956a8a3-94fe-3066-cf71-43f6959015cf,Lopez-Potter,Manufacturing,NL,151,6978.13,2023-07-15,false
+5215d6b3-5e65-2dad-6825-1407089496a3,Krueger Ltd,Retail,NL,843,132714.09,2021-12-05,false
+ce6e7eca-5d84-937e-fa01-90037470c330,Brown-Knight,Healthcare,NL,57,374698.16,2024-06-24,false
+2759a3e6-57ef-2d48-2420-e7bab9e9b6ee,Wiggins-Evans,Finance,FR,110,332340.95,2024-07-31,false
+6157d4ed-f878-6108-57fe-ddad0255f8d8,Hickman-Gonzales,Logistics,FR,533,148459.43,2025-07-13,false
+ffb37a2a-a78e-1777-5d9a-89b980915a14,Kirby-Tapia,Manufacturing,SE,220,61736.43,2025-12-29,false
+340f1224-17c2-226f-0d30-653d6651ffe5,"Brown, Kelly and Martin",Retail,NL,61,92483.36,2026-05-10,false
+8fee56a8-88b7-fd7e-37ad-c9235902b5fe,Thomas and Sons,Education,UA,42,227050.32,2024-07-11,false
+152e67d3-0344-9a1e-a556-23250ccf2caf,Morton PLC,Energy,SE,189,6644.55,2025-05-05,false
+1235f98b-a1ed-4884-3887-416fd5159802,Adams PLC,Logistics,US,172,500911.16,2021-11-04,false
+1f4a8944-af68-578c-ba70-b809d78205e6,Vasquez LLC,Manufacturing,PL,449,21543.53,2023-06-27,false
+d218ed7b-34b3-a462-37f7-580466938a59,Flores-Willis,Energy,NO,17,63566.48,2022-02-01,false
+953e928c-ebc2-c904-16d5-9d74b6c4f4b1,"Stokes, Bell and Dillon",Logistics,FR,54,103469.43,2022-09-03,false
+73d82442-86ec-4c77-b0d4-8559276494e0,Richard PLC,Retail,GB,61,91269.57,2026-02-15,false
+f4b5729a-9c3c-ccb9-37ab-189cc34423ef,Esparza Ltd,Manufacturing,GB,59,77485.32,2023-01-17,false
+830fb9bf-ba1d-527c-aec8-ac2919b85f3b,Santos-Taylor,Software,FI,102,46095.00,2024-06-23,false
+540a9f54-57cf-fbba-ad72-49a5020da609,Hernandez Inc,Software,SE,149,93204.68,2024-12-06,false
+3b25add5-b355-dad5-2279-880c622003c8,"Simmons, Benton and Gallegos",Logistics,ES,290,3735.57,2021-07-25,false
+322f3219-59f5-0ae3-10ef-5813b89431ab,Cardenas-Wang,Energy,DE,20,55680.12,2022-01-31,false
+fc156056-14d7-29ac-1d3e-ad77c82486bc,Wilson-Baker,Education,UA,43,156572.66,2021-10-15,false
+26aeb76f-21ee-cfc5-096a-171c69dba390,"Allen, Miller and Gonzalez",Education,FI,55,29713.20,2022-03-17,false
+7d3afe67-9604-1231-7401-783a0d0967d2,Smith-Keller,Finance,GB,103,133129.67,2025-04-20,false
+37d7045a-22cc-4e71-7b0b-703c60efb44b,Kramer-Bell,Finance,FI,240,23120.84,2022-02-14,false
+84cd804e-d832-c900-4421-e1ebab000bb0,Jacobs Inc,Energy,GB,310,65966.92,2023-04-15,false
+8789ec04-64b5-67fc-c0df-9a53c10f4897,"Vaughn, Griffin and Thornton",Finance,SE,52,462045.74,2023-09-24,false
+3d73738f-cd26-71ad-a11d-839676866edd,Shaw LLC,Retail,DE,55,249036.56,2024-12-12,false
+d115a12e-a5b5-9fab-c35d-ea4f90be5802,"Brown, Carr and Stafford",Energy,GB,12,22927.56,2024-09-10,false
+09b73e11-04a1-6079-0d25-dbc10e62e57c,Coleman Ltd,Retail,SE,62,108469.63,2024-03-28,true
+594d1a81-77b5-3fa3-cc27-baacba35b668,Barnes LLC,Energy,PL,192,61617.12,2023-02-07,false
+380db086-0571-3862-f64a-0c4397c2e5f1,Moreno PLC,Manufacturing,UA,48,41878.44,2024-11-13,false
+2228ab11-2350-259a-972f-cb8c740b82f7,Lopez Inc,Logistics,FR,33,105299.68,2023-05-10,false
+5bfea028-e859-454f-6a67-1478b6690e7a,"Madden, Vasquez and Foster",Healthcare,NO,70,60108.51,2026-01-02,false
+725fd3bd-0c02-f6bf-c354-e82b3cec8e1b,Hall LLC,Retail,US,90,162814.20,2021-07-04,false
+99db3167-487c-19d7-a27d-59cec8a5ae0d,"Valdez, Rivers and Petersen",Energy,IT,23,41233.17,2025-04-07,true
+79be50a0-fbfe-3f39-34dd-8ce7b366be53,Leach Inc,Energy,GB,117,85471.68,2022-10-28,false
+7766df7d-bcc9-5555-be4b-99a43a1a7a9c,"Smith, Hayes and Roberts",Finance,NL,142,16764.58,2021-09-11,false
+2a069087-a2aa-bcb3-1ead-576af9695161,Galloway-Santos,Education,US,50,43507.05,2021-06-28,false
+743218b0-ec89-2c9d-d8d7-17249bd8c2b4,Garcia-Diaz,Energy,SE,210,408637.10,2023-07-31,false
+4a84ec8f-7643-1f29-eeb0-c39d7559e170,"Hensley, Carlson and Mcdonald",Education,SE,14,220937.29,2023-05-30,false
+e7513e3a-31d7-306d-cbb5-a2610604f157,Gonzalez-Garcia,Healthcare,UA,31,29133.97,2024-03-07,true
+82e77f87-7882-c573-8a96-9a52a20068d4,"Henry, Nolan and Ramos",Manufacturing,DE,35,279366.29,2023-09-22,false
+cb503059-05e4-dc31-4b56-ae8b4d6de518,"Hernandez, Ramirez and Barker",Education,US,79,430901.83,2022-10-10,false
+ee4e52c7-3b80-f24f-c2fd-54f308fafcad,"Smith, Mccoy and Lowe",Software,FR,306,13354.06,2021-05-20,false
+cbeba647-0d1b-f3a2-131f-f16da6c30e41,Boyer Group,Education,US,65,21620.30,2025-12-27,true
+651b443f-4e89-22d8-a73b-bb7184c56ace,Wells LLC,Energy,GB,114,23741.53,2025-09-30,false
+2fddd005-b5c7-03a6-df12-65774a281e3f,"Dyer, Johnson and Berry",Software,GB,98,186751.11,2024-01-22,false
+bac9a83d-9d2d-8f33-fa67-2b0285fa3c61,Fischer Ltd,Logistics,FI,11,86212.38,2023-04-11,false
+bffb46f6-5172-2483-e1f7-ba69dca646df,Clark-Torres,Finance,NL,33,98137.45,2023-05-14,false
+73d54325-4adf-6048-2b8c-ced2c3534105,Yang PLC,Energy,PL,311,20133.40,2025-04-22,false
+b637ca0a-9178-145e-d1d0-5086b56eb5fc,"Ruiz, Luna and Green",Retail,FR,309,47262.76,2023-11-08,false
+59cff597-b897-ba2a-4537-638d8df43816,Mason-Marks,Education,GB,217,75455.36,2024-10-22,false
+2430f7fa-a35e-19fb-559f-22296d63e331,"Dunn, Mathews and Crosby",Education,US,174,331625.04,2024-09-23,false
+c3259c49-cf5f-5f43-9235-f1c2f3a72d27,Greene LLC,Retail,UA,146,11206.47,2025-05-11,false
+991eaab5-f723-df94-96f5-94e28ad65672,Baker-Hood,Retail,FR,356,33651.81,2025-08-20,false
+04e65ed6-7590-720c-07a5-bfa565de6787,Flynn-Valenzuela,Energy,ES,116,45117.33,2024-07-10,true
+b3fd5884-435c-343f-dc05-476281b5e711,"Price, Parsons and Clark",Education,DE,333,167646.95,2021-11-02,false
+6d0394e7-d9a3-47cc-7af2-660a81c92f65,Burch and Sons,Education,PL,122,45763.51,2025-07-15,true
+61765934-2a6f-8045-6d42-e7a43a97dea8,Warner-Lee,Education,NL,182,207076.24,2026-04-17,false
+259edc60-ca40-680d-893d-904b38e8c601,Waller PLC,Manufacturing,NL,375,177998.93,2025-04-01,false
+9dab38f1-23bc-6f4e-5660-b4d4f674ed77,Murphy PLC,Education,IT,29,34883.86,2024-02-13,true
+8614838f-06ab-2ffb-60fa-19aab3430bd4,Garcia-Choi,Logistics,DE,34,76258.15,2022-07-10,false
+d12f90d2-aac2-3a08-e488-dea011c4e926,"Velasquez, Dixon and Haas",Education,SE,42,44792.92,2024-12-04,false
+396e6194-ddca-96a0-0ede-8855593ac119,Wallace-Arnold,Logistics,NO,70,39605.88,2025-10-01,false
+0ec4311f-90c8-8a39-d61d-e07800d06cb6,Matthews Inc,Healthcare,NO,256,75490.52,2022-10-19,false
+1b206bc5-7e40-6da8-d3b5-8160104b5a78,Galvan and Sons,Retail,GB,46,84130.91,2024-12-18,false
+48a8c6e1-08af-ac22-eb9b-434989b1e2bd,Torres-Smith,Manufacturing,FI,32,10864.97,2024-02-09,false
+f7ac799d-371f-e0c2-fdc8-e440673a4e09,Wilkins and Sons,Retail,SE,350,34479.25,2022-01-29,false
+5607bcce-8cf6-7915-1f80-0c64548c1c9b,"Taylor, Hines and Jackson",Energy,ES,93,37749.58,2022-07-21,false
+cb07362f-8d7b-cc19-66e2-d21ba2551228,"Norton, Neal and Boyd",Logistics,SE,95,33935.46,2023-03-05,false
+c9aefdc1-863a-9914-7715-838c227bbded,Burton Ltd,Software,PL,137,474882.64,2021-10-23,false
+2d6ccbec-f614-9365-04d8-687be958e788,Jones-Morgan,Energy,NL,140,13420.79,2021-08-03,false
+f7f5c3f8-55b1-8d62-c01e-2ee9345fc16b,"Martin, Stone and Jones",Education,DE,49,45867.78,2022-02-17,false
+48b45cb2-91d3-63db-e02f-96eca2f8a8d1,"Mckay, Freeman and Arellano",Software,IT,54,5181.68,2021-10-31,false
+9375472e-f0f9-ea99-fd0a-5285269fc072,"Logan, Conley and Bradley",Energy,US,602,51903.09,2025-01-28,false
+d79e5bf5-91bc-3ac2-91f8-e6e9e750ce5b,Sanders Ltd,Retail,NL,398,309141.40,2022-02-25,false
+98031cfd-e516-2f16-763d-93c430257e38,Hale PLC,Retail,SE,19,91568.86,2023-04-22,false
+01baa4d4-3482-7b13-d687-e3136dffb1a2,Lin Group,Manufacturing,GB,191,258856.75,2023-04-12,false
+3ef7745b-e53f-8028-c980-47973cc773c7,Daniels-Mitchell,Logistics,DE,110,16292.33,2023-04-07,false
+c9fb4cd0-d1c1-1cb8-a3dd-aa8156527262,Garcia PLC,Logistics,SE,150,28587.25,2025-10-23,false
+5a9fb864-42f2-104e-71dc-eaf1eb213779,"Thomas, Mack and Blair",Software,GB,101,25376.26,2025-05-28,false
+1ddd8fef-41f7-cec0-d995-cb03e56de8b8,Adams PLC,Logistics,FI,71,29050.26,2026-02-16,false
+abb9b9ea-9f9f-e372-be81-431e84d07ea6,"Carlson, Chapman and Williams",Manufacturing,UA,171,30332.03,2024-07-14,false
+0fc95661-65e7-b332-df12-49eaea85afbc,Padilla LLC,Software,FI,46,162605.49,2021-08-28,false
+ce09e22e-c336-58fa-1dfb-16fccdf4a9cf,"Smith, Peterson and Dixon",Finance,US,61,91297.27,2025-12-29,false
+6635cce7-d7ba-7eea-d5bf-40ff8088c0de,Hughes-Mercer,Energy,GB,154,123551.52,2023-04-22,false
+61c7e96a-ea5b-fd15-3644-45ec752a4267,Berry Inc,Manufacturing,PL,52,57306.69,2021-08-31,false
+ced23622-2a9a-e34f-7c1d-b7d82dbac3b2,"Brewer, Cook and Graham",Energy,US,127,32359.86,2026-01-09,false
+0968cfc4-063a-8024-2efa-b05df3b85766,Bailey-Graham,Manufacturing,US,115,66312.81,2024-12-16,false
+fbf0d19d-05ed-ce49-4d89-ef9970dae303,Bradley-Harris,Energy,IT,15,53760.32,2026-04-03,false
+8a06c150-b6ce-d77f-e417-fe7d0ccc1f5f,Cook PLC,Healthcare,NL,230,28417.67,2025-12-23,true
+79c97124-9eae-417e-89d2-e4d1c6c1fae2,"Nicholson, Phillips and Gonzalez",Finance,FI,89,32591.86,2025-12-25,false
+fefa052c-0139-fbcb-65a6-a96fa4cd04ab,Brown-Evans,Finance,SE,48,177514.47,2024-07-08,false
+bfd8727d-d37b-3c90-0a6f-6ad56e9e42f4,Chase PLC,Retail,ES,253,356794.52,2022-05-28,false
+3c1ffc75-4220-ee3a-53c6-5ed9233936e1,Rodriguez-Franklin,Finance,UA,94,1884083.60,2022-08-29,false
+2a8dbbf2-d011-ee29-139a-9b13329e435e,"Jackson, Martinez and Bates",Logistics,FR,77,85359.36,2024-08-27,false
+568edec4-b9f4-51a5-b6b5-5ebf0229896c,Acosta-Robles,Energy,FR,103,33828.03,2024-03-04,false
+e2633498-f96b-620f-c0ff-f4e523425dc8,Smith-Johnson,Retail,FR,42,125757.32,2021-11-14,false
+b0022df6-ed8c-f223-5c2c-ec6df2685591,Jones LLC,Healthcare,ES,190,286603.65,2024-11-24,false
+c1ad03a6-f8eb-501f-9e95-c0f44be4d2a6,Carroll-Perry,Manufacturing,FR,23,75446.88,2025-12-12,false
+9ed6e647-6b40-c670-efb0-eb6b59cd6b78,Doyle-White,Logistics,UA,65,41587.19,2023-09-13,false
+330d18f7-866e-3c16-7589-9c6fdf7d1913,Pacheco-Gonzales,Logistics,DE,96,363948.42,2024-06-17,false
+d2172dbb-81b1-9ce3-ff34-e6a773f0138c,Foster-Skinner,Manufacturing,UA,159,65079.17,2023-05-13,false
+4f3a32c5-5cb6-58d3-9236-1d8b3565ab27,Holder Inc,Logistics,US,140,778124.23,2021-07-14,false
+8fd7aff2-4951-efe0-1050-47bd92cfddd2,"Gay, Wood and Walters",Education,IT,27,55562.03,2022-05-17,false
+fd1d393e-7142-c4d8-047d-0edec655c2d2,White-Collins,Software,IT,28,128125.17,2022-05-16,false
+d51f0635-ddf6-ce3a-f685-b0f3c1102a3f,"Jones, Bernard and Carrillo",Logistics,IT,126,69897.17,2025-08-21,false
+209b60a6-69ac-d8ea-c4f9-f119c8a8eca6,"Hale, Smith and Fry",Energy,GB,104,107728.72,2025-11-14,false
+24d0a087-a7dd-f9ea-e675-dc24a83828a0,"Johnson, Bryant and Barron",Retail,GB,127,1039292.28,2025-09-17,false
+8b449900-abac-edf1-9bd3-6de59f2595b8,"Anderson, Young and Caldwell",Software,GB,57,351689.38,2022-12-23,false
+ececa4d6-7e57-8156-d88f-d5b46f188359,"Smith, Li and Gonzalez",Finance,FR,193,95176.91,2021-12-28,true
+80fe6622-5bc5-7211-e1df-e75b3e6caa97,"David, Wilson and Walker",Healthcare,SE,60,100124.96,2022-03-25,false
+f856df3d-d5f6-0c39-9109-f07e2c4b4c57,Patton LLC,Manufacturing,UA,205,98386.57,2025-07-05,false
+c71ec0c4-5cf1-5bd5-7096-6a528118254e,"Scott, Russo and Turner",Education,US,158,40727.26,2025-09-16,false
+11e00d93-baab-f4cc-57e9-54b88533fa16,Glass Group,Energy,SE,253,130199.34,2025-08-11,true
+aebb4e04-cbcf-d39d-274d-d5643e462de4,Larson PLC,Education,FR,14,40268.68,2021-06-03,false
+b815d33d-dec5-bf21-e720-e8d727648849,Morgan Ltd,Energy,NL,96,126315.24,2021-09-14,false
+e306cc3d-08ff-a168-6b7e-2986b2f54fe4,"Shaw, Ayers and Gonzales",Logistics,SE,82,39186.78,2024-06-29,false
+c71cc2ee-e753-faa4-1076-f9894366dab4,Thomas LLC,Software,SE,175,34210.82,2021-12-28,false
+bf34b3ac-97c7-f5b5-5bad-f9155546115e,"Rollins, Bell and Booker",Education,SE,466,96456.54,2024-02-26,false
+4437d915-9fc3-022e-4005-66d2874b9800,Lewis LLC,Software,FI,378,14845.27,2026-01-17,false
+da35b9e9-3c1b-628d-fc97-49eaa5e413a0,Bond and Sons,Energy,FR,29,36181.08,2023-01-24,false
+2bb47b79-615f-4fdc-fcd3-edea12c4c321,Gonzales Group,Retail,PL,70,22672.61,2023-06-19,false
+aeda71b6-27ef-f77b-835f-cac80c1beccb,"Guerrero, Sutton and Mclean",Education,DE,7,9322.17,2024-05-31,false
+b5e1390f-c34a-0e06-7f5e-e259dfd6a834,"Collins, Miller and Aguilar",Finance,DE,51,11635.48,2021-07-30,false
+90faa853-1b98-b906-19dc-b516d2b66748,"Cooper, Cantrell and Russell",Logistics,NO,81,453749.40,2021-07-01,false
+7c144b8b-c4ee-485f-c227-c67e3ddfe881,Dalton-Blanchard,Manufacturing,NO,338,1200516.61,2025-04-18,false
+57120d1b-31a6-857f-bff0-5f2564a0e88e,"Cabrera, Smith and Sampson",Healthcare,ES,299,27391.39,2021-05-17,false
+bea4b452-9fb3-ce6d-e71b-1a74ff54e9b5,Robbins Group,Finance,IT,38,44568.31,2026-02-03,false
+a08fa2c4-df0b-6ba7-a729-e5023eaf9179,Deleon Inc,Logistics,UA,690,36430.84,2026-01-18,false
+c7d0420c-fb04-e897-d6f6-e999b83321b0,"Thomas, Williams and Martinez",Software,FI,177,228349.59,2021-05-17,false
+ca882579-a89c-de6d-f256-dca4886f698f,"Mcgrath, Drake and Fowler",Healthcare,ES,95,36181.85,2022-08-10,false
+aca53b3e-f44e-e07e-aed4-2a378c78c032,Johnson-Torres,Software,NL,102,25797.54,2025-10-08,false
+a864c301-a6a8-7607-1e4a-84cf53a22a4b,Caldwell-Erickson,Logistics,ES,148,90108.19,2022-11-13,true
+35f1ef77-d022-aa7e-2fd5-6a2cede4646b,Thomas-Vasquez,Software,DE,172,257437.98,2023-03-16,false
+e72736ad-63da-b93f-5b3b-0981620652f1,Keith-Delacruz,Software,PL,111,58256.15,2025-11-20,false
+fed73faa-afc0-d84d-2535-0098c499e714,"Perez, Reid and Vargas",Software,SE,158,55074.20,2024-01-20,false
+3d3c789d-cea8-293d-2361-cfede208c310,"Lowe, Rivera and Hayes",Software,SE,41,116026.73,2022-09-28,false
+71111d15-04e2-3112-d70b-d77f1d379e3a,Love Ltd,Software,NO,91,29112.47,2022-08-17,false
+6f1135a5-6b3e-dd3e-1abd-01d1eb1eba8e,Kelly Group,Finance,DE,443,163618.22,2022-05-27,false
+89f482f5-2d44-4b42-3616-2cad0741c4d1,"Garrett, Sanchez and Watkins",Logistics,SE,237,14386.44,2025-10-25,false
+f23d7cd3-0a0d-338e-1973-3ae46b6f9787,Nolan and Sons,Education,GB,108,32108.06,2022-10-28,false
+c0099849-bae8-4b39-df35-0d9d8da35aab,Gonzales-Allen,Logistics,PL,32,78096.17,2021-10-07,false
+73d323d5-73cb-beb2-6ad7-27bb8369b763,"Perez, Brown and Patton",Healthcare,NL,51,244089.28,2024-10-31,true
+dbe745ce-55d6-5c1c-f5fc-e697fb6f7c1e,Hampton-Le,Software,UA,44,374290.18,2026-02-19,false
+f4205a29-4d25-aef2-d4d2-1a938f67e744,"Hancock, Ferguson and Parsons",Finance,ES,42,28374.45,2024-08-27,false
+b1b6fd3d-2f6e-ba34-693f-f6a4218ba186,Randolph-Garcia,Healthcare,NO,26,140635.64,2026-02-18,false
+fb529767-9357-741a-4b2e-debb8b2f6d74,Lee LLC,Education,NL,72,20757.98,2025-08-13,false
+50e7a44f-df7f-438e-750c-ff913ad4d204,Olson-Lee,Retail,GB,371,5097.69,2023-09-12,true
+d3e6ca08-6fe5-5e32-a405-d0cd07578c96,Solomon-Martinez,Logistics,NL,81,27229.93,2023-12-29,false
+b4b83ef8-fa68-73f8-0fde-9aa674840312,Walton-Meza,Healthcare,UA,54,122369.42,2021-12-08,false
+434206ba-ce74-2cba-8286-668524388661,"Cooper, Williams and Rowe",Education,DE,312,5052.13,2024-05-28,false
+2b71d4e0-f346-e95d-8e5b-dbea86b6eadb,Taylor and Sons,Finance,NL,90,35804.37,2025-01-28,false
+8df04b07-8231-8a5d-997c-95abfadbe88d,Gomez-Chapman,Manufacturing,GB,33,596861.70,2025-09-24,false
+be88d9d5-3c4f-c5eb-f2aa-1d2be6bdee2f,"Jackson, Torres and Davis",Education,SE,143,30637.45,2021-12-12,true
+3a63aeb5-f2d6-545e-1907-356409e37433,Johnson-Boyd,Education,FI,109,132299.89,2023-05-17,false
+6c2aaaac-128b-ea08-aa83-28455780bde2,"Thompson, Gutierrez and Cochran",Finance,FI,60,35312.70,2021-07-01,false
+31a75ea5-5e71-fdd9-730b-3037287ac9b7,Randolph-Watson,Manufacturing,ES,116,82673.98,2023-12-03,false
+d81ce39b-afe0-a26a-ffcf-aa93667daa7d,"Erickson, Moore and Miller",Education,FI,40,99995.67,2022-10-15,true
+ba043f3a-f723-09c6-1d86-186bc0ebbe13,Stone-Morris,Software,GB,73,21141.12,2025-02-06,true
+8bde2583-165a-bbbd-d92e-c3ef91af2b11,French-Bradford,Logistics,NL,147,155075.17,2022-12-07,false
+40be9ab6-b7eb-b2d7-b023-b011bb212435,Anderson Inc,Retail,GB,61,59547.57,2022-09-01,false
+58d22b33-be1b-2068-7d8d-dbc1aebd3687,Brown-Anderson,Finance,NO,106,41840.73,2022-05-16,false
+008654ca-d498-f5d6-73b2-8fe57a661d0e,Hayes-Garcia,Healthcare,UA,129,31511.32,2022-09-21,false
+7aa22e69-5984-fb65-2098-0fbc9dbf1e53,"Martin, Hanna and Moore",Healthcare,NO,162,14879.46,2025-02-04,false
+08d3c1e8-17ce-009f-7667-8fc823b94a31,Peters-Stone,Healthcare,ES,42,34933.87,2024-11-04,false
+7ac893e4-a297-71d9-7bd5-d806c5ab4ad1,"Hall, Daniels and Ramos",Logistics,IT,82,73046.45,2025-05-12,false
+ee8fa734-b581-2b1a-48e6-3545136660ac,Jones-Jackson,Education,ES,22,369669.55,2022-08-05,false
+77204c84-cb94-725e-dd9d-3dc83ea2db13,"Richard, Casey and Chung",Software,FI,41,449197.75,2022-10-11,false
+a160b584-44f5-507e-62f7-628b935c965a,Murray-Wagner,Retail,PL,106,59978.08,2025-02-24,false
+c60d8593-f7d4-7b3d-ebe5-853d2e653333,"Lopez, Thompson and Aguilar",Software,NL,100,85149.16,2022-09-24,false
+f80897e6-aed8-3988-6996-4b0fdebc2b70,Garcia-Austin,Logistics,ES,64,5565.36,2023-12-26,false
+827231a0-6a68-6ac9-2d4e-0187d9f5d424,Keller-Cox,Energy,FI,56,27123.90,2024-08-29,false
+bea5c147-fe14-e240-baac-98b81fdd1c6e,"Sharp, Madden and Wilson",Software,US,104,70660.00,2021-07-22,false
+307e25a5-61e4-9b46-168a-7d3087b377ef,"Harper, Hart and Chapman",Retail,NL,24,62151.65,2022-05-09,false
+56ac7d73-efac-ff81-552d-aa2af827cd90,Morgan-Villarreal,Logistics,IT,307,151351.02,2025-02-01,false
+12dad224-ebd0-55e8-8210-01c1b7759013,Cooper-Myers,Education,NO,77,395192.35,2023-09-09,false
+e496e2ee-10a2-e083-7e80-5c2d1ba63087,Fuller-Boyd,Logistics,FR,37,3213.34,2026-02-17,false
+4a424138-1d49-54f3-0fdf-6de2cb0a5261,Brown and Sons,Software,GB,80,20245.49,2022-05-19,false
+416a5c06-0baa-b1a9-f128-d358d716ab6f,Stein-Scott,Energy,GB,161,4045.15,2023-05-08,true
+d48b72bd-a22e-741a-5693-d75a16acfbd2,"Ramirez, Wilkins and Williams",Education,PL,31,393630.41,2026-05-01,false
+a61509d3-1691-58c6-40e9-6476ee30f2a3,Smith-Jordan,Software,DE,40,115317.13,2025-03-27,false
+d5e407f6-ea44-ca63-9906-f73afb4820d3,Campbell-Brown,Energy,DE,86,9781.31,2021-09-13,false
+27c2dfc4-2eff-7930-6fb2-147d18f2b6db,Anderson Ltd,Manufacturing,UA,27,65314.73,2021-05-21,false
+5326e4e6-72d9-2b0b-0bfd-4e9f235cc6d0,Henderson-Dennis,Finance,NL,131,305402.44,2023-05-23,false
+d93b7209-1ea4-9549-8443-7c7a0c164301,"Williams, Long and Hinton",Manufacturing,US,112,149929.66,2026-01-15,false
+9d932986-caec-6f8e-1ef7-ae9c7091575b,Martinez Inc,Energy,PL,53,60379.72,2022-07-25,false
+f15a3e49-427f-a4b4-e42a-341c17123702,"Newton, Ayers and Jimenez",Manufacturing,US,44,96746.57,2025-11-06,false
+136abf9a-debb-9c3f-6cb1-2091b179cb80,Douglas-Glenn,Education,FI,1792,336782.97,2021-06-03,false
+ffabf154-62ce-ba3a-5abf-475d693444f0,"Delacruz, Barnes and Jensen",Retail,IT,65,369095.56,2023-09-09,true
+5ee5a40d-9469-4b9d-8e97-a99f2eb4204d,Blair-Miller,Healthcare,UA,68,129079.76,2025-11-25,false
+e19b2fca-8956-a4c4-fdb9-c103ce24ed37,Blackwell-Thompson,Logistics,FI,46,71352.79,2023-01-12,false
+208f946d-08e7-08ff-cb34-e1d578ab0548,Cooper-Henderson,Retail,NO,80,288361.02,2022-08-25,false
+181b6418-618b-252f-797b-f63f34e1171a,Mitchell-Fox,Logistics,ES,44,40641.23,2023-08-28,false
+b4019ee2-f5dc-3931-fdc8-c7fee89d42e3,"Marshall, Miller and Rodriguez",Manufacturing,SE,16,588817.24,2023-05-06,false
+28f0f11c-1ce9-26d3-180c-ec85a6737381,Joyce-Williams,Finance,IT,35,113725.31,2023-05-24,false
+a9a63c01-bf4d-fd86-1595-435670bc3f48,Henderson-Martinez,Education,US,54,34940.38,2022-07-10,false
+48103f96-796e-51b0-0c5f-58f2cc68677c,Luna Group,Finance,FR,65,2678.76,2022-01-15,false
+359c457d-61f4-8592-aa1f-af474eee39ca,Jackson-Moore,Logistics,GB,87,340647.18,2023-07-17,false
+e34bc9d7-3691-d6c5-7591-8c9af1faaf4e,Green-Craig,Manufacturing,FI,25,203025.94,2025-08-19,false
+70875ac8-615f-c14b-181d-fb644692648e,Patterson Ltd,Logistics,IT,14,108304.64,2025-05-22,false
+a1d415e6-1e42-bfd3-bfdc-60c872fc58c4,Moore Group,Education,FR,224,52902.66,2022-07-05,false
+86f1313e-e1e7-fee3-231b-cfe8fd320d91,Turner Group,Finance,FR,264,150402.64,2023-03-30,false
+14bad897-33e6-750b-b4dc-c9899a29335c,Stewart Ltd,Logistics,US,25,83702.53,2023-12-03,false
+e3c8f646-bd69-b28e-44d1-a66a73160ae7,"Christensen, Spence and Glenn",Education,NL,27,110019.07,2026-05-05,false
+83cf1e30-17dd-5f8e-4a9a-1c42a8c80751,"Palmer, Nelson and Webb",Software,PL,40,360025.23,2024-05-22,false
+08afb55f-60c0-6351-44a4-f833e712de9a,"Smith, Ruiz and Lee",Energy,FR,217,24099.30,2023-03-11,false
+5c9999a9-d186-64a3-c4a3-61fafb192f5b,"Luna, Vaughan and Young",Software,IT,17,45164.35,2022-08-04,false
+0ac68d63-1b6a-f7ba-ed39-41b9d8bb194f,Flowers and Sons,Retail,IT,43,320893.42,2023-12-14,true
+2127ebde-9e36-a68c-225c-251e4910b8f4,Miller-Owen,Retail,FI,274,81047.20,2025-04-06,false
+56ba774a-8996-aefa-4217-f810773f2498,"Young, Hendrix and Gonzalez",Healthcare,DE,81,73171.11,2025-02-26,false
+63a464c8-c017-35f4-425d-0c1c45b1e2d9,White PLC,Retail,US,46,42532.46,2021-11-16,false
+d49cfb3b-902d-e7a4-b2dc-d66f4c619a4d,"Walter, Roberts and Holt",Software,IT,156,63147.34,2024-05-18,true
+c8302e39-e9f1-ab2b-5fae-17a4af2e0dce,Anderson PLC,Retail,FI,148,26255.66,2022-08-24,false
+51862863-816f-de1b-c7bb-65580a11c012,"Martin, Lynn and Marsh",Healthcare,SE,126,77577.38,2025-04-11,false
+2800543a-4a2d-2f04-ded4-f5f1b27c8d8f,"Nguyen, Rodriguez and Kennedy",Retail,FI,184,144477.60,2021-11-13,false
+4d1b84bc-326a-bf9e-ccd7-bdb7a3b8bc39,"Avery, Bradford and Jackson",Healthcare,DE,265,54070.69,2023-11-23,false
+3795f588-827a-5e71-2143-6c8f2af369f2,Roberts and Sons,Finance,IT,183,215258.07,2022-04-26,false
+1b1f25c6-749f-500e-9b1f-921153633d24,"Johnson, Hill and Miller",Software,UA,13,80362.69,2025-07-08,false
+0b878bd8-10fd-356d-1274-8938685c664e,"Roberts, Reeves and Johnson",Retail,FI,16,55480.21,2025-01-21,true
+1616834e-7830-03f8-87ff-7c5d3b6401ad,Ross Group,Logistics,US,129,330217.13,2022-10-01,false
+fa0d0755-af8d-2349-3193-6f09c4c8bba4,Ruiz-Smith,Manufacturing,FR,64,23915.01,2024-09-05,true
+10a9774f-a3b6-7389-1bc1-3d9462eb0906,Spence Ltd,Healthcare,IT,58,273991.53,2021-10-15,false
+4cb71edc-0adf-fe8c-c724-2807afac93ba,Schwartz-Merritt,Manufacturing,IT,418,3583.83,2026-02-25,false
+604f7f47-6060-3340-998f-6fb60f345c37,"Atkinson, Morris and Garner",Manufacturing,FR,334,391792.71,2025-04-16,false
+251ecd42-136c-7bdc-a392-7c8a9daa2507,Sanchez LLC,Education,FR,94,105484.71,2025-08-02,false
+c41b0c92-dbfa-8058-a162-80075f9d11ad,Brown-Carlson,Logistics,PL,213,290315.14,2022-12-16,false
+0c62f8a4-429b-faea-2a1e-f65ebc145a3e,Beard Ltd,Retail,FR,102,64170.01,2022-06-20,false
+4f808741-1780-3e8f-d226-f9283989f260,Aguilar Group,Manufacturing,ES,98,36974.78,2023-05-06,true
+abd6c3e2-7235-763d-cd3d-8883664d77d9,Garcia and Sons,Energy,SE,89,72098.04,2025-09-13,false
+ed6b67c6-2ed5-4142-394e-7994adf7a19d,Franco-Fletcher,Retail,IT,190,141915.02,2022-08-18,false
+ade95d13-c0f8-4f64-7588-d79413b52d8e,Heath Ltd,Finance,US,177,13362.92,2025-02-13,false
+9dbf60cc-0a85-6553-2fae-25ff8260bf4f,Boyd PLC,Retail,NL,31,115427.97,2021-10-11,false
+0647671b-dc75-fc18-51f6-6864c6d1c008,Petty-Rice,Logistics,UA,96,15907.29,2025-11-18,false
+6198efd9-189d-43ac-27fe-37d72105d703,Steele-Ford,Manufacturing,FI,92,56114.73,2021-11-25,false
+15be05b5-130f-9c07-e0ef-60575d9b608d,Graham Ltd,Manufacturing,PL,71,461186.95,2024-02-16,false
+0f73326c-c4fc-b95e-c018-3f7a7ae6df9c,Washington Ltd,Healthcare,UA,35,10286.82,2021-08-03,false
+35865add-811c-5615-4605-dab1eb0e485c,Woods-Bentley,Education,FI,15,95576.47,2026-01-13,false
+a7235022-58d0-febc-40ac-591b13e12e8e,"Herman, Holland and Gallegos",Software,GB,52,96041.26,2025-08-22,false
+e886d4e6-ded4-c4f8-7015-75379d8c2d13,"Molina, Grant and Glover",Logistics,GB,114,34072.43,2024-03-28,false
+ea33c761-9467-b816-b87a-971a44539239,"Ray, Davila and Wood",Retail,US,25,41089.08,2025-05-30,false
+5756cb21-d528-1ace-d465-ee7712303308,Jackson-George,Education,DE,28,12120.67,2022-02-12,false
+c86cbf18-08fc-4398-c52f-c36a9597b1e8,Stewart Ltd,Education,SE,137,47906.63,2025-12-25,false
+4d4868c9-cbce-5565-f2ae-8b47871d4b17,Moran PLC,Energy,IT,22,4090.22,2021-09-29,false
+38508a4d-3716-8c4b-8ba1-f7ad97f7c846,Powell-Gordon,Manufacturing,FI,87,195417.75,2021-11-14,true
+2728e7ef-c264-0648-44df-6d45bb3c422b,Gutierrez-Richmond,Manufacturing,UA,22,266369.78,2022-11-29,false
+584b8a84-47eb-c79a-f37a-037b624505e5,"Turner, Sosa and Brown",Manufacturing,US,281,105005.56,2022-05-12,false
+471f3f6c-a9aa-78a3-52bb-60489d51922a,"Simmons, Johnson and Wheeler",Healthcare,UA,41,91821.99,2021-12-06,false
+3e9da7b6-0bb6-e985-ada5-5d0b767de2bf,"Aguirre, Murray and Evans",Healthcare,PL,99,85019.34,2023-04-18,false
+c591634d-c642-7268-52cb-1f3f6133efdb,"Garcia, Welch and Moore",Software,SE,101,84505.90,2021-10-17,false
+4f09ef53-556c-b9c0-bf9a-aaaec6258aef,Baldwin-Campbell,Energy,NO,740,14533.71,2023-01-23,false
+5abf19c5-b013-fa73-5e58-edb05e2cb9fb,Fry-Hughes,Manufacturing,GB,292,37945.21,2024-05-21,false
+fd93083a-301b-79e1-f0f8-496a07d5add0,"Perez, Matthews and Thompson",Education,FR,171,245667.19,2026-02-15,false
+0c4405b0-52d7-9f61-6bcf-fb6828a25946,Valencia-Lane,Retail,NO,189,85577.32,2025-07-26,false
+0caa9ab5-2f90-d2f8-e411-cf698d1f5a3f,Hardin-Goodwin,Energy,IT,201,54109.58,2025-06-13,false
+4a8b478b-6e55-d338-e121-025fa6b1996e,Garcia LLC,Education,SE,112,11747.95,2026-04-27,false
+b43d06b1-be06-4681-b3af-4fe09e14ee4b,Patel and Sons,Energy,UA,57,37871.47,2024-02-14,false
+0171795b-51e5-5f80-c97c-84c88e28c58f,"Sheppard, Wiley and Hernandez",Education,DE,9,18690.61,2023-10-20,true
+3f665762-c9c5-053f-6dbd-2e603ee68217,"Reid, Newton and Benton",Finance,NL,24,88600.12,2022-12-25,false
+3f087afd-b97e-4087-45eb-01edffb214de,Bates Group,Education,PL,12,302417.42,2024-02-06,false
+29ffad10-6f23-9c3b-b9d3-6303d5223729,"Powers, Johnston and Miller",Healthcare,US,63,55705.25,2025-11-13,true
+b64615f4-bea7-bdf1-78fd-b08bd85e001f,Spencer-Gilmore,Software,IT,226,54050.77,2023-02-27,true
+8278ea73-2091-c7b4-69d7-7ae0c8020cfa,Martinez Group,Education,ES,73,420537.91,2023-01-23,false
+b073e3bd-ece0-e245-0c76-5c11586ee7ae,Garcia Ltd,Finance,ES,44,30722.65,2024-04-05,false
+aca6c318-8639-b2e5-bbd9-3e0989f16601,Warren Inc,Retail,NL,148,21052.96,2024-03-30,false
+eadf9c44-ba3c-68d4-b365-c98ee6c18da3,Harper-Armstrong,Software,US,324,27641.23,2022-09-14,false
+1c0c3c76-de35-8acf-ddd2-68b601093ff0,"Stevens, Mason and Patterson",Energy,UA,80,106263.86,2022-08-31,false
+9fc463db-b140-e34e-27c2-32af898ab0f2,Callahan Ltd,Manufacturing,US,171,22934.63,2025-06-04,false
+c284ebad-a32e-d4f5-6419-174646c64d34,"Sherman, Kelley and Ward",Logistics,GB,45,286174.31,2023-06-03,false
+b7d9f7cf-02c7-fb81-e6e1-bd46b95115ad,"Nolan, Barry and Smith",Energy,PL,89,117862.77,2024-05-23,false
+babc95cb-9c13-9f24-32ca-b3eec0c20cb9,Allen Ltd,Manufacturing,DE,124,145042.88,2026-02-17,true
+b0dddacd-f633-81d4-5c0b-2bc31df5d71e,Gonzalez-Jackson,Manufacturing,FI,52,7496.37,2021-10-26,false
+5d285266-b2cd-f3a2-3632-a7a336ea209f,Love-Dean,Healthcare,IT,51,189124.01,2026-01-19,false
+3f40dea4-82d2-2f77-a2bb-0f594dba1f17,"Gardner, Hayden and Duran",Logistics,UA,131,217906.73,2023-06-09,false
+808a70f2-1fd7-f0e9-3efc-9e691ed90327,Murphy-Flores,Retail,GB,36,118632.35,2026-03-08,false
+5296f7b8-0ce6-0cda-886b-fdea9f4bfb4f,Alvarado Group,Finance,NO,112,54509.98,2025-12-07,false
+b760add7-3346-8559-a533-5f3881d04e4c,"Edwards, Mosley and Smith",Healthcare,NO,234,49672.31,2021-09-07,false
+a9a92081-5f46-fc46-c2ee-bb175a21fcde,Dillon Inc,Logistics,IT,146,92883.95,2023-06-16,false
+bbc014f9-01b4-ec9a-7c33-62646b04e874,Jackson-Rodgers,Healthcare,IT,262,41412.77,2024-07-05,false
+8285c3bd-26c5-cb1b-5564-4a35f95c613a,Brock Inc,Manufacturing,UA,107,104853.00,2024-05-07,false
+b9b3cefe-eb05-10d2-9385-77cb583de511,"Dean, Medina and Alexander",Retail,DE,154,29152.65,2021-12-20,false
+6cf6e7f1-13f0-88eb-8464-f97f80a40e38,Smith-Johnson,Software,FR,127,149320.41,2022-01-13,false
+e1559fb6-9dda-0e8c-e476-607f086f61ae,Rhodes LLC,Retail,PL,21,226008.47,2024-11-05,false
+685fbf78-6282-06a2-af7b-555f5c2c3f60,Jenkins Ltd,Education,US,76,163941.02,2025-03-15,false
+bdd9888a-dd34-d48d-6dd2-bbbc5997730a,Alexander-Savage,Healthcare,US,25,22688.85,2022-10-20,false
+cc2a9fd6-29ba-7baa-8066-3d65e0d703ae,Barry Group,Software,UA,152,19344.38,2025-11-26,false
+7c033715-6305-5807-6f1e-327a1e1c3ea4,Brown-Moore,Energy,UA,91,142585.34,2025-06-26,false
+aa9ecb06-18ba-af42-629b-f36366c25705,"Martin, Pennington and Rangel",Education,GB,77,4798.96,2022-11-03,false
+2efee90b-580b-e8ac-6eaa-80d71bba3008,Estrada-Alexander,Retail,NO,231,125059.67,2024-01-16,false
+c1690a3d-c3d8-b440-b9cd-7bad699967d9,Shaw PLC,Software,US,102,10725.07,2023-01-05,false
+23f70170-60fc-c74c-e132-64ae6d6a84c6,Mitchell PLC,Energy,PL,105,20673.69,2025-05-28,false
+d3a935c5-0358-8f8a-919c-75753c5803cc,"Cohen, Vargas and Campbell",Retail,ES,14,49073.60,2022-05-11,true
+edacdd76-05d6-e1bc-fbb2-2a890b1d3adf,"Hanson, Gordon and Owens",Education,IT,98,97978.03,2021-09-07,false
+6f57cca0-d5b5-83b7-be69-f9cbc66451ff,Graham-White,Healthcare,FI,103,175303.28,2024-12-07,false
+1f6679cb-c45f-ffff-ee0e-66f3b0adcbfc,"Mercer, West and Barber",Education,ES,376,15248.30,2025-11-08,false
+3b377b07-7661-18e8-bdc9-5e22a350027b,"Howe, Stout and Huffman",Education,IT,30,83961.66,2025-11-22,true
+35d29e91-3a5e-9248-bb3b-13776f7bdc6d,"Cervantes, Brown and Jarvis",Manufacturing,IT,83,336971.25,2025-05-14,false
+e7f2ab2d-9a7f-5f88-38a3-4b96e2850571,"Werner, Palmer and Gross",Education,UA,261,51842.73,2026-03-30,false
+44c469c6-4c03-5d08-085e-7e8447cd18e9,Miller and Sons,Software,NO,79,418407.36,2025-11-05,true
+815e649d-ca55-bb8b-0258-b055653acef5,"Brown, Jenkins and Cook",Finance,ES,36,1734518.06,2023-05-17,false
+14b9f034-e0d1-526e-fa1c-2e6996a68fa9,Herrera-Hernandez,Manufacturing,NO,141,301518.45,2024-05-14,false
+b08998d2-96a7-3aea-76aa-a0f5ed082a50,Morrison Ltd,Retail,FR,72,33518.90,2023-04-01,false
+73132bf4-c56b-9e4c-e07e-ba53099c89e4,Arnold-Wyatt,Education,ES,185,999070.91,2023-12-07,false
+7f3e3841-d8d6-cef8-75ef-33c710ab17ea,"Eaton, Gomez and Delacruz",Education,IT,98,80425.99,2021-12-24,false
+7163bbf9-af82-9b1f-9b41-6400868c26a8,"Ford, Lawson and Martinez",Education,FI,41,80648.07,2025-05-22,false
+7f6fd829-3be0-9338-3fa8-e137db942ce6,Moody-Larsen,Software,SE,134,70100.21,2022-04-02,false
+95e5280e-dc89-3e43-8fb2-f23e7a8fd603,Phillips-Rhodes,Education,NO,49,129309.89,2026-01-09,false
+619a8650-a667-6631-4d3d-f772fd2e9235,Archer and Sons,Software,IT,148,7684.08,2022-03-11,false
+e4ea5563-f0dc-ade4-e95e-0e51f6eeaf1d,Porter-Mckenzie,Energy,GB,15,91774.03,2025-12-20,false
+137e05fe-4f5e-f69b-01c2-326a6d804415,Young Inc,Healthcare,IT,105,63773.47,2024-12-13,false
+4528e660-6252-1dde-ba27-16dc35b8462e,"Rodgers, Jensen and Black",Healthcare,GB,72,136429.30,2024-06-01,true
+a1d29af5-16bc-74aa-bf1f-e87f6414279e,Barker-Brown,Energy,IT,38,701817.77,2024-02-22,false
+0cdde5bc-2b07-302a-ebac-c32f7b32f25a,Harris-Scott,Education,ES,5,601707.65,2025-02-07,false
+a92cbc83-955f-3168-035c-4294d853d544,"Martin, Hunter and Simmons",Finance,IT,12,70119.86,2026-03-13,false
+51c01e16-82cd-7e86-5547-4960a1e521e4,Perkins Ltd,Energy,US,261,48396.64,2023-02-23,false
+aafd3b24-e2e2-aec2-c920-9f32440d8b56,Matthews-Harris,Logistics,ES,40,725144.30,2025-12-20,false
+250ddb20-fa4c-79a5-b257-03f908812674,"Hays, Armstrong and Jacobs",Finance,UA,61,20989.75,2023-12-16,false
+20000e77-98cc-66d8-307e-4fd5e1e94c63,Elliott LLC,Retail,NO,100,51426.65,2021-07-25,false
+f5839681-5151-3fbe-333d-5f8031b322b8,Brown-Hickman,Manufacturing,IT,53,30325.71,2023-05-15,false
+97d36f39-5dc3-d56d-11f9-076a416741c6,"Ramirez, Wood and Griffin",Retail,DE,108,37752.27,2023-04-04,true
+f173fcd1-f3ad-44f3-5471-cdac357a8f76,Williams Group,Software,SE,119,101583.23,2025-10-04,false
+39ba6f04-81fa-d460-9db4-b1a3d8eb1fb1,Oneill-Crawford,Software,US,86,7650.48,2024-10-19,false
+03c90a79-bb72-73d1-da2e-6a09d9d237b7,"Case, Strong and Chaney",Healthcare,GB,848,44070.87,2021-10-08,false
+60760f01-b178-2ac5-5d13-fc3b240bcdea,"Christian, Adams and Bryant",Retail,NL,112,19873.39,2021-07-09,true
+b0672390-9b13-7b6e-e507-492619671cfc,Lin-Adams,Retail,FI,207,33685.47,2025-09-01,false
+9c59f6ca-ecaa-49b3-a2c3-50c6221b7cb9,Nunez Inc,Healthcare,US,37,329541.85,2023-01-05,false
+766eb092-7b05-5dff-abee-83ecbf8c1bf4,"Morris, Pratt and Rangel",Healthcare,GB,49,611282.15,2025-02-28,true
+d6bc219d-7681-cbd2-8e71-4513bc8d1c40,Lee PLC,Manufacturing,ES,588,80603.64,2025-03-14,false
+42c5e253-1edb-66ba-8b60-5fcbb1069fe0,Hanson-Harris,Software,ES,180,19253.73,2021-06-07,false
+53d32d6c-c00f-7b6a-cc9e-fd0207d7bfeb,"Miller, Reynolds and Lopez",Education,UA,84,36095.21,2025-04-23,false
+eaf35f83-3b78-f8a4-d5ae-7e892ec2be01,"Boone, Smith and Mejia",Manufacturing,ES,41,174498.71,2021-08-25,false
+7a5b43bf-b4ae-e95a-76be-6f6f25521306,Rosales LLC,Energy,NO,128,463993.55,2024-06-24,false
+5417ba73-5d0b-a1f2-6698-2563ad194ba5,"Hood, Christian and Warner",Finance,NO,321,40757.86,2022-12-04,false
+4254fa73-2d22-b1c2-0a3c-2df3c6e5743e,Lopez-Vargas,Healthcare,IT,147,23006.78,2023-04-27,false
+287ae8c5-3c1f-df11-0d7d-d56b9b1f3c4c,May Group,Retail,FR,299,87868.85,2021-11-10,false
+5319009d-53a5-8218-a860-5b66d0405b0a,Conley-Cobb,Finance,US,137,59453.60,2025-12-21,false
+585a047c-bfc2-1007-da28-4d336814c6d1,Evans and Sons,Retail,UA,169,89501.93,2022-01-24,true
+a8c46304-745f-2fe7-afa1-568f61c9cb6d,"Smith, Quinn and James",Finance,US,212,16744.55,2025-11-12,false
+a1a51b2b-845c-a142-c985-7809d1af82ac,"Santiago, Hill and Reyes",Energy,NO,131,38548.46,2025-03-01,false
+2531acfb-ec08-199c-2875-09e529048764,Chapman PLC,Finance,FR,198,123581.82,2022-08-10,false
+d4239cb6-58d2-0a87-a7ce-ff1233566fe4,White-Young,Software,PL,48,121575.62,2024-08-14,false
+b29f89e0-dc95-5c6c-360d-11efdd612327,"Buckley, Zuniga and Wang",Healthcare,FR,92,13624.70,2022-10-01,false
+293d5b37-f789-473b-ff22-17c602d864d2,Kaufman-Smith,Logistics,NL,52,55664.01,2026-03-30,false
+cd5657b5-9bb6-7259-5d91-6a9d003bf6fb,Moreno-Peterson,Education,US,24,80555.58,2024-05-06,false
+3653cbcf-9b03-3c71-b510-be7b8e82577c,Graves-Miller,Manufacturing,FI,158,46738.95,2026-02-24,false
+cd2bd02a-5c20-38a0-6092-14274482346d,"Hunt, Gonzalez and Jefferson",Education,SE,113,3907.26,2023-12-05,false
+5df1efd5-c672-a29a-3276-03674e2c4c07,"Anderson, Olson and Evans",Software,US,54,91595.40,2025-04-27,false
+ced7a034-3e35-9642-457b-4ae5b6f2e305,Wagner Ltd,Healthcare,DE,43,60804.73,2024-04-23,true
+64d42625-307d-39de-26c4-95ca5da4fb3a,Sanchez-Patel,Retail,SE,166,165877.90,2021-07-03,false
+dbb04bd7-982f-71f6-2ae9-7986bdc1c8af,Price-Lee,Healthcare,DE,149,60285.97,2024-03-28,true
+fea83fa3-894d-0e2c-754a-c617181046ac,"Torres, Jones and Burgess",Healthcare,SE,314,28226.53,2023-07-15,false
+73e0c65f-1ed1-0388-dca1-c67702e9f605,Smith-Ware,Manufacturing,FR,151,79491.05,2023-06-06,false
+de437dd4-12ef-916b-401a-8c8368de9462,"Christian, Oneill and Thompson",Education,SE,173,28262.49,2021-07-08,false
+20344e75-a4bb-9504-f19c-b92f9114aab8,"Martinez, Martinez and Guzman",Logistics,DE,116,22837.09,2025-04-25,false
+1cf6f2f2-8b47-b4b7-8aec-e1fee1d2c79c,"Ward, Frye and Vasquez",Energy,UA,166,166435.18,2022-06-16,false
+d7ab0594-a6d7-2e56-df7f-02dfb0d03c2f,Nichols-Patton,Logistics,NO,525,417730.83,2026-04-12,false
+ec7dd347-4cbf-8cdd-ff37-410d4678ea64,Myers Inc,Software,US,48,98283.54,2025-12-10,false
+2987fa51-341c-d145-358d-077a0d0071d3,"Tucker, Shelton and Roach",Retail,DE,29,18622.24,2024-03-26,true
+25da4f42-98aa-a188-6f2c-b22ac62998c8,"Lewis, Malone and Irwin",Education,NL,117,184152.21,2025-08-31,false
+b437a463-a70e-a211-3513-f44167667b95,"Hill, Rios and Foster",Energy,GB,297,138901.89,2022-02-13,false
+3f1d8f17-977a-0f7b-de1f-c83b2fc540a9,Johnson-Lopez,Energy,NL,200,8029.30,2022-03-07,false
+8c53bc54-831a-5ee9-2a9d-f76c41dc6e75,Payne PLC,Software,IT,203,49385.14,2022-12-10,false
+b05d21a3-b30d-1696-2c02-dd7cba1b30ed,Lee Inc,Finance,ES,137,27816.30,2024-10-13,false
+5e0bbebb-870b-990e-b157-a3aa99b8bf83,"Weiss, Holmes and Ward",Energy,UA,112,44091.92,2025-06-07,false
+3429a857-b3f0-9e0a-5e10-929e472c2d8c,Drake PLC,Retail,DE,159,227252.15,2021-07-26,false
+3cd184fa-6fd1-5b29-0c42-5212eba15c88,Thompson LLC,Healthcare,UA,56,55808.28,2025-05-22,false
+3973598b-4d65-e829-84cc-6f173a213528,Gonzalez LLC,Retail,UA,119,32563.35,2025-06-18,false
+778d9a48-2a26-4a65-3ea4-f1df396f0ee6,"Flowers, Hall and Thompson",Energy,PL,162,18380.02,2026-02-07,false
+7dd573cf-8316-4120-0bbe-c953c4e44afb,"Cox, Bender and Calderon",Retail,IT,333,24549.86,2023-11-06,false
+67aa3abb-3424-a2ba-0e01-b87c90e0be3e,Roy Inc,Logistics,UA,17,4408.71,2022-04-22,false
+a0a6b2a3-70a3-c560-2771-2a5285ecbb36,House Ltd,Healthcare,DE,51,22891.60,2024-11-24,false
+86424230-4262-fbfc-f206-78f874340d78,Cole PLC,Manufacturing,DE,260,374533.18,2026-03-15,false
+5efa0909-9a07-7d42-16c5-98bdb10fda4a,Norris Inc,Finance,ES,276,56622.68,2022-12-13,false
+cf8d0347-42a7-597b-351f-1f369fc9c113,"Jenkins, Gilbert and Evans",Energy,IT,260,54930.44,2022-09-23,false
+72c78f7a-c62d-0c15-272e-a667dcce0b30,Rhodes-Brewer,Logistics,US,340,47527.31,2026-02-06,true
+6219bcac-6fa0-d5b5-adba-5cef72620bec,Gallagher PLC,Energy,PL,472,7819.89,2023-08-24,false
+aaba222c-c894-bfe8-f636-c7edd1f98f4d,Garcia-Pace,Energy,GB,539,35688.31,2022-02-13,false
+e89e422c-f210-85f0-ce41-f3df730b2fec,"Nichols, Lewis and George",Manufacturing,FR,248,138677.13,2022-03-12,false
+c71ddcdc-7625-dd5c-b96f-ef2912199fe9,"Beltran, Hernandez and Lee",Software,ES,66,96113.21,2023-05-06,false
+c6ed6509-2d40-86b3-6d57-5ad21c26c5b5,King-Medina,Retail,UA,132,76564.19,2026-04-10,false
+f20428c9-4864-3678-659f-3bf63c806110,"Lambert, Lindsey and Baker",Software,ES,14,14440.80,2023-03-13,false
+4ff5fc98-2ef4-4863-3f93-0faf4df14a1e,Martin PLC,Finance,DE,278,29198.38,2026-01-23,false
+6567a48a-b7e3-370e-2153-6eaecfb16ec5,Schroeder-Stephens,Retail,IT,23,10948.66,2022-04-29,false
+5b9d292e-0e56-7cce-4ff6-3d8490834dc3,"Morales, Quinn and White",Manufacturing,PL,292,5018.74,2022-08-11,false
+9c731ac9-caed-76b9-ac6d-21023813fa55,Alvarado Ltd,Manufacturing,DE,39,136906.81,2024-04-28,false
+6701ec21-d091-b375-429c-476b98e0a4ca,Salazar Inc,Education,IT,362,12549.77,2022-11-04,false
+d97f5261-d56f-c35f-018e-00b769e96f8e,Willis-Walsh,Healthcare,US,37,119473.00,2022-11-20,false
+ac004fb2-0519-87ec-1d22-23c52ae037dc,"Richmond, Walsh and Richards",Finance,NL,152,53071.30,2023-10-23,false
+fdaadd55-84ad-74df-5a07-ac904dcce22f,"Schmidt, Park and Ramirez",Manufacturing,FR,71,211997.62,2022-10-27,false
+5720d71e-f2d9-2635-7842-72df42ad7a15,Edwards-Schneider,Healthcare,GB,23,36443.73,2024-08-28,false
+815d3d69-fac2-40a5-44d4-60a87d3310d8,"Robinson, Martin and Leonard",Manufacturing,FI,195,54914.64,2023-05-19,false
+49687414-f77a-fab6-6eff-91f11380260e,Shaffer PLC,Education,PL,88,121389.49,2023-06-16,false
+ea45c846-9c98-16c9-7a13-46351d493277,Jones Ltd,Energy,PL,20,3416.15,2025-11-13,false
+7fe518b4-414c-0a2a-818b-2368c3f7a24c,Wagner-Collier,Energy,PL,37,14704.36,2024-05-02,false
+0dff7212-3fd4-f9cb-6736-56c20edbd3c2,Franklin Ltd,Education,IT,17,33357.19,2024-08-13,false
+81b68256-be80-6dad-99e0-409275232ab1,Williams-King,Manufacturing,SE,88,40874.02,2025-08-26,false
+5b96e6dc-0303-794d-d172-ea59b9959e79,Parks-Martinez,Healthcare,UA,82,200363.02,2022-11-27,false
+2a8b938b-dccc-0723-c37d-a0a554186281,Mendoza-Zimmerman,Retail,US,149,201166.77,2023-01-16,false
+c1beef8a-57a4-ca78-7ae0-ee3538d49833,"Gates, Wilkerson and York",Finance,FI,65,47087.53,2021-10-14,false
+c5864363-1f42-ed76-55d1-b9e902c0b818,Brown-Blair,Healthcare,IT,51,154457.53,2025-12-29,false
+555230a7-35d9-f8ec-3471-f97dbc699427,"Wood, Malone and Jones",Software,PL,31,131527.38,2023-06-15,false
+622f60b5-931e-4b79-a3aa-ba27716daab8,"Brown, Alvarado and Conner",Logistics,DE,43,107344.36,2021-07-02,false
+c7c303a9-24e4-479e-3a1e-70d9149004b4,Smith-Murphy,Finance,US,77,5158.03,2024-06-06,false
+2d549d89-0329-3a51-79f6-023b84191bf0,"Curry, Smith and Wilson",Energy,DE,401,14677.14,2022-04-08,false
+f5c78816-3841-14a6-a742-2cb1639e6f9d,"Wright, Smith and Bautista",Software,ES,65,16452.30,2024-03-28,false
+d6d3dd80-7adc-d988-6336-30b2bd7cac5f,Smith-Ruiz,Finance,DE,45,176923.67,2023-05-02,false
+4bc6f9e2-f5b7-18e4-a801-b23b81c25763,Frazier Inc,Manufacturing,DE,268,34061.57,2023-03-03,false
+cef8422e-efa8-7164-e381-bfaa82a9284c,Estrada-Huff,Healthcare,IT,156,45574.57,2025-04-26,false
+8ab87038-1a32-e05d-0407-6476f1a9fc43,Crane-Boyd,Healthcare,IT,143,11344.77,2022-05-13,false
+b71d2867-7037-0055-ed51-242a2715ccf0,Noble Group,Software,NL,306,111926.06,2021-10-27,false
+3bde0c17-7149-35d2-0484-1e8e8d51eb6f,Wall Inc,Education,US,24,222020.06,2023-09-21,true
+8c47531b-ed59-4a5f-3404-0bcec6d73d23,Griffin Group,Healthcare,SE,102,217451.49,2023-06-17,false
+57390aab-51d5-1c79-386c-12587f870aa5,"Hernandez, Strong and Lopez",Finance,SE,213,105089.60,2021-11-03,false
+16fc6787-8422-1ce9-1328-94871111fe83,Allen-Ruiz,Manufacturing,US,9,13437.88,2025-08-12,false
+e17f2658-4d00-1e90-36d7-e9d88a136668,"Vasquez, Medina and Johnson",Healthcare,NL,18,72155.58,2024-11-29,false
+c72b0286-db06-a40a-5685-19b8fab816bb,Phelps-Morrison,Healthcare,IT,29,8209.57,2023-01-20,true
+433fe0e3-fb6b-2ded-d4b6-9c8e7af7e600,Wells-Harris,Software,NO,253,387943.32,2024-01-11,false
+5d4f73a7-ab39-dd7c-1df5-09c57c26c4d7,"Wyatt, Black and Briggs",Manufacturing,NO,25,34885.74,2023-04-21,false
+b331024c-640a-8473-281b-2b2323bcc78e,"Torres, Burgess and Ochoa",Manufacturing,DE,75,31756.08,2025-08-18,false
+0518175f-88a3-2818-8435-cc501c9d01e8,"Spencer, Watson and Davis",Education,DE,120,82804.25,2022-02-26,false
+f1779a39-6d84-5090-3360-25a882e7d4b6,Wilson-Moore,Software,IT,85,49878.53,2023-04-01,true
+8c14b189-1560-d439-b6f4-524e2494d37a,Blankenship PLC,Energy,SE,10,12088.90,2023-10-16,true
+dedd7ae4-1b11-2f85-70fd-0b5e1255cef2,"Lara, Fischer and Joseph",Retail,US,78,70767.03,2025-10-14,false
+791e6b6b-8626-9600-9f7b-99099749ee94,Rodriguez-Warren,Finance,PL,88,482961.44,2025-10-06,false
+08734900-3e3b-70e9-6dd2-ce825c19540e,Chapman-Hurley,Education,GB,60,67405.30,2021-12-11,false
+4eb0b47d-8b10-dee6-40d6-34d730cd29b4,Irwin Inc,Manufacturing,IT,79,94537.48,2021-12-22,false
+3a442b64-05c0-93fc-7064-2cb9337ea04f,Lee Group,Software,PL,91,175459.85,2025-11-06,false
+b2c66eb0-3873-a99a-9308-5d447f372a1b,"Morales, Taylor and Luna",Energy,FR,247,4500.13,2023-01-10,false
+6e282c60-927d-93d5-a15e-392c371b5414,"Burton, Duran and Marks",Finance,UA,43,180179.53,2021-09-01,false
+d5f754dd-9857-d6a8-f157-bbc093cdcf16,"Simpson, Galloway and Oneal",Logistics,DE,151,50923.95,2025-04-20,false
+3951e0a0-d82f-2790-1678-905cfa1214e2,"Riley, Duke and Cooper",Finance,SE,477,517551.03,2024-01-08,false
+3e3299ed-a81e-fef6-7d67-8406255b4e25,Reyes-Goodwin,Healthcare,IT,55,480504.45,2022-01-29,false
+618dafc8-2e5e-722b-5b7f-372d904bcb71,Nelson-Burns,Logistics,DE,54,136618.17,2021-12-18,true
+586475f1-3df2-d7a5-b9a3-e27e9be5587d,Anderson-Riddle,Software,DE,206,8019.98,2025-02-08,false
+fcbd808f-8a39-aeb1-7e65-72144e113349,Mcpherson-Bailey,Finance,IT,43,25991.38,2023-10-13,false
+b88372b3-9f33-9a73-c0b6-2d1e9a106a58,Perry Ltd,Energy,DE,133,54357.24,2022-07-20,false
+8798b4cc-56f9-0935-81e8-e5c63974821d,Mann PLC,Education,DE,301,36874.57,2025-07-10,false
+9b0b68e5-e7fc-688b-dc65-9928edd82e98,Browning and Sons,Energy,SE,335,34960.71,2021-08-21,false
+3eb194ad-8eeb-ff30-6d02-b6c03940ec48,Allen-Richardson,Healthcare,FI,89,5832.28,2024-05-09,false
+95ec8faa-6bae-4ffe-f7fe-4dbe7e524a3f,Young PLC,Manufacturing,US,128,857426.76,2022-11-17,false
+f94d87cb-f928-2bab-b02f-d1deaedfb8ff,Stewart-Moody,Energy,FI,103,32951.57,2024-12-21,false
+21372370-2079-6f17-74fd-ba7810e2e181,"Wheeler, Medina and Arias",Logistics,PL,54,1042414.56,2024-04-23,false
+40f1e208-618c-81ca-4a0a-20722a9b0ed6,Stephens PLC,Healthcare,SE,229,61375.40,2025-09-28,true
+9cb231a2-2815-c454-3349-9a167de3b182,Rollins and Sons,Energy,DE,167,20773.55,2021-06-19,false
+ef328d71-8b14-842d-f0af-3fc78f5a5a28,Anderson and Sons,Software,FI,68,54868.19,2024-06-04,false
+eca45141-7f84-1169-2689-742775213858,Mendoza-Cooley,Manufacturing,NO,262,311507.63,2021-09-19,false
+cef6253b-6010-3e05-55f9-dcb18f4d93b2,Good Group,Manufacturing,GB,94,181436.21,2026-04-06,false
+cc35a333-6205-2376-f8b3-54eb4ef6d21d,Archer Group,Energy,NL,56,14797.90,2024-10-16,false
+8ff7f44d-f2dc-8fc1-6e0a-531f388d5577,Hamilton PLC,Education,NO,92,34660.43,2024-07-03,true
+7e8d426d-a1e7-e077-f0d8-a4dda74cc30a,Russell Inc,Manufacturing,PL,46,211356.17,2025-06-16,false
+384e1fe5-f1c5-d33e-ec76-713e88401ca6,Robinson-Dorsey,Education,GB,29,25141.48,2024-08-25,false
+fd5b1e24-d2cb-18ec-3ce4-f1d14f1477f3,Wong-Garcia,Logistics,FI,188,5334.00,2023-10-11,false
+8e976355-df64-5bad-8623-e53d56ec7016,"Elliott, Briggs and Mckay",Education,US,183,25881.73,2026-01-03,false
+ccfce995-bfab-43d4-f3b3-9a2a5f5833c8,"Fox, Gutierrez and Turner",Logistics,PL,269,45510.21,2023-05-17,false
+8db032f9-dfe2-fc48-a21a-599b6e9349b9,Bautista-Washington,Finance,GB,88,116107.68,2024-04-04,false
+3cf37138-4c30-56b4-1dda-f256c6652c1e,Jones Group,Finance,NL,54,33822.94,2022-10-19,false
+82279e00-0ccd-a334-76e4-75a0a983d773,Price-Baker,Retail,IT,60,97005.43,2023-11-20,false
+79fa6517-ff70-013a-c578-9607713146b7,Silva-Harris,Retail,GB,171,17156.53,2025-06-29,false
+aa5146a1-e62f-fcd1-2ee8-0bd08d865677,Meza-Best,Education,IT,392,59889.38,2023-06-15,false
+7dd29f6f-7160-209c-54a9-bdd4a2831a02,"Lynn, Gardner and Riddle",Education,SE,21,41619.94,2023-10-01,false
+6d9f3e92-ac64-517f-3001-439901b3c636,Williams-Reyes,Logistics,DE,44,214083.55,2025-06-28,true
+067d56e0-4a5b-76e1-3bbf-78279e62282e,Rivera-Wagner,Finance,US,172,39116.57,2025-09-22,false
+f81d4997-757c-a1a7-aa95-97ed18998157,"Rogers, Dyer and Garcia",Software,US,234,175381.48,2025-05-24,false
+0c1a7959-2f3e-6a4c-adae-2f8dfc1b7f6e,"Frye, Baxter and Long",Finance,GB,156,59333.03,2021-10-05,false
+c7fa1625-3643-9b32-fdd9-7bd520d3f1e9,"Wright, Fuller and Harris",Logistics,FI,211,98492.37,2022-02-09,false
+00280562-c680-fe75-9e7f-89aa075aa4ce,Munoz-Macias,Energy,SE,68,7546.27,2024-09-02,false
+33470891-b92d-4626-3643-cd2016de1f3e,Glover Group,Education,GB,161,150233.10,2022-07-28,true
+8f7fdc17-4c24-92d1-97c6-9c5f0190ad55,"Lewis, Spencer and Griffith",Healthcare,ES,140,74185.42,2022-06-23,false
+16e59c3d-cb54-cc24-b588-87686b47cacf,Campbell-Webb,Manufacturing,US,170,134556.29,2023-03-28,false
+cb4a58d2-2d8d-1a11-9cc2-d68ebc1b6870,White LLC,Software,PL,506,36160.19,2023-02-22,true
+bc99c158-caf2-fdcd-778c-cdcd102fd783,"Barry, Barton and Haley",Retail,FI,152,4859.11,2021-11-29,false
+d7a042c1-140c-231f-08fd-669f4f63d87f,Rivera-Lozano,Education,SE,156,78841.35,2021-11-12,false
+f4120ce0-40e9-66e3-4b89-8784bea38ad3,"Reed, Arnold and Doyle",Retail,IT,199,23376.60,2022-09-16,false
+16511eef-be1e-67dc-8ea9-42d2632af8ba,Hill-Howard,Manufacturing,IT,26,314638.69,2024-02-14,false
+09c3e452-17d6-b314-068a-48dcc05caef2,"Buchanan, Liu and Perry",Energy,NL,39,29010.12,2022-02-28,true
+81dd760a-0175-11d8-9fda-bb5a105f8b0b,"Solis, Mccullough and Davis",Healthcare,SE,348,10465.81,2023-06-15,false
+cef733fc-b450-7d40-a444-04f85329b53e,Faulkner Group,Manufacturing,NL,116,446421.90,2024-04-06,false
+79221ea6-2ab5-dac5-e723-c348182a30d9,Patel-Smith,Logistics,PL,141,250753.48,2022-11-30,false
+6359593e-e235-1c6f-5d0e-4c5b53ebbed6,Bentley-Griffith,Logistics,PL,85,313629.85,2026-04-13,false
+502c9f01-0289-d3f8-213c-deb038f8d57b,Garcia Group,Manufacturing,SE,282,27706.15,2026-03-17,false
+ded4a2e7-7dcf-17dc-d442-d1b11cacb5a9,Wagner Inc,Software,GB,13,5835.41,2025-12-05,false
+28a25fb6-1e8d-9648-247f-97c3192734ac,"Murray, Page and Davis",Education,DE,69,83065.91,2022-03-09,false
+1aaad7ad-dac9-ba50-44eb-1302045f0810,Webster and Sons,Energy,NL,71,222797.59,2022-02-18,false
+e4daf085-8b24-c94d-44e0-28a46d22e352,Curry and Sons,Healthcare,NL,104,115717.64,2021-07-30,false
+8c422b8c-324a-6bb4-e5a2-b1f2355a00ec,"Gibbs, Pugh and Davis",Healthcare,SE,89,372316.29,2022-08-13,false
+beab549d-bdbb-e72b-8916-988b12549d0e,"Miller, Roy and Dudley",Energy,ES,103,296212.85,2021-07-31,false
+1c5f46d6-5c5c-8f4b-198e-f29904ae1b80,"Walton, Johnson and Torres",Healthcare,US,7,3716.24,2022-11-20,false
+86f0eec1-9c36-a250-3e79-7e648c435841,"Pierce, Powers and Espinoza",Finance,PL,157,70845.86,2024-01-16,false
+cce5da6d-b260-39ee-91ab-724319c982f5,Norris-Miller,Manufacturing,ES,48,42603.80,2024-07-28,false
+fd338a98-36d0-0a8d-956a-a215faae1590,"Kelly, Young and Mccann",Retail,SE,127,34840.64,2024-03-30,false
+8ed92587-7796-fa5b-d54b-1225fd733f31,Perry and Sons,Logistics,UA,104,23475.88,2023-01-15,false
+70f61cdd-fba8-e44e-57f8-dc57e4934615,Roberts-Cooper,Healthcare,FI,80,313233.91,2025-04-13,false
+9a63cb92-d846-8a08-6207-c65fe65ddec5,Black PLC,Software,SE,217,14228.12,2023-01-20,false
+14f0e4db-da5a-cb92-29cb-3a2809b6830b,"Murphy, Ross and Smith",Manufacturing,FI,36,25885.71,2025-05-25,false
+a05ae29a-a7bb-71a5-33f6-86d8b6700a92,Whitehead-Smith,Education,DE,19,33620.22,2021-09-10,true
+ba04f86f-627b-1b8d-85b2-8e2b839739c4,Curtis-Taylor,Healthcare,UA,23,20921.80,2024-12-19,false
+eab4e849-eaa3-c398-e0db-56e7f8604bdd,Miller-Manning,Software,SE,30,40803.49,2021-06-20,false
+8f9373f8-2d34-9bf4-ae48-d0dd95af5818,"Warren, Cooper and Hurley",Education,SE,409,12445.54,2026-03-19,false
+d043554a-f86a-d124-bbe2-d3f45f4adde4,Morrow-Clements,Healthcare,DE,132,4887.02,2025-10-24,false
+caec8daf-ebff-c842-d973-9e54a2528f8a,Obrien Inc,Education,US,97,25638.56,2023-04-03,false
+61104ffd-8bd1-1b24-eac0-d8b409709f5e,Wilson-Bates,Retail,DE,113,63776.94,2022-09-04,false
+a1b36e11-5d3d-a837-4138-63a2fe8bbddf,"Mitchell, Guzman and Murphy",Energy,DE,50,43080.07,2022-11-01,false
+ca2912fd-cc97-08d8-bee1-619af8456c28,Lopez-Morton,Software,NO,38,175092.34,2023-12-25,true
+85baf6f0-0f98-afc3-bb0a-1a99c4997813,Hughes Ltd,Manufacturing,FR,404,50370.60,2026-05-01,false
+82a74aa8-5382-61f6-1426-90160b690012,Pacheco-Brown,Retail,UA,164,327497.19,2022-12-28,false
+7664ed97-517b-4457-c4ea-111168d5fb3b,Clark-Cooper,Healthcare,NO,110,37571.71,2021-09-28,false
+fce23ffe-5016-58d2-8896-c7048bcdf09b,Davis and Sons,Software,US,226,101120.92,2021-12-31,false
+93a1c8aa-f125-936b-5cf8-fdff4031f8af,Hill-Savage,Manufacturing,NO,33,31687.96,2024-10-31,false
+98b85830-54c0-1fa6-b5f7-7248187ce6ea,Tucker-Phelps,Finance,US,331,105729.63,2022-04-04,false
+6df308b0-d212-7b6e-1288-797d3f17665b,"Ho, Jackson and Finley",Logistics,GB,103,23224.77,2023-11-02,false
+bea2d8bd-97e1-5f85-8129-15884180b907,Smith-Harrison,Manufacturing,DE,162,181411.08,2025-04-05,false
+ecb57b3b-0fb5-4162-143f-754d05cc8666,"Bonilla, Kelly and Alexander",Retail,PL,64,230453.80,2023-09-18,true
+8fee9733-e12f-ece5-61ba-768dc8e0f2e5,"Walker, Prince and Evans",Healthcare,IT,45,42238.08,2025-04-06,false
+a5ced5c4-daf0-bdc5-22d1-592cc52ad780,Russell-Mora,Manufacturing,SE,57,129324.95,2025-06-29,false
+49090226-e18f-9d59-7ac7-d5fe013f2dea,Jones Ltd,Manufacturing,GB,107,148901.39,2024-10-29,false
+d2fb2eaf-d5a4-74e0-69df-f2741930f12c,Anderson-Stevens,Healthcare,US,251,87128.21,2024-12-11,false
+27279065-f616-224b-b8df-1db44dc0c19b,"Sutton, Bender and Nguyen",Logistics,NL,145,42345.29,2023-12-31,false
+87f14395-b56f-761b-eb29-1f03f3d716a1,Davis-Hernandez,Healthcare,PL,42,249306.75,2026-03-13,false
+b627e73c-eb61-ca0b-d78c-ea5f6cd57fe6,Mccarthy-Rios,Finance,US,187,100783.13,2022-01-15,false
+3cf6579e-25be-d4d8-6090-4b822055b845,"Austin, Morrison and Clarke",Energy,UA,81,55469.43,2023-08-19,false
+91c359ad-b5ae-33af-b52b-90d54f13c422,Hoffman-Johnson,Manufacturing,DE,127,340417.12,2023-08-20,false
+c18347ff-caee-4b7c-a94b-4d22627009cd,Morales-Todd,Finance,FR,31,9843.81,2024-03-31,true
+ae9be785-88e6-cd2c-6510-512bd5175329,Haynes Group,Software,GB,354,68856.25,2025-01-16,false
+ff2358e1-84d2-a951-f286-682e71c673ea,Campbell-Baker,Software,SE,127,63559.81,2025-05-05,false
+f0195ed3-81b4-29ed-b1e2-8bbc5cf75800,"Ramirez, Cortez and Rice",Energy,SE,69,43373.50,2025-01-10,false
+31f58e94-f1a1-b1c7-799c-e5f4d0e5fa84,Foster Ltd,Manufacturing,ES,67,70871.34,2022-02-27,false
+79aefcc1-f360-3dab-6045-27df776b6c40,Munoz-Hunter,Retail,NO,163,27325.83,2024-11-11,false
+6df91ebb-4e11-24d8-3367-6f65d1ffc7be,Ruiz Group,Energy,DE,46,142485.74,2023-02-24,false
+d36fcf44-0105-ad02-424d-51db2a9000d9,Gomez Inc,Logistics,DE,1413,105091.25,2025-05-21,false
+0434c05e-6901-7445-e4fd-6b4cd6d26dce,Rogers-Little,Finance,UA,61,71629.07,2024-03-16,false
+5f8f2239-a70e-fc38-4bf9-bacdb2620ad3,Green-Castro,Software,NO,12,66982.61,2026-04-28,false
+5c8117f0-8d8e-45ae-8fc1-b231ebf58b19,Smith-Moore,Logistics,GB,49,27509.81,2024-01-25,false
+b8c20f7c-6038-d7f0-900e-316e29d59640,Garcia LLC,Logistics,FI,53,265897.50,2022-04-07,true
+07446ca7-6143-3576-e29b-bc56f2caeebb,"Oliver, Mcfarland and Martin",Retail,ES,16,140094.64,2023-06-26,false
+72616337-c8d9-8df4-17ed-c23cc9cf52a2,Johnson-Clark,Retail,ES,47,69535.32,2025-10-11,false
+b88c8293-428c-43cb-5558-01cfb3511182,Donovan-Hanson,Healthcare,UA,10,4970.22,2023-10-23,true
+e4c5f294-b2d2-fb85-d267-8adbd7aa4120,"Hill, Wise and Acevedo",Energy,NO,125,16628.42,2026-02-25,false
+49a1d21b-5763-e4ad-6229-b25cc384f9de,Browning-Hicks,Energy,NO,585,13081.68,2022-11-12,false
+b815a8cd-38fc-124a-af11-ed6bd4a86cb7,Alvarez LLC,Logistics,GB,48,1756.82,2023-04-29,false
+ceb652c9-03c3-0983-a411-a14105137796,Porter-Becker,Retail,ES,102,30170.66,2025-08-03,false
+fb906b47-8a0f-dae4-5f8b-3cc219f880f6,Elliott-Patel,Finance,US,311,116141.15,2021-06-29,false
+160b2ee7-bb6c-bec0-6d68-f058c4b169b5,"Page, Davis and Kelly",Energy,US,206,89064.78,2024-12-03,false
+2f8d4f0c-623b-65a5-64b9-c445b0bf0352,Sawyer-Morgan,Education,PL,18,22931.44,2023-03-29,true
+05acb8fd-ed44-92dc-0dc6-5a30e1b26ac0,"Thompson, Molina and Stevenson",Manufacturing,FI,38,35122.05,2025-01-03,false
+847e536e-3965-b389-5158-01f9b5fbbe2f,Vasquez Group,Software,IT,88,167713.68,2023-11-02,true
+df1c4fec-e2b1-ed79-a677-de2c43b131d8,Marquez LLC,Manufacturing,NL,153,46022.22,2022-08-11,false
+f9a98f5b-ed6a-279b-2ceb-d20287d8e45d,Lee-Hendricks,Retail,UA,543,139904.51,2025-03-16,false
+a40dc206-4ae7-1d58-d0f3-c46ef7079441,Mcdaniel PLC,Finance,SE,72,36058.95,2021-05-17,false
+ede9a297-5f57-56d0-5813-70a6be7dda1a,Petty-Turner,Retail,NO,97,15333.26,2025-05-26,true
+c0a5aaa2-de61-e300-77bd-d7f7629839cc,Lopez-Taylor,Retail,GB,76,19237.97,2025-09-29,false
+0912e22c-da7b-ca19-78b5-be2f3978cba5,Obrien and Sons,Finance,ES,281,107980.30,2022-10-14,false
+4222c93f-82ee-1e65-19a4-a295e55fd504,Mitchell Group,Logistics,ES,317,69739.61,2025-02-28,false
+4043c4a4-ded3-8929-812f-5e04c7e934d9,Perez-Thompson,Software,PL,123,95919.67,2025-10-08,false
+37d5186b-1726-36dc-d5c2-fba8d135592f,Green-Vazquez,Finance,SE,25,12382.35,2025-10-23,false
+7d81f1b2-a1c1-71e9-f8cd-41e95caee30f,"Mercado, Hart and Johnson",Energy,IT,79,15418.56,2022-04-05,false
+6d3dedcf-cc6b-d021-7385-f7d3a1c30361,"Medina, Ramirez and Reynolds",Manufacturing,UA,297,7967.96,2023-02-25,false
+df58d82f-4a5c-fc23-8ca8-bb0f4372790f,"Fuller, Grimes and Anderson",Manufacturing,NO,22,70475.12,2021-12-20,false
+5b8c1f98-73f8-2879-4b44-cfa844fe06e4,Kirk-Campbell,Retail,GB,41,43658.49,2023-04-01,false
+8226325f-3c3f-a7cd-fae6-7fb931c067fb,Anderson-Thompson,Energy,IT,24,424918.02,2024-12-21,false
+a06ff431-2b06-b5f8-8da3-15ac071b6fc9,Brown-Glenn,Logistics,US,35,32019.89,2021-12-30,false
+ce5cb6b0-6174-cd45-230b-3580e745b440,Hubbard-Moore,Education,GB,53,66053.85,2021-11-27,false
+e0e3fee8-6adb-c512-e60c-d281337f636d,Hall-Baker,Software,FR,135,10625.63,2022-08-12,false
+1c48da24-8574-6108-eddd-265310ff4892,"Riley, Young and Garrett",Logistics,US,148,53856.97,2021-07-21,false
+a15e0006-b61b-b150-1598-18d8b311b225,Gonzalez Group,Software,FR,136,59853.59,2021-11-23,false
+ab465ee8-bec2-bb5b-bd8f-bab0962af3e8,Santiago Ltd,Software,NO,319,128140.19,2022-06-18,false
+b6261dd7-8f86-aac6-eea2-c5fb3574ceb7,"Wilson, Lambert and Daniels",Finance,FI,418,3500.12,2024-04-30,false
+a1b537b9-4822-9bdd-7165-6f501f55566e,Jones-Green,Education,IT,484,99153.29,2025-01-25,false
+15ff0e33-f42a-4c83-4d16-949abf286ff4,Wilson Ltd,Education,US,78,134388.47,2022-11-05,false
+224ed2cd-165a-cbee-d154-789d0976b082,Buchanan-Montgomery,Manufacturing,FR,39,7743.41,2022-01-11,false
+516afa48-6abe-0280-a833-dae4e329b337,Deleon Inc,Healthcare,NO,23,203160.12,2023-10-22,false
+f5e66e99-3d09-dd76-0cfb-d44be886abca,Gould PLC,Logistics,DE,34,152855.05,2024-02-20,false
+0ae0f851-6ff5-abde-ecec-fb85363f64f5,Stuart LLC,Logistics,GB,182,54818.22,2024-08-03,false
+2a441a13-1413-b221-cb6a-43d3a17a16d3,Richardson-Pineda,Software,FI,111,14824.01,2023-08-04,false
+7aa29130-aca1-74df-8a6c-88b295208145,Riddle Inc,Finance,FI,97,5519.32,2025-05-12,false
+31f72323-4ff6-e92f-e85a-19153a673194,Johnson-Bailey,Retail,FI,294,25493.10,2021-08-21,false
+18013947-39f1-edcb-1884-b59e870764a3,Duncan-Calhoun,Healthcare,NO,82,105233.26,2024-03-05,false
+0c6452c5-0c0e-1be3-9f71-a3659cb9721b,"Pham, Estrada and Mueller",Education,ES,179,15347.91,2024-07-27,false
+3c6cb065-fe9e-685c-8cc6-b9b9e3d1490b,Patterson-Joyce,Finance,GB,21,29393.98,2024-04-03,false
+057a0809-f4b6-3744-2565-48326d31f14a,Wallace-Sheppard,Finance,FR,136,101157.44,2023-11-06,false
+08831b3d-ba00-9bd7-d2e6-2414dc135414,King LLC,Software,DE,182,274268.53,2022-04-22,false
+71b4eb8a-5072-a709-a8dc-41102e7007a4,Camacho Group,Software,FR,20,146694.67,2021-12-13,false
+56c6ef27-8bf7-dec9-cd9d-3f08bf3715d6,Bailey-Johnson,Finance,GB,1173,180926.20,2021-10-05,false
+6ed75039-0803-3183-2f04-b9331ada93f4,"Joyce, Brown and Santos",Software,US,65,70390.26,2026-01-31,false
+c51257e5-081e-81af-b4ad-0cc1e447a7b8,"Valenzuela, Ryan and Sandoval",Retail,GB,16,268411.47,2023-05-03,false
+93a9584d-233d-8f23-1cd5-bf90fa01926e,Davis-Anderson,Retail,NO,151,61773.64,2023-11-14,false
+63afbc7d-0ebd-afad-9ae5-38d00f7b9369,Davis-George,Logistics,UA,74,16006.22,2024-12-04,true
+35f0b39f-4aaa-f807-ff20-bf53e85577a2,Becker and Sons,Retail,SE,26,35220.39,2022-10-19,false
+6a5978c4-90e4-5771-be15-ba4ddbc85df1,Hunt Inc,Manufacturing,NL,647,135827.81,2025-05-23,true
+9172168e-846f-3e0c-7890-6c841f3fb7e8,Reyes and Sons,Energy,UA,51,242429.83,2022-12-19,false
+f59b3900-959b-c511-49fe-2e80bf9a30db,Kelley Ltd,Education,FR,221,41554.44,2023-12-01,false
+5be6e346-72b4-a18f-9549-7c2d30b09a6e,"Arellano, Allen and Powers",Logistics,FR,22,21713.77,2025-04-20,false
+723eb49f-2d8a-6b2a-1a38-87a082deecd9,Tate LLC,Manufacturing,IT,268,65399.50,2024-08-16,false
+666dcc78-f265-1a68-998d-eb8e689552f4,Grant Ltd,Logistics,FR,17,43472.22,2023-01-29,false
+63e69243-1ed8-cd39-ad32-e7db9cb16feb,Williams-Thompson,Logistics,FR,33,32913.01,2022-05-16,false
+23ba2b94-0b9a-19ef-4751-8c95d08abec1,Murphy Ltd,Healthcare,US,100,138909.29,2022-05-17,false
+b9cac840-929f-ad48-f742-35aa6ece0e71,"Oconnor, Weaver and Holmes",Education,IT,44,334456.72,2024-09-03,false
+fd941c80-fc5d-9f94-b29d-7ba6af5dd149,Robertson PLC,Healthcare,FR,88,216268.27,2024-05-17,false
+1400959e-17d8-9ba7-ff61-ad4089f4509d,Hernandez Group,Healthcare,FI,161,431379.82,2023-11-10,false
+d49710cb-fc14-284a-2f02-c6f9566ddd6b,Davis Ltd,Healthcare,SE,858,1295473.78,2023-04-29,false
+96c0f1b5-c38b-4f8d-88c8-a59121c79ced,"Reese, Sanders and Taylor",Finance,NO,219,28027.02,2025-02-11,false
+07b0c721-bb41-7b0b-9a81-e1098a7c54f1,Elliott-Henderson,Energy,US,179,184183.91,2023-02-07,false
+5fd5818d-b08b-03fc-6337-df4150af8de7,Martinez-Jackson,Software,SE,23,128316.31,2024-07-26,false
+9a55d212-0a4f-1ae6-fcdb-208f3b5516c6,"Rice, Clayton and Wilkins",Finance,DE,127,41287.50,2024-10-25,false
+19d98596-0879-e832-de4d-628afe0dc66a,Roberts-Simpson,Manufacturing,PL,37,35062.27,2024-01-02,false
+be93f351-c80d-be2c-50f3-bda2e265c9e0,Savage LLC,Healthcare,FI,311,94112.36,2023-08-02,false
+29ef0439-74db-19b3-bc64-5bf1ed3918f3,Shelton-Ferguson,Software,FI,71,3800.10,2023-09-17,false
+199a54eb-0fe9-7e00-8241-2056a59fd0bd,Alvarado LLC,Manufacturing,NO,62,112140.31,2023-02-16,false
+a8ad6a6b-499a-5bfe-36af-a75430c0f868,"Johnson, Lowe and Barnett",Finance,NL,129,94639.20,2023-07-26,false
+c57c7ee8-3df3-a13f-58a6-f360096ba140,Rivers-Austin,Finance,PL,97,156819.81,2026-03-12,true
+42f202a3-a683-b070-2ea5-8f4ca1184f1a,Andrews-Gonzalez,Software,SE,19,211423.22,2026-03-01,false
+06133310-e340-add0-2c8d-259e9eff2515,"Smith, Martin and Lee",Healthcare,IT,97,53589.00,2024-04-04,false
+94a620c9-5746-0ffe-22cf-b6f7b6448efd,Montoya PLC,Finance,ES,25,119473.24,2026-03-04,false
+b47b1019-4cd6-edb5-30a7-3397c7eabe9b,Green Ltd,Finance,PL,37,42353.98,2023-04-06,false
+f44ec06e-5c7c-c311-a2a3-03630d3bbb12,Chavez-Morales,Healthcare,FR,223,22428.57,2022-05-01,false
+f73d00a2-b1fb-50ba-fb2e-77c2d021eeca,"Smith, Miller and Gallegos",Finance,FR,72,27103.20,2021-08-30,false
+c9158b8e-4436-fa2b-9926-daeb1f6df9fb,Baldwin-Young,Finance,FR,115,70460.18,2025-07-03,false
+b9ab954a-b90a-e16a-c023-5f8843e86009,Rodriguez-Mitchell,Logistics,DE,32,255156.07,2024-01-23,false
+8e416ee2-c70c-f789-27be-bfcc59ec39f7,Strong Inc,Finance,FR,40,109431.79,2024-10-17,false
+8dcfbefd-61f1-1d6b-b328-3fb422bf0a9f,Oconnor-Norman,Education,UA,444,39762.40,2023-06-01,false
+6b1b3b79-347c-47f1-6d28-9c7439ac231a,Santana and Sons,Education,GB,37,11800.57,2025-07-11,false
+32386084-4d39-f99d-7774-c812ef6f419a,House-Nelson,Software,US,50,219117.87,2021-08-22,false
+5b80db68-598e-d780-045f-9a52a95176cb,Roberson-Abbott,Finance,SE,133,5703.11,2023-12-25,true
+54f002f6-666f-8550-22d2-e5c19e24e44d,Valenzuela LLC,Healthcare,UA,14,4087.82,2024-09-05,false
+0bf41404-dfbd-f59a-0cf2-275b011abd8f,Smith-Johnson,Education,UA,21,14544.74,2021-05-22,false
+ec377d78-aca9-8dc6-8372-ec8e854e8803,Torres-Thomas,Finance,FR,33,89026.79,2024-06-22,true
+5fd87468-e7fb-c821-8d34-b96d21840fcc,Johnson-Strong,Manufacturing,DE,74,83499.34,2022-11-06,false
+485c5bd3-afe9-2796-11bf-d625a565318c,Reed-Graham,Logistics,UA,299,33178.97,2024-01-19,true
+0c6a3d08-0622-6567-2f54-c5181bdad74d,"Smith, Barber and Salas",Manufacturing,US,39,25147.57,2023-07-28,false
+19ee8e7f-ea74-7c42-6cab-ec0b3bbdec85,Johnson PLC,Energy,DE,18,64905.45,2022-07-16,false
+393f62b8-48f9-78f8-e89a-18f3ae973940,Gray-Smith,Healthcare,GB,198,52466.38,2024-12-17,false
+bd76cc56-ab9c-4899-e93e-64f05a7e8fa5,Tapia PLC,Healthcare,FR,109,40808.24,2022-04-21,false
+e3803f6b-1592-35f0-47b2-42912fe9e1fd,Morris-Garcia,Software,GB,143,381405.62,2025-02-21,false
+fb0c0feb-2dee-bdcd-13ab-012ac7d3f219,Mueller Group,Retail,DE,363,22144.61,2021-05-13,false
+8f8ca236-b982-6381-8aff-81b38a1c9da1,Daniels LLC,Energy,SE,455,136472.19,2025-01-01,false
+5668f360-9f48-8cf4-9899-dde53cda6b77,"Garcia, Watson and Bond",Retail,FI,40,99367.66,2025-12-20,false
+ec32b9bc-4995-1f10-8661-a6ad31b80928,Johnson-Boyd,Energy,UA,90,113086.97,2023-10-18,false
+1cc579fd-f991-c063-010b-b830b7d5879f,Cole PLC,Energy,FI,109,132883.20,2023-01-10,false
+be779ba7-458b-cd30-bdd3-546f5194f102,Williams-Moss,Retail,NL,108,48373.93,2023-01-23,false
+2a1449eb-87a2-46e9-e20e-e3d1a646bcab,Hernandez-Patel,Healthcare,FR,64,94274.27,2023-06-21,false
+2eb4bf7c-1ab4-4b44-b4ae-9cd9bd4ee2ca,"Calderon, Estrada and Ward",Retail,GB,73,761996.40,2024-04-12,false
+a6d299c0-04b2-81a4-cde5-19fa6f20b396,Bryant PLC,Education,NL,59,27181.61,2023-11-11,false
+6c39a043-0ae3-fddb-b288-8e323974ecbb,"Shaffer, Ford and Davis",Education,GB,56,15259.51,2022-09-27,false
+31d5bec2-e76c-6d8a-4a0c-919256208505,"Calhoun, Cochran and Meyers",Energy,FI,159,25693.17,2021-10-10,false
+6754b21d-ccd1-77ea-ff29-ebed4f070b30,Hurst Inc,Finance,IT,25,189957.26,2024-11-03,false
+5cd21e4e-b790-2cc8-5186-5efb63eae8ee,Hernandez-Boyd,Education,NL,221,227657.03,2023-08-31,false
+1ec43bb6-eac5-41a9-698b-3ce378bb4afb,Long and Sons,Education,ES,335,244725.83,2022-07-07,false
+59a5f822-5521-1bad-0ff6-06ac6a8d268e,Woods-Hernandez,Manufacturing,SE,189,98377.96,2024-12-07,true
+da5c313d-9205-eaa0-05b8-e571101fab4a,"Brown, Waters and Lopez",Finance,UA,47,52217.62,2023-04-12,false
+5d9a57e4-8f47-24f8-0a79-45b451acfdcd,Williams LLC,Energy,GB,1569,116267.33,2024-05-08,false
+f3ad0bf8-f946-9283-a9d1-7c8fcdd94e81,"Roth, Tate and Lewis",Logistics,SE,156,77519.98,2025-04-23,true
+44fbc27a-980d-2499-d7fe-d0b9ff410267,"Moore, Whitney and Johnson",Logistics,ES,46,146413.06,2022-01-02,false
+a1cb1510-73e3-c318-61aa-ebbc87f0aa87,"Young, Macias and Herman",Education,NL,15,82121.00,2025-11-25,false
+e6282924-bf75-d0ea-326e-aaf51209c313,"Salazar, Medina and Li",Software,PL,235,31392.46,2021-09-04,false
+745a402a-51bc-5f8a-0050-6470399c63ed,Stewart-Bailey,Retail,GB,278,79009.74,2026-02-02,false
+cb8e8d38-d19c-428b-ab1d-a6b05a825292,Morris-Gates,Retail,NO,222,71752.14,2025-07-02,false
+6c5069af-7dbe-7f8e-a42b-34d56ddaa0ec,Nichols-Smith,Energy,ES,101,30132.52,2022-05-26,false
+9e5dcd3d-091b-2282-fbaf-d34af03ac9a6,Aguilar Group,Education,NL,123,156405.13,2021-12-04,false
+c10560a2-f946-18a5-c68d-b9822ecb8117,Mccormick Inc,Education,NO,83,99869.59,2024-07-21,false
+0a48e4a0-fb60-ce64-550d-2c2e0ae585af,Gonzalez-Stanton,Manufacturing,US,66,40222.41,2024-02-18,false
+79ef59fc-a9cf-388d-09c7-6a54f95b9d42,Martinez-Lynch,Software,NL,26,18385.99,2022-05-13,true
+f1997e4d-8b53-7ba7-c852-247e594d0ac2,"Wilson, Holder and Anderson",Healthcare,FR,124,94046.53,2025-08-06,false
+8974adac-41d1-9614-6938-9c5baf788b0a,"Morris, Butler and Sweeney",Software,UA,167,165988.65,2022-04-06,false
+5e356112-a81c-1c35-278f-b668845281d4,"Walton, Hernandez and Williams",Energy,NL,50,136494.70,2025-01-14,false
+96d6b356-1660-12fe-e5d9-4874274b428c,"Coleman, Hayes and Owen",Finance,US,189,27098.36,2022-08-03,false
+1aa506bc-6b1b-4266-2e7e-c0b15183d25f,Jones Group,Healthcare,NL,23,73823.64,2025-02-12,false
+92b9b5bc-1b61-b64d-e9c8-3604ba16c067,Walter-Smith,Manufacturing,US,23,133326.41,2022-08-30,true
+f88b1de1-e5d8-a70a-c8f9-518c6d900c64,"Freeman, Allen and Salinas",Manufacturing,GB,55,101490.25,2023-11-07,false
+578767aa-0cb2-d15c-1a08-6398426082df,Richardson PLC,Retail,UA,242,31081.61,2024-01-22,false
+f2cec4e8-117c-7381-a1b0-f053b206b372,Baker and Sons,Energy,FR,257,300314.65,2025-08-28,true
+b1a03c82-522e-9eaf-d422-a9826048f89b,"Gutierrez, Thompson and Jensen",Manufacturing,SE,149,64031.24,2021-09-03,false
+a791364b-ccf3-ef30-fd88-d1483245d73d,Donovan and Sons,Retail,FR,439,18333.78,2026-02-23,false
+90ce0a18-165f-b396-cb6d-11b1b0a6ce13,Reed-Bowman,Retail,ES,64,40949.00,2025-01-20,false
+642a58ea-290f-3b39-b7cb-664d4f1d0bc6,Bishop PLC,Software,NO,108,36927.61,2026-04-16,false
+771dcfab-5669-1314-4331-22a5730c7a9e,"Hamilton, Cole and Burns",Software,UA,408,63729.41,2024-09-26,false
+fd27f498-08df-0fa7-1b52-7e3cff53f3b3,"Murphy, Ramos and Beltran",Education,IT,1068,131295.08,2024-11-13,false
+ad9221b0-1f0e-f8b6-ce73-bd5d61b42d6c,"Mejia, Owens and Burch",Logistics,IT,119,41900.32,2022-08-12,false
+acd03fe3-b223-3645-06f2-4e0dcf916a49,Price Inc,Retail,UA,16,486287.96,2022-07-06,false
+613256ae-f4c9-4cb8-f7b9-7d91a801ed02,"Schroeder, Liu and Guerrero",Software,UA,13,882914.61,2024-11-09,false
+f1eb2e42-1e26-66b0-c6e1-93fbff1e2047,"Lopez, Williams and Oconnor",Retail,FI,14,330917.02,2024-11-22,false
+21b2626f-10f5-b3d4-3cf4-1ee007a055b2,Mckee Ltd,Retail,DE,56,411110.81,2021-06-17,true
+4235db30-c699-9f93-c733-2d94e5993054,Miller Ltd,Finance,US,21,195318.03,2021-07-29,false
+a3b52f33-f20a-def5-17df-371beb71eda5,Colon-Reed,Energy,PL,75,239114.33,2024-09-24,false
+8ed7d456-6d05-6a9a-c274-3d4309273cee,Russell LLC,Retail,DE,109,62572.55,2025-08-19,false
+14b20952-b041-a28d-7aed-5c8d9cca5582,Bryan Inc,Retail,FI,73,338145.52,2021-10-24,false
+ae10dfbb-5c91-a2e5-c650-ec347b2c17fb,Vaughn-Warren,Finance,NL,25,15413.64,2023-08-27,false
+8996c82f-931a-2b97-13be-78a372191af6,Barron Ltd,Energy,ES,415,116178.67,2021-06-07,true
+8c8f3a03-31c7-573f-cc74-6fe4c7eb272d,"Carlson, Martin and Bruce",Healthcare,PL,186,32437.66,2025-07-11,true
+0f7721ce-a06a-028a-d471-c313b18626f7,"Gonzalez, Morgan and Gardner",Energy,FR,1786,212394.45,2024-09-13,false
+836ded31-5c26-6caf-543d-8e55e4058a5c,Ellis PLC,Logistics,FR,100,26415.04,2023-12-27,false
+aa56f58c-3ee9-2660-440e-3c95ba448687,Chen-Watkins,Energy,UA,109,69117.48,2024-08-10,false
+26dbb444-a802-98ff-8512-ad207bd43836,Johnson-Combs,Software,FI,56,31411.12,2022-12-17,true
+167ba2de-6de7-6fe0-6792-d3c5fdc7eb36,Camacho-Lowery,Manufacturing,FI,76,12034.21,2023-08-18,false
+2d9c30e8-ea21-3339-3b9b-846c30cb21e0,"Hart, Rice and Hill",Manufacturing,DE,42,248449.86,2022-04-16,false
+642ec716-5285-beea-86e1-5871ce5f630d,Gonzalez-Carter,Education,NO,13,97800.69,2022-06-19,false
+b4ff70f6-d408-e563-8e51-d16f332d6247,"Moore, Powell and Diaz",Energy,SE,7,9950.40,2023-01-28,false
+0b1c38b4-b105-adae-ae6c-0a0905757bcc,"Patel, Miller and Patrick",Finance,PL,74,55890.71,2022-08-02,false
+60fcdb7f-21a5-f820-bea1-20ebc38d765f,"Horn, Lewis and Harding",Manufacturing,UA,49,68975.20,2024-12-11,false
+c616373e-97a8-0970-a54d-1793bfffa49d,Smith-Harris,Education,IT,83,10933.31,2021-07-24,false
+3c2e427c-7851-029b-faee-e31c997e3fc2,"Harrell, Mann and Jenkins",Logistics,US,17,30301.61,2025-05-10,false
+106a124d-7a70-4953-bb63-0f6e5f3fd116,Farrell LLC,Retail,NO,20,83661.02,2021-11-14,false
+48556547-80e9-570e-d584-d754c55f0b7d,Jordan PLC,Energy,PL,111,18305.45,2023-09-20,false
+a66b816e-2d10-0269-0ab5-1cf169dd7738,Shields-Park,Finance,SE,11,39866.16,2026-04-14,false
+991e1d72-c6d6-4fa5-88a5-8c9641050f66,"White, Stanley and Stone",Software,US,41,5788.51,2023-12-17,false
+e0404242-12cc-df1b-9dc1-beeb5393fd2e,"Price, Dean and King",Manufacturing,NO,159,664784.68,2025-04-29,false
+5f0c7493-7952-b017-9fc0-7c97573df3a1,Dalton-Ochoa,Finance,NL,106,171503.08,2023-11-25,true
+142e25fb-d3f6-6bcf-9655-36d498df46c6,"Williams, Leon and Bullock",Retail,GB,311,77954.88,2023-06-12,false
+0b5a6b4d-4e53-5b18-9712-de05051c03b0,Sullivan-Sanders,Education,NL,48,10419.22,2024-05-26,false
+02147c20-d400-6b7b-4094-8cdd34ac7000,Simon PLC,Retail,FR,22,231900.07,2022-08-22,false
+7694c99f-8beb-2a53-204a-d2996b0c88ae,"Morris, Young and Lane",Education,SE,61,312437.36,2023-07-30,false
+c8dc002d-55af-9fc1-bb43-6f404c659897,Obrien Inc,Education,PL,67,34462.67,2025-03-11,false
+132034b2-f0d4-48b9-b88e-9bfda5a2ddae,"Brooks, Guzman and Dorsey",Education,IT,70,62300.12,2021-09-29,false
+521fef04-4ca7-3c7c-ae7b-d6d4fd1d9694,"Leblanc, Rodriguez and Thornton",Energy,SE,80,29872.45,2024-06-14,false
+fe4ca7b6-4bdf-ac26-dd17-c6813dc030e6,Moore-Williams,Manufacturing,SE,52,149034.14,2024-12-23,false
+052e94c1-990a-a1ae-9bf1-f28c264f61d9,Rogers-Greene,Finance,DE,34,36808.11,2024-08-30,false
+fe8aefff-1658-0d36-99b0-c323f2049c93,"Gallegos, Trevino and Stevens",Finance,PL,35,75966.74,2021-07-27,false
+cba28527-fd4c-fa3e-7a9e-9ff6ef6ab2fc,"Lang, Phillips and Cortez",Energy,FR,30,196910.59,2024-02-25,false
+8df856cc-2ac8-2df4-281a-ce24bfb8adea,Brooks Inc,Energy,UA,2130,34586.11,2026-03-25,false
+14c0ff63-fb93-12d0-2811-cdebb97d5479,"Porter, Norman and Gregory",Logistics,FI,493,59317.78,2022-02-16,false
+b77bad23-1a1e-8147-9ddf-66295870f08c,"Martinez, Rodriguez and Jenkins",Logistics,NL,66,7959.19,2024-06-12,false
+4b0877a2-202d-0fbf-30f2-51952ad98d7b,Oconnor-Walls,Retail,NL,30,41232.34,2024-04-14,false
+f3c0cf35-10f1-b36d-defd-79cb6571d142,"Taylor, Espinoza and Dawson",Software,ES,5,52587.32,2024-01-26,false
+37b27e9a-680b-2b11-6b89-315657881ab1,"Golden, Aguilar and Vincent",Healthcare,FI,33,65232.74,2023-01-08,false
+ea48e63e-2291-8c88-368c-b5287d96a357,Marshall and Sons,Education,PL,95,28493.76,2022-10-23,false
+7c4dfde6-2c88-cd22-f890-65d3ef68b698,Phillips-Summers,Logistics,NO,44,304337.34,2023-03-22,false
+997e1c55-31e5-b4b9-ca43-252b136753a8,Sanders-Blair,Healthcare,DE,75,125308.43,2021-11-27,false
+46fc9a34-07dd-1c35-88de-9ddb9fdec626,Decker LLC,Healthcare,SE,26,165223.94,2024-07-02,false
+d718b8d7-6745-074d-7dd1-b51cceab6d98,Graves Ltd,Retail,FI,336,75098.33,2025-11-19,false
+95429596-6d3d-443e-3447-a5ffdf35bcb0,Taylor-Barnes,Healthcare,FR,223,89746.92,2023-02-04,false
+cbb6894e-e306-6bd0-71da-e90cf9c28352,Salazar PLC,Logistics,DE,211,31254.25,2025-02-12,false
+d32bc888-4735-8c85-8557-8e6c0a3c4455,Mcintosh-Wilson,Software,IT,195,731625.76,2022-05-13,false
+fa01d185-ef60-5084-861f-419ee4ca110d,Brown-Chase,Logistics,NO,21,640044.40,2026-01-06,true
+9fb03285-f19a-b927-4b08-8ecc90d0b186,"Riley, Hansen and Ward",Education,FR,35,22683.64,2022-10-13,false
+77b32846-12a2-057b-3b3a-55681e5c937c,Price-Alvarez,Energy,US,1119,238189.35,2025-07-19,false
+e5e2ce47-cfee-91cb-419b-60f775080e6c,"Hernandez, Bond and Duncan",Healthcare,DE,57,357858.00,2025-11-19,false
+c9bafe48-c4bf-b120-e6a5-cb59c9f1d947,Hawkins-Nichols,Logistics,DE,165,14630.68,2022-09-02,true
+f554cce9-9841-579d-bc3b-5921bcd91163,King-Bell,Energy,UA,316,19440.51,2024-01-13,false
+9ec64e3c-ce6a-ff52-268f-073ecd912d21,Haley Ltd,Healthcare,NL,66,118646.81,2024-03-24,false
+8e37e09d-38b4-7c0c-af0b-512006e0d530,"Lewis, Stewart and Smith",Software,US,44,9986.65,2025-08-22,false
+3d85a3c2-ea26-4e47-e0bd-d0124f3621dc,Johnson LLC,Education,NL,179,4117.54,2026-04-11,true
+e652be1d-2e6d-2056-8612-9f204d4f0762,Jackson-Alvarez,Finance,SE,171,174581.27,2024-10-28,false
+5aaa1549-d6e8-2dfe-98d0-b089c9fbeddc,Vaughan and Sons,Finance,NL,65,22438.17,2024-03-24,false
+67443185-99f2-dec9-df7c-ff394e203eeb,"Johnson, Carr and Wright",Manufacturing,SE,24,37163.84,2023-04-24,false
+536294b7-cee1-4e0d-04d0-745c95ef8f62,Garrett LLC,Retail,ES,16,33280.35,2024-11-02,false
+e7cdd7d6-aec7-8710-f724-b19619bf5f92,"Miles, Greene and Meyers",Software,FI,8,24180.89,2022-02-02,false
+490ffcd9-e988-1d22-fa46-6e51ab583b42,Allen PLC,Finance,US,239,520834.53,2025-12-29,false
+08324705-24d0-cd75-f171-2cf876d16f2a,Evans-Valentine,Energy,DE,178,137316.24,2023-12-14,false
+21191f21-33dc-24da-3358-6d9b9fc04dc2,Stephenson and Sons,Finance,GB,121,75603.06,2025-11-23,true
+95bb7582-8e86-7456-0cb3-7ae737bc176b,Calderon Group,Finance,SE,97,25414.58,2025-01-20,false
+bc802877-3bb6-d147-ab6a-26ebaa1e479a,Gray PLC,Logistics,FR,16,63383.19,2024-04-24,false
+0b06182d-d73b-1bc0-f661-3c6fb6fd7057,Gibson-Miller,Logistics,FI,232,61023.52,2025-03-26,false
+59aff6c3-4000-3aa3-9880-94472543bc04,Poole PLC,Software,US,47,59445.95,2026-03-08,false
+9b2ab32f-2111-698b-ce79-d2e39b8467c9,Hunt Inc,Education,FI,51,60073.22,2024-10-07,false
+92033a6c-f909-4bb0-5555-cda3cf066eea,Williams-Myers,Manufacturing,DE,357,216004.84,2026-02-18,false
+3581431f-5c86-e87b-231c-e10e4aa61c7f,Vargas-Osborne,Healthcare,DE,232,4106.51,2024-07-25,false
+9e9315ff-fb4f-d556-6e78-70aac7429264,"White, Camacho and Miller",Energy,UA,46,84039.90,2022-12-13,false
+41696cbd-d9b3-cdca-a11f-11766c810498,Fisher PLC,Education,US,338,35475.62,2024-01-14,false
+2677ba89-1d52-1c34-124f-cfaa64d02a0a,"Brown, Palmer and Wilson",Healthcare,FI,97,90021.55,2025-02-26,false
+d1052e96-6542-192d-5374-84ae6c3c3bbc,Lynch PLC,Education,PL,39,45358.96,2021-12-31,false
+15cdbb98-678a-098e-f2a6-a427bf65bca5,Jones and Sons,Software,US,245,12786.02,2026-02-24,false
+cd905f66-093c-2cbd-91d6-fca0cce1130c,Lyons-Webb,Software,DE,280,84060.86,2025-10-17,false
+2cb17b6b-32e0-39ff-3359-6b5dd496d56b,Bennett Inc,Logistics,DE,294,37533.44,2023-09-07,false
+b51eabec-a15e-1d83-74bd-1f1523aa43be,Haley-Mitchell,Logistics,ES,63,28542.50,2026-04-10,false
+75fef2de-042d-d780-df4c-aab1dc5a87d3,"Palmer, Thompson and Hughes",Energy,FR,32,52184.02,2022-08-09,false
+307f41df-5b7c-c470-ee41-4b3b216bf2d0,"Smith, Horn and Estrada",Software,NL,259,8228.51,2025-10-25,false
+3c129367-6d1a-f63f-0dd4-cc49ede83e80,"Wagner, Zimmerman and Fischer",Retail,GB,59,245305.39,2026-01-31,false
+40266270-0959-ba69-9e71-b8e016cd7333,"Diaz, White and Gardner",Education,UA,42,31809.46,2022-12-05,false
+13cc026d-7534-4693-340d-fe6114e63a27,Craig and Sons,Retail,FR,106,179815.48,2022-10-15,false
+f9c1e009-5dd5-b3bf-4dde-3738fb2da829,"Smith, Miller and Schmidt",Manufacturing,FI,256,10270.58,2021-10-02,false
+55cf44f1-b7b7-6926-51c5-88ffb7361b65,Hanson-Davis,Software,IT,20,41080.44,2022-06-09,false
+706904bc-6bdc-ef1b-bb17-a2eddf9227cc,Patel Inc,Manufacturing,US,40,49792.60,2026-03-30,false
+f8c2dff8-bac8-71bc-a454-3afe6dcc8900,Spence LLC,Manufacturing,IT,101,67817.86,2022-10-11,false
+258008f6-1ad4-38cb-7a86-634558421462,Pena-Ball,Finance,US,449,125040.17,2022-01-06,false
+23c2a2f3-611a-dcd8-0c31-54e4c203c79a,"Potter, Hall and James",Retail,SE,91,6179.50,2024-01-30,false
+c6b2a5e6-cd19-8529-c325-acd5188e4e0e,Hunt Inc,Education,PL,42,10186.48,2023-08-26,false
+1f9ba1d5-b22e-162d-d010-ff413e827048,"Wood, Williamson and Brown",Retail,PL,82,82735.63,2022-04-21,false
+dc41c019-a5aa-638f-421a-f211f9b33633,Smith PLC,Healthcare,GB,114,166024.61,2021-09-09,false
+799c0a2c-d669-dc59-ca65-910b2bb8a23b,Hall-Gilbert,Healthcare,DE,104,10473.58,2021-10-03,false
+7e9ecca6-5d70-d5bd-e07a-6c713d3d23e4,"Taylor, Richardson and Cooper",Retail,PL,50,23064.95,2022-08-09,false
+f143520c-19f9-4604-804f-c499b8fcc0b8,Steele Ltd,Retail,GB,82,18754.32,2024-10-25,false
+19bedea0-da04-ebfb-5e65-d19858248203,Rice-Serrano,Software,GB,492,6806.30,2022-05-15,false
+5c48882c-02cc-f574-d800-c0ccb4b7ef99,Mullen PLC,Logistics,DE,42,50625.88,2025-09-29,false
+080d8331-a947-5f0b-23d9-de69d2c08bad,Stokes Inc,Retail,UA,19,202828.67,2021-10-09,false
+72e888af-f280-ce50-62a7-9853f798e171,Patrick-Mcconnell,Logistics,US,57,726718.93,2022-05-01,false
+4c69c007-9edd-e2ef-b618-67c169144185,Holmes PLC,Finance,US,198,74990.20,2022-09-17,false
+3d112025-53dd-e9f6-7076-0af46499269a,Hurst and Sons,Software,NO,31,259809.10,2023-02-02,false
+cf6a655f-3aad-53bb-ebc1-9cca46f38e26,"Lee, Hall and Todd",Logistics,FI,13,9414.50,2021-08-01,false
+4b869b7f-0e72-15b5-d08a-6a36b071607a,"Henson, Ewing and Murray",Logistics,ES,60,232655.75,2023-01-29,false
+7eb01b1c-2272-a749-9b3d-7f1a0851e2fd,Olson PLC,Software,GB,182,87323.96,2025-03-03,false
+990ade45-52f3-fbe6-dd5f-6f00c669fa3e,"Ramos, Horton and Brown",Logistics,UA,90,40767.64,2024-07-10,false
+627ccd9a-6686-321b-375c-52f2c41dcead,Conner-White,Energy,UA,378,30683.68,2023-01-19,false
+41db2081-1b29-ee51-4f24-3430e5cb77b3,"Clark, Thomas and Pope",Education,GB,52,154443.71,2025-12-01,false
+e6dcfba4-bcfe-ed25-3170-2855cacb6800,Brewer Ltd,Retail,ES,71,98009.46,2024-12-04,false
+ffa117f6-4c2b-5e48-259e-92db35883179,Collins-Fleming,Retail,SE,266,13312.33,2024-03-20,false
+b46195c6-18b6-dfde-9f08-2b104ba50613,Stein Inc,Education,FI,94,242241.02,2023-09-28,true
+5bf8268f-9611-4555-ce93-60bc4a1c4220,"Carter, Anderson and Raymond",Retail,UA,134,42458.42,2023-11-03,false
+1d7b345e-1a2c-4a17-e767-7d44e7e8235f,Hernandez-Myers,Logistics,FR,24,4728.72,2021-10-17,false
+178d5081-ac4e-e102-4051-9df0bcd34d94,"Dorsey, Chavez and Espinoza",Finance,FR,44,19476.59,2022-01-18,true
+0199f569-7986-add5-dcc8-329b421b425c,Fox LLC,Software,NL,276,23265.88,2022-07-07,false
+9b57ea69-d517-3c63-3e72-db256e48eafe,Smith-Martin,Healthcare,GB,59,131690.16,2022-02-14,false
+d9f8c420-2fd7-7be2-50a4-3532a98bc65d,Elliott LLC,Retail,UA,109,46987.45,2024-04-07,false
+b4d60c3a-c4cc-98d0-3277-fa0f7476a9e3,Richards-Reid,Retail,NL,38,995047.22,2025-10-06,false
+92048f53-6301-a880-1f74-79a90aad8b26,Barnett Group,Manufacturing,SE,42,50247.26,2022-02-02,false
+c4282ac8-27f2-37fb-a2a7-ba64e7b3965c,"Butler, Gibson and Lopez",Retail,SE,281,524618.12,2026-01-14,false
+1ceff27f-a643-c9b6-acff-615b4e4ebc77,Evans-White,Education,GB,220,106064.63,2021-06-29,true
+418a8f74-fb10-89b5-061d-9b5f6ad49ee7,Zamora-Peterson,Energy,FI,16,48576.56,2021-09-09,false
+dbc4942d-65bd-f340-6030-e2922f979108,Bryant and Sons,Logistics,FR,43,147353.67,2023-07-02,false
+026bcbff-eba0-1bbd-d3ab-d93e67aa7b09,"Carpenter, Haynes and Baker",Software,FR,181,31719.70,2021-05-25,false
+131b7dd0-62ec-0979-7f71-22590be6dd6d,"Tran, Gonzalez and Singh",Education,FI,52,223761.29,2025-07-26,false
+b16f6f45-e79c-1000-7c2e-d5190b3edbef,Houston PLC,Software,NO,23,42735.79,2024-05-12,false
+08051be7-8abc-7cf5-7b26-faacef348474,Lewis-Miller,Logistics,PL,166,425399.12,2025-08-17,false
+2b8e6ee3-b145-c029-a392-20d1f4ca6366,Gray Ltd,Logistics,DE,113,9703.94,2022-04-28,false
+e010d2c3-9f24-52ff-c90b-f5d7125d5ac3,Williams Ltd,Finance,ES,314,25494.52,2022-11-02,false
+10eb43dc-8e6a-455c-94d6-44b35d416b86,Watson Group,Healthcare,GB,80,919483.07,2022-10-01,false
+eeeaa3ac-c11a-ddb9-0200-6c120f7c8b61,Barnes Group,Education,NL,38,10855.67,2024-12-12,false
+d534cb60-73be-9109-8c63-9178895cb112,"Johnston, Ferguson and Montoya",Finance,FI,294,75543.05,2024-12-08,true
+f627c54b-49e3-f6ea-3f64-9d9bf96ffa93,Petersen Inc,Energy,NO,35,180284.69,2023-10-27,false
+04798939-0657-b170-feaf-e27b10b7e099,Long-Edwards,Software,IT,14,91860.62,2023-04-02,false
+efe46752-fd63-247c-034a-7eeb7b62cb25,Hanson-Pope,Logistics,NO,707,284262.90,2025-05-07,true
+a606f1aa-773b-84f3-ee96-229011b9b30e,Doyle-Harris,Education,DE,21,186225.82,2023-08-28,false
+7215bc06-c384-7d5a-b9ca-ad855af2b4bf,Ray-Stevenson,Retail,FI,161,65465.14,2026-04-03,false
+c2100a5f-f4ff-9eb7-e25d-5482cf3e337d,Armstrong Inc,Energy,NO,32,20880.22,2022-01-28,false
+64fe1983-3c20-7cce-2bc8-b2483df5df26,Haas Inc,Logistics,FI,32,219829.48,2026-02-26,false
+ba7a724d-2186-943e-98fe-16ff41f3716d,"Conway, Rowe and Burton",Manufacturing,ES,150,9284.05,2024-01-21,false
+72525f7f-5a67-1c6a-09e6-3bc7ee9c7269,Raymond PLC,Retail,IT,67,108961.16,2024-04-10,false
+016d1382-6205-c44e-8a28-0ea90d2ad339,Elliott-Hill,Logistics,PL,116,95598.07,2025-01-15,false
+37a3e074-71e0-a9af-1d4d-8acaf7dd7709,Osborne-Herman,Energy,US,15,258185.59,2025-03-24,true
+7af917be-e3b2-387d-e4b2-17248a159cae,"Barajas, Klein and Flores",Energy,FI,19,235136.09,2024-09-01,false
+dd87579b-58ff-759c-758e-5df9a5738d92,Smith Group,Healthcare,GB,46,121295.99,2021-12-04,false
+f0d3ff49-b260-96f6-a417-0299b7b3af51,Santos LLC,Software,NO,212,22694.73,2026-02-21,false
+62349ae4-38bb-0af3-bf06-fd00c2fe0be9,Smith-Cline,Healthcare,NO,72,82846.59,2022-11-26,false
+f471bf4b-47c5-7dec-e13b-4d1fc5604b1b,Williams Inc,Education,GB,25,77276.53,2024-01-06,false
+59b5b38a-ec71-dbac-63c0-f31c6f069204,Mcdonald LLC,Software,NL,374,8615.70,2022-07-20,false
+26ca2b3d-1258-d26a-c9c4-8e302e823140,Serrano LLC,Logistics,DE,181,114834.01,2022-09-14,false
+8db99225-b976-c17e-348e-c15a6dd0ad90,Young Inc,Logistics,NL,474,42386.30,2022-04-14,false
+532075f1-cb38-0612-8a57-d0858e7d7774,Bradley LLC,Healthcare,GB,203,53821.50,2025-05-08,false
+96728713-a2d0-dc62-5dd0-2ec219819c2d,Foley and Sons,Healthcare,NL,169,129898.81,2023-07-24,false
+b3553dad-b482-586b-a434-939299acc626,"Rhodes, Smith and Scott",Education,NO,30,81738.28,2023-04-01,false
+08ff1d9b-f8c1-6925-b660-66b14a62352a,Page Inc,Energy,NL,124,56971.83,2025-05-12,false
+92efe5e3-f91d-6a3e-17df-964cdc284fcd,Anderson LLC,Healthcare,PL,169,88350.23,2021-09-01,true
+0c57096e-1fd4-672d-cc31-922aac6cd451,Petersen PLC,Manufacturing,IT,15,119401.18,2022-09-13,false
+3ff46ce3-57c4-cdf1-9370-7f9bf5959bbe,Flynn PLC,Energy,NO,286,98860.04,2021-06-16,false
+fea86748-dc08-eddc-4d3c-9cd1b328e0c8,Horne-Jackson,Software,FI,28,72809.54,2021-10-17,false
+8806c4e3-d3df-a761-0fde-0ba5b864d3e2,Castro-Ruiz,Retail,FR,74,13135.17,2025-03-20,false
+d4d50704-59bc-435b-fb76-078ce1bf0369,Lynch-Jackson,Finance,US,29,16269.44,2025-04-01,false
+3cfac6be-e612-9f4d-9081-4fa06f285da3,Tyler-Beard,Energy,NL,78,73716.29,2023-01-24,false
+1018eddc-e40b-f98c-febe-ef4de360c0d1,Jacobs Inc,Energy,GB,66,625811.05,2023-10-04,false
+bc9d1327-a20d-f444-1ce3-211afaab37d4,Day-Jones,Manufacturing,GB,72,147109.68,2023-01-14,false
+6dfe1c59-2044-d290-255c-f6840cafdd3a,Valencia PLC,Software,FR,196,344375.74,2024-09-27,false
+19a9fe37-beb4-b020-477f-940ed5ec625f,"Norman, Avila and Smith",Finance,ES,186,56043.70,2023-12-09,false
+52ce2760-ac11-652b-ec00-52fad65a55e8,"Davila, Jordan and Fuller",Retail,PL,65,52326.02,2026-02-24,false
+064375ce-2a53-fb83-d710-b8c1e29f62b1,Smith Ltd,Manufacturing,DE,97,337535.23,2024-06-06,false
+9f97fcd2-1816-1678-e35b-6e0a0deb83bb,Lewis Group,Education,NL,61,166224.03,2022-09-07,false
+a2eee29c-42eb-398a-0b5e-db15d02cd902,Esparza Inc,Manufacturing,FI,123,85593.88,2024-07-05,false
+3c1d7276-5c62-abe7-8747-492144630016,Santiago-Graves,Healthcare,IT,50,168520.93,2022-01-16,false
+55e0a6ed-d15d-07d2-e366-fe5151fae521,"Park, Bernard and White",Software,PL,196,51145.87,2024-02-28,false
+d8d262fc-423e-2809-61b0-d0fba05d0411,"Sparks, Hampton and Warren",Energy,NO,40,252744.00,2024-03-25,false
+c1f90b85-b2b3-9e8b-7735-1ed443bf5345,"Stanley, Buck and Barajas",Healthcare,UA,132,84544.98,2025-06-12,true
+83cd1959-aff9-a927-699e-d580a163ab77,Martin Group,Logistics,FI,1782,116828.64,2022-03-28,false
+01cfc1ed-f559-6591-294f-314aa3c41578,French-Bates,Finance,SE,37,160808.85,2025-10-11,false
+47751788-9270-263c-20be-e72eb3528ff5,"Oconnor, Castillo and Owens",Energy,IT,73,10320.87,2026-01-13,false
+91f344b0-0c2f-c6ee-476a-511ec6dce52a,Watkins-Smith,Finance,FR,38,20297.03,2025-03-16,false
+0c422906-02e5-7b78-a294-5319a53012e2,"Willis, Jennings and Turner",Finance,DE,29,184824.97,2025-08-21,false
+41807d4e-1231-1ca1-a5ae-54607cadbfc8,Maldonado PLC,Education,GB,245,51131.74,2022-08-10,false
+c69201e5-a0c5-46f5-cf94-9062486c00a3,"Ochoa, Rodriguez and Smith",Healthcare,FR,65,126652.28,2023-02-27,false
+3bd5aa3c-4c97-bbc9-d3ff-db50f40f55ed,Gentry LLC,Education,NL,71,100852.73,2023-11-16,false
+832162e2-6725-68ec-9220-1da0474f1596,Mccullough-Schultz,Energy,DE,55,247349.65,2025-12-03,true
+06aee58b-884f-6a04-12e3-d2b09a3bc4cf,Clayton Ltd,Retail,NL,34,28049.08,2023-08-15,false
+ed04b4b5-e8c6-d9a6-90e1-834bc5778b4e,"Johnson, Cole and Carlson",Energy,DE,31,20537.80,2026-02-12,true
+e99ff0df-a5d5-066f-0b1c-0abf35765418,Little-Hendricks,Manufacturing,US,74,84132.23,2026-02-11,false
+3472ac52-ad3e-b787-4fed-45067363982b,Hall Ltd,Manufacturing,SE,48,186208.04,2023-07-19,false
+2d91b38e-313e-b698-f0a0-13fe4dcb9a7a,Roberts Inc,Energy,GB,60,160026.31,2022-10-15,false
+daf97e57-eb30-370a-a70e-4a6e54738209,"Knight, Henson and Williams",Education,NO,42,223539.13,2022-10-18,false
+63403274-cba6-b927-b239-d609528422ce,"Hardy, Good and Johnson",Healthcare,US,276,48693.00,2025-07-08,true
+e8156295-7c5f-3e3b-5815-29807089b8cd,Hoffman Ltd,Retail,DE,195,47511.55,2022-04-23,false
+ea23e639-5376-f84e-e441-07cec795bca3,Mays Inc,Education,NO,427,502207.78,2024-10-03,false
+13edacdf-af4e-abaf-f259-80bd3a7acc9e,Gallagher LLC,Finance,FR,102,30031.79,2023-07-02,false
+b7913290-62c0-e272-f763-2159f5ed78c2,"Atkins, Hawkins and Craig",Healthcare,DE,144,120885.73,2025-01-09,true
+175a595e-1c32-cc3d-a853-229593738898,"Griffin, Rivera and Brewer",Retail,FR,22,66468.51,2025-08-05,false
+e1e03868-288d-3eb3-cab2-4d6bc4a02484,Baker Ltd,Software,US,34,59690.12,2022-03-12,false
+d5eaf688-1438-f4da-723e-8385c90eb5f9,"Meadows, Miller and Marshall",Finance,NL,43,28864.82,2021-11-27,true
+611b4c60-c631-558c-254b-d03974e921d6,Lopez-Guerrero,Healthcare,NO,335,50058.27,2024-03-15,false
+babb7ee3-392b-3f6d-979d-37f92f06910a,Jimenez-Jacobson,Energy,NL,157,80772.83,2022-05-04,false
+269d725e-e675-7207-3719-41e908c24783,Vasquez Inc,Retail,NL,29,23856.83,2024-03-02,false
+c422f89c-f43d-cfd9-f29a-46dde7a4d932,"Christensen, Hill and Dunn",Finance,UA,34,159505.74,2021-11-22,false
+0a67d486-29d1-5f19-6be3-905208e3c61d,Shaw and Sons,Finance,DE,119,10131.92,2025-02-14,false
+9205cd79-3682-d85d-3818-f5e438380989,Winters-Hunt,Software,UA,337,17655.84,2025-09-23,false
+2bd30a31-15c8-c7f8-4c10-05106ed3d871,Thompson-Johnson,Healthcare,US,430,23194.31,2021-08-25,false
+60fa8174-223b-86c9-74b1-021327a33f69,Nelson Group,Healthcare,PL,31,40507.59,2023-08-29,false
+f90ada9e-fcb2-cd65-624d-aa78a9b010f7,"Hampton, Ferguson and Shaw",Logistics,US,60,26739.61,2024-11-03,false
+1de34d9a-0c73-f6d3-9862-2b27605d9e51,Rivera-Massey,Logistics,UA,100,27209.47,2022-11-17,false
+abf6aeb8-4e82-a861-04af-06c5894d432c,"Giles, Wilson and Whitehead",Manufacturing,IT,16,20308.43,2021-08-22,false
+33d79a15-a9c9-6597-78a3-793f273526f9,Thomas Group,Retail,PL,68,15156.06,2025-02-07,false
+ebe04c00-1634-2d3c-1622-14ff2446dc76,Johnson-Butler,Manufacturing,ES,88,88197.05,2025-03-22,false
+8061a102-4b93-bede-c894-99f20c8f5bb0,Beard PLC,Energy,SE,302,33309.02,2024-09-13,false
+aa232049-97ee-cb57-dc67-fec23e155130,"Wilson, Avila and Wright",Energy,DE,92,65062.05,2025-01-17,false
+689273a2-3bbf-555f-6b3a-7aecc3bc56aa,Ruiz Inc,Education,SE,193,20552.77,2022-10-04,false
+4d17ef97-7d28-6719-c1b2-06eb8770160f,Perry and Sons,Finance,DE,86,53420.15,2025-09-19,false
+d973c9ca-458d-1e10-b86c-d4ce6970964d,Velasquez PLC,Logistics,UA,5,34776.73,2024-06-12,false
+6876b6ae-2d1b-d76e-3500-7dbf2c96a3e2,Rogers-Terry,Retail,UA,107,255771.60,2024-11-05,false
+d0655700-70a8-751a-522f-01ba1b26f092,"Marquez, Foster and Lewis",Retail,NO,842,95847.00,2022-09-21,true
+999f89c9-3d70-9f18-cd1c-c079eb48d774,Rosales-White,Software,PL,181,318423.30,2021-06-07,false
+215b93dd-0fa8-645a-004a-baa9e95dc13e,"Smith, Price and Wheeler",Healthcare,DE,37,88780.61,2022-05-16,false
+c293f5bb-7aff-5fbb-3e4a-84906e791221,"King, Green and Rodriguez",Logistics,NO,227,11504.28,2022-12-13,false
+9972deda-ece7-4705-0d2b-365b65cf311e,"Burgess, Reyes and Case",Finance,DE,111,53334.61,2024-12-15,false
+cb035ae2-be72-db19-29f6-3ef0c12ae839,"Sanford, Young and Lopez",Education,PL,47,37137.50,2026-01-06,false
+3cffaf6a-67b3-a186-be91-3e4b05bc8273,"Zimmerman, Nguyen and Hanna",Logistics,SE,53,37328.47,2023-07-29,false
+dbab21c1-d753-180c-f467-33dc371823ef,"Meyer, Barnes and Paul",Logistics,NO,35,172159.13,2025-08-06,false
+7f30da41-4787-b3f2-c749-b1d973222e1c,Hicks-Mooney,Logistics,UA,121,117266.13,2023-10-03,false
+a8ab2180-9f70-6fc9-c662-6ae6d5c583f0,Nguyen-Thompson,Software,GB,22,174677.16,2026-04-15,false
+cd1c0a85-eb84-c025-0d33-a71db1f53063,Ayala-Gonzalez,Software,FI,96,110895.07,2024-03-31,false
+81520b4a-52cc-99dc-f1ea-ba42b47cf096,Dean-Johnson,Logistics,NO,221,20075.08,2023-02-28,false
+d49d9d90-e55f-1328-2c07-b576ec2393d0,Vargas PLC,Manufacturing,PL,461,100160.63,2023-12-24,false
+2ef6bbec-7222-894f-96df-4cdb2d777e3d,"Terry, Moyer and Sawyer",Healthcare,ES,45,152837.52,2024-02-12,true
+a8123770-2068-e3ce-ada4-5909350bea31,"Quinn, Davila and Foley",Finance,FR,9,175817.65,2021-09-22,false
+38ea2530-7c70-b6b4-245d-2dcb1942f437,"Clarke, Meyer and Guerra",Energy,ES,76,121922.05,2024-11-08,false
+8a34ed63-083f-13e3-5278-78f5cffd518d,Roberts and Sons,Energy,SE,34,65757.06,2023-10-04,false
+90ee8411-d29b-3c92-c05f-26a0edc2017b,Moreno Ltd,Logistics,SE,129,56535.82,2025-08-27,false
+b82d0064-7134-b450-2d72-330ba52ce37b,Hall Ltd,Finance,SE,35,19844.14,2023-06-01,true
+b9a6c071-242d-7f92-6f1a-f9f3941af079,Blackwell-Harrison,Logistics,DE,18,51198.42,2024-07-24,false
+b89fa63d-6957-010f-58e4-151debeed025,"Ramos, Ramsey and Vargas",Manufacturing,IT,76,30739.57,2024-03-19,false
+1de28d31-1d99-4556-bc39-3e2973f1576d,Conway and Sons,Education,NO,50,86078.09,2022-12-30,false
+490c7b72-1107-83fe-1a6b-3793178d1712,Bailey-Smith,Energy,US,93,104702.80,2022-10-27,false
+476b694b-e27b-7149-7f10-e7936b10dd73,Martinez-Arias,Healthcare,DE,136,687149.56,2024-03-20,false
+91cdbd57-509e-03ca-d22b-083f7e9b0da9,"Fisher, Duncan and Coleman",Logistics,FI,25,129926.90,2023-12-15,false
+41452e5c-78b2-64a8-ec99-f76d97177f66,Anderson-Salinas,Software,DE,30,69490.50,2025-11-07,false
+4044896f-89d9-a2ad-e38f-8087d4bf8c4d,"Willis, Davis and Lowe",Education,DE,43,5801.50,2025-12-24,false
+59231a99-ace4-c48f-0320-ba9e5b5a7e35,"Navarro, White and Wolfe",Education,ES,78,126954.26,2023-03-19,false
+cb9f0b8d-e6af-4029-7332-9c224237a63d,"Barrera, Weiss and West",Manufacturing,NO,51,304300.10,2024-09-12,false
+5a48e0ff-5deb-7c6d-eac4-e360cba108f4,Allen-Frazier,Retail,DE,237,25300.21,2021-12-21,false
+753bd8d1-1e1d-414c-7230-831c9a966b41,"Wilson, Reyes and Gardner",Manufacturing,UA,103,8715.90,2021-07-28,false
+8f979f64-39c8-ef76-3c15-fa21ffbbbc3b,"Clarke, Williams and Duarte",Manufacturing,PL,15,81215.89,2025-04-22,false
+430a3254-cc8a-cade-cee6-9a579d2bbd2d,"Campbell, Fernandez and Bradley",Energy,US,47,67839.65,2022-03-15,false
+1a6c8b51-b4e4-0eb4-6c45-eb46dc23a1d7,Morris-Elliott,Manufacturing,ES,71,7455.52,2024-01-11,true
+a919143d-1ecd-8c5c-4428-ff4b03065318,Padilla Group,Healthcare,GB,156,397954.43,2023-11-20,true
+b02f3eaf-1b04-6cce-b4f4-608909c18b10,"Richards, Baker and Wright",Manufacturing,GB,333,11208.72,2024-03-27,false
+9b931468-912c-cc05-c6bf-33953847631f,Morrison and Sons,Energy,NO,31,5058.13,2022-05-28,false
+9e49d1ad-ed2c-3739-d5db-c9ed33b3836a,Johnson-Sloan,Logistics,FR,104,134691.66,2022-02-06,false
+2d73806d-c1ac-8975-fa17-c40e0a9e7019,"Durham, Wright and Howard",Finance,NO,54,43188.71,2024-02-27,false
+073402d0-f902-6323-832e-26e3b1b7af78,Jones Ltd,Finance,PL,63,162903.38,2025-07-26,false
+9d4c3026-7a8b-9001-3391-f302503235ae,Berg Group,Manufacturing,NL,34,104316.03,2025-02-17,false
+d61f6500-9dc4-6327-a2e6-9e43de0b974c,"Jackson, Cook and Martin",Manufacturing,PL,126,29278.05,2022-09-08,false
+2e987dc0-ef88-1d07-f257-a9c961390fd6,Good PLC,Education,SE,21,11673.37,2025-08-21,false
+afc5e268-9100-b794-7481-3b76eda6fb52,Stewart-Wagner,Finance,IT,287,73755.30,2023-12-15,false
+27626e05-8935-5ff8-bd6f-9719204c88a3,"Gonzales, Smith and Smith",Energy,IT,103,242596.60,2025-11-06,false
+a5b34604-5935-b292-adb3-22aac6f59816,"Mcconnell, Mcmahon and Bowman",Healthcare,US,763,271193.61,2021-06-14,false
+277be8ea-edd8-950c-f7c3-2d2c8ea0a0dc,Diaz Inc,Manufacturing,SE,59,10272.25,2022-03-07,false
+b7b14110-3adc-4ed1-35ff-5483207ca6e8,Torres Group,Logistics,NL,60,53026.31,2024-09-25,false
+704dfb0f-e584-38a9-cf64-df3f6566aecc,Mason Ltd,Logistics,FR,156,618256.33,2021-09-05,false
+6799d014-a082-af17-2cba-e7741c0a751d,Foley Inc,Logistics,NL,49,293700.56,2021-09-26,false
+a58c2099-09e0-eed3-98e2-74beacc511a6,Frederick LLC,Education,PL,118,460726.66,2023-03-26,false
+5779f8df-eb59-9f83-73c7-30ec375f39c0,"Armstrong, Williams and Edwards",Healthcare,IT,511,476443.93,2023-11-14,false
+5576cce8-5818-de2b-5c1c-3c5a68d86682,Franklin LLC,Healthcare,NO,75,59203.52,2022-02-18,false
+2e9f4e64-8cc4-53cd-fe59-6aee8e9517bd,Cox-Ramirez,Finance,FI,75,58045.68,2025-08-29,false
+4b0e6723-ab40-caf5-2550-a55788087764,Simmons PLC,Software,SE,193,23588.00,2021-11-28,false
+a3cfd357-baec-3c11-55fa-69fcc120fd02,"Aguilar, Riley and Williams",Education,SE,9,203940.30,2024-03-31,false
+dfbc1142-cbc5-dfbd-68ec-608766cdee46,Miranda and Sons,Software,FR,39,248676.32,2025-06-06,false
+bc56d325-51b6-dca5-6599-5eb4a8992457,Wright LLC,Retail,UA,24,50021.04,2025-08-21,false
+0e56e843-0f47-65c0-df96-d7dc77d88ae2,Mccann and Sons,Healthcare,FR,160,13666.37,2021-09-20,false
+ed0ab237-1b29-65f1-f6b9-363da3b6b2c2,Mcpherson-Gonzalez,Energy,UA,150,44754.73,2024-12-22,false
+05d78981-1a37-2ee4-ac3c-d501d137a503,"Barnett, Ryan and Thomas",Education,SE,159,224062.62,2022-02-16,false
+787f8871-2926-1014-3299-b587e674c1a5,Torres Ltd,Healthcare,IT,40,67180.97,2025-06-26,false
+6539fa86-6377-ea9f-72c8-3126df62a36a,Hoover-Zamora,Retail,ES,155,11964.86,2024-12-09,false
+77c3b0d9-f493-85a0-2b7b-98572d02ba25,Melendez-Crawford,Energy,PL,62,92195.72,2021-08-29,false
+a0f31ca8-8370-df83-b7d9-72302f3bc1c6,Johnson-Mcgee,Software,ES,72,14794.62,2023-07-07,false
+e2e2b6a4-5ad4-c9ee-0c97-eac951ae7077,"Johnson, Robinson and Smith",Healthcare,PL,239,66282.84,2025-11-15,false
+3e60d473-46e7-b963-b043-fcbd7f132f2d,Kim Inc,Logistics,UA,100,24863.74,2024-08-12,false
+8913c4e2-5017-ef26-b080-6219c5c0d58e,"Miller, Douglas and Bell",Education,IT,118,45302.27,2022-02-24,false
+d3adc629-f622-dff5-fc06-f7391cb45b19,Fisher-Price,Energy,FR,69,11950.25,2023-11-28,false
+d6d5b7b4-1d2e-5805-7512-e88f8ec851e8,"Scott, Collins and Barnett",Education,PL,73,16839.00,2024-05-08,false
+89cb4898-5ab9-1e73-6849-ea965bb161d1,Sanchez Ltd,Energy,FI,181,28313.29,2024-04-13,false
+5ae3876a-41c7-05dd-3844-d424df75a833,Cook-Hess,Energy,FI,243,123353.66,2023-07-04,false
+b1279c87-17db-a192-903c-84dcddecbe12,French Ltd,Healthcare,DE,9,13255.78,2022-01-11,false
+76f7fdbe-8db7-34de-33b5-3931fc50331d,Adkins-Francis,Logistics,SE,43,28983.08,2024-06-06,false
+b94625ef-bdef-b809-e195-1879ebfc4462,Green-Rivas,Education,PL,28,153077.71,2025-04-05,false
+914b5d98-7d2d-4a35-da55-aeb343b160ba,Andrews-Thomas,Software,PL,77,20059.14,2025-10-31,false
+8e32bc42-9e11-dc05-cff3-af6e137155fa,Hernandez-Stewart,Retail,NO,88,39739.61,2025-05-26,false
+dbb95713-56c2-282f-fc63-febc7265edc2,Bauer LLC,Manufacturing,FI,283,313516.29,2023-10-07,false
+14521525-9ad9-2913-338c-77e91ae93d69,Thomas-Nelson,Education,UA,60,110584.65,2025-06-13,false
+58b6afec-5fd5-c335-84eb-8cd5316d3827,"Rodriguez, Johnson and Tapia",Finance,FR,220,70867.70,2023-07-03,true
+cddadaeb-009f-3807-647b-6d9be290762f,"Wright, Stevens and Martinez",Education,ES,112,54143.52,2023-09-16,false
+1d4bc394-9019-bdcc-07d8-4b353cce0bc3,Arnold Group,Education,PL,480,195237.71,2021-12-24,false
+c9c428ac-db89-3484-ab94-ef07d977243b,Branch-Krause,Manufacturing,FI,162,171564.97,2024-04-19,false
+6f531311-117e-b411-fe5e-a422341ea129,"Campbell, Johnson and Bell",Manufacturing,SE,282,200355.34,2024-10-22,false
+2f16b15a-a1b1-d0d8-0603-a0c711ef95da,Hale LLC,Software,SE,296,38171.98,2026-05-10,false
+31bdd45e-550b-8b84-45ca-86df1d736bd5,George Inc,Energy,SE,55,45864.98,2023-05-28,false
+2525a53b-2e4b-1cce-c289-702f7880dc3f,"Cooley, Peters and Patrick",Healthcare,GB,64,62769.80,2025-02-13,false
+7dd96af2-7126-15e6-950c-0c789172e2d6,"Rivera, Espinoza and Parker",Retail,GB,937,67099.52,2024-05-30,false
+fcd0b963-9b72-1ed5-4a1f-097320e7ee56,Butler-Evans,Software,FR,16,414071.42,2024-06-18,false
+d0373738-e1ce-c638-11f1-0a9f1a074a6a,Lambert-Robles,Retail,NO,111,23689.80,2021-12-20,false
+03b33286-f81a-3087-b69e-64698172e3b8,Frederick-Dalton,Manufacturing,ES,58,19113.32,2023-12-31,false
+496137c7-b009-382e-4426-2f01846eec38,Garcia-Obrien,Healthcare,SE,60,57644.25,2024-01-22,false
+7d2a5995-8ffb-2ab2-229f-7016dba9f186,Parsons-Gray,Logistics,GB,70,33310.67,2022-06-02,false
+c2b61b10-684b-a9de-a365-1d23dbc41594,Grant PLC,Energy,IT,516,37812.62,2025-08-20,false
+c2102c51-55f7-6ffc-e0ef-fba297e35c1c,"Austin, Roy and Miller",Manufacturing,NL,144,333267.01,2024-01-02,false
+d0c21fc8-59d7-1a74-c742-6ee77209baaa,Barron PLC,Software,US,69,24246.31,2024-10-01,true
+f057dcf5-5268-24b3-f283-07d130f90822,Cunningham Ltd,Energy,PL,131,8225.66,2021-06-29,false
+f952add1-868e-6769-9dba-6be9acde09c3,"Brown, Thompson and Dodson",Software,GB,144,24839.92,2025-05-21,false
+b26d1410-3ec3-da9e-691c-0d5a86d39a6f,Hill LLC,Retail,UA,44,23095.47,2022-08-26,false
+e3420ab3-2336-f175-4eb2-b1811ec4caf4,"Nguyen, Holland and Miller",Energy,IT,115,73791.17,2023-02-10,false
+4210a4c6-7ad4-0c49-f97b-b88dfb1d31ce,Whitney Ltd,Software,PL,35,36150.08,2023-09-06,false
+b187fcfe-3284-e0e6-ec28-510dcf826a76,Parrish-Johnson,Logistics,FI,185,45684.60,2025-07-14,false
+6504271f-b2ff-dfe0-0d28-d3dd3c52cfed,"Walker, Patton and Erickson",Retail,NL,85,90772.42,2023-05-07,false
+71d49b94-3de4-5f6e-0c22-df9f3f0b1c71,"Randolph, Smith and Mclaughlin",Logistics,US,429,134823.90,2023-09-03,false
+c1fcd500-d66c-ca2b-2e71-79ed05625e32,"Brooks, Banks and Walker",Logistics,DE,81,30200.61,2022-05-27,false
+603a7bca-5989-b956-3012-87871305f4d5,"Barnes, Blake and Ramirez",Education,IT,81,150237.57,2022-08-28,false
+7267bb2e-d375-9c3c-d155-5d730371c237,"Miller, Barrett and Howard",Retail,US,58,20292.26,2023-07-11,false
+28f578d0-721e-6ba4-9b5d-2e75c33759e4,"Roberts, Rodriguez and Dorsey",Retail,FR,239,6252.98,2024-10-05,false
+a28a97ae-2be7-e7b7-0de3-c7f0435576bd,"Morrison, Vaughn and Sparks",Finance,FR,76,1443673.33,2021-08-23,true
+edf4d056-43d4-c51b-2c9f-bb5ac06c6093,"Smith, Crane and Gonzalez",Logistics,SE,220,15386.28,2021-12-06,false
+e118bdcd-430e-6798-4448-a89fa69bca9f,"Brown, Gordon and Blair",Education,NO,1968,109440.85,2022-02-07,false
+748716a3-938e-0b96-4455-e1c1bb14972f,"Lara, Washington and Aguirre",Energy,NL,68,11417.35,2023-03-12,false
+e549a33a-aa7d-14cd-d44b-7c77632a8107,Jacobs-Miller,Education,NO,298,191769.31,2026-01-01,false
+955e7fe9-dd73-eef6-4ac4-9f801a045d7d,"Smith, Leon and Gaines",Retail,US,34,207512.88,2023-11-06,false
+d65f02fb-8acf-5087-d74b-bf6a06a74eca,Allen and Sons,Logistics,DE,42,1118714.15,2021-12-26,false
+e2e9cd88-bdf4-aea5-9a80-691c69c38ea1,"Lawrence, Smith and Martinez",Finance,FI,214,87316.56,2023-05-27,false
+16867ea9-1654-377a-9c43-5bfc817ba690,Flores-Cunningham,Finance,NO,294,8854.02,2023-02-18,false
+97ad3987-a88d-657a-c643-c0d0da1f8aab,Woodard-Fisher,Logistics,FI,782,18968.52,2025-08-18,false
+ad5374cd-c74d-85ef-fd46-a17130dab6a2,Cisneros-Chen,Finance,US,79,18327.37,2022-10-31,false
+13b5a6a1-bb36-d1b0-18f0-60f10c8dd3a5,Villa and Sons,Education,DE,253,52564.71,2023-02-13,false
+c4da2243-4e2f-66c9-849d-83dc63d4c1f1,Hartman Group,Energy,FI,37,25840.11,2024-09-24,false
+eaae13ef-9ea2-1adf-e217-98bd1581ab0a,"Zuniga, Mclean and Coleman",Manufacturing,FR,45,30974.55,2026-01-21,false
+482dbaf7-e8d6-199e-664c-570993ee034c,Mills Group,Manufacturing,IT,499,27225.13,2023-11-16,false
+272c0bf5-ab90-2c97-1d44-5d4e1f7e8272,Scott Inc,Manufacturing,DE,16,226955.72,2022-05-20,false
+07e696b5-0b47-ba49-f9c5-9b2738ed4f2c,Russo-Gray,Logistics,PL,487,30578.94,2023-03-11,false
+1b99ba01-6f58-c003-3b4e-8b373910ed39,Baker and Sons,Energy,DE,276,695003.19,2024-10-20,false
+31258e2c-eb20-7745-1440-14443648c1ac,Conley-Anderson,Energy,FR,106,30556.84,2024-08-10,false
+6b8d191c-de12-2aad-bd7d-b73bb0c51fd6,Mcdonald-Flynn,Manufacturing,SE,32,13874.44,2026-02-19,false
+837bcc08-1283-2638-aa92-5643ca72f1c5,Davis-Johnson,Healthcare,SE,97,215880.39,2024-01-15,false
+27d002f5-6229-bc31-8efd-e01e581366d0,Sullivan PLC,Healthcare,FR,53,52424.85,2025-08-02,false
+f8c2b226-f44a-d1f0-c602-31edf044389c,Herrera Group,Education,ES,124,33213.84,2021-11-01,false
+63ed64c6-dcce-2104-a77f-4680c0844ae9,"Bradley, Martin and Williams",Education,NL,245,19546.84,2023-04-01,false
+038d1778-fefb-f4e2-31c2-4aa8edc6775e,Jacobs Inc,Manufacturing,NO,205,52958.62,2024-04-17,false
+f83faede-5d42-8ecd-314f-69ef8c58f984,"Hanson, Cruz and Lawrence",Logistics,NO,102,4667.46,2025-12-10,false
+610702b9-8975-0638-3783-f86e5a8db144,Bell-Brown,Software,GB,142,78702.25,2025-09-18,false
+f375c9b6-fd72-2c8e-782c-c09becb0012b,Smith-Gaines,Healthcare,FI,236,61078.17,2022-03-06,false
+418e4071-408b-67fa-f5ee-a5badcc5140c,Jones-Miranda,Logistics,US,789,41600.49,2022-09-16,false
+d0442a8d-1ebc-6c35-46bb-f4df9c2e4f65,Carroll-Brown,Energy,IT,65,135933.73,2025-12-14,true
+caa4c5cd-e632-95ee-039f-e3b95cf6a6d1,Morse-Stafford,Energy,UA,26,114539.16,2022-02-23,false
+54635ba3-bb36-6e88-95a0-2fd34e3948de,Hayden PLC,Manufacturing,NO,41,159829.87,2022-08-25,false
+b3bb918e-2d66-6338-37ee-ffa7e2526e35,Johnson-Newman,Healthcare,FR,87,314111.10,2023-10-07,false
+550db6e9-7ef1-01a9-6b00-7e7f927fb7f9,"Fernandez, Bailey and Sanders",Education,US,26,158683.27,2022-10-14,false
+0b5b969e-58ae-2876-cda7-dd1525383669,Riley-Brown,Finance,UA,63,139164.06,2025-03-28,false
+a1a2a073-e11d-0adc-a347-e31616f45dbd,Lowe-Snyder,Logistics,FI,387,18801.82,2025-10-15,false
+9d9a9caf-ed9e-8a32-e570-924c4f55143c,"Galvan, Johnson and Davis",Finance,NL,52,64840.39,2024-10-22,false
+fb93fad9-0bb4-84ee-27be-4055a33eafe3,"Chung, Byrd and Williams",Retail,UA,99,212994.23,2026-01-30,false
+83714ffb-ad38-1422-8085-3fe8c2d2b173,Henderson Ltd,Finance,SE,37,19803.06,2024-03-10,false
+54f1f027-f466-a1cc-94b5-10a07f911470,Gonzalez-Nelson,Software,UA,23,14510.51,2023-07-04,false
+2785a1fa-ee3a-032c-8e51-7b9f84583d1d,Cole-West,Logistics,NL,191,95561.67,2023-12-02,false
+4d0a8006-c7ad-ced9-b559-325ee82e006f,"Harris, Rodriguez and Warren",Finance,FI,28,46148.37,2022-07-05,true
+aa464bf9-4bc5-6642-bf5e-aae080a5d12e,"Lynch, Cunningham and Fisher",Energy,PL,276,73417.79,2025-11-25,false
+67a32807-a05d-40ab-a022-120aa737a459,Patrick PLC,Finance,IT,31,443235.26,2023-08-30,false
+bfc8cea3-3f3b-23fb-fd94-7f1c4094be60,"Rodriguez, Lynch and Robles",Logistics,NL,263,3420.89,2022-09-11,false
+b2c4cbb4-167a-d258-b247-8831b6b5ef72,Cochran-Trevino,Energy,UA,27,50064.32,2024-07-08,false
+b5b693c8-fb70-aaed-0cba-cf7c39752ddd,Chang-Barajas,Logistics,ES,53,351781.81,2022-12-18,false
+7c60dbb6-1d08-076a-70e1-b0360b4098ed,"Simmons, Allison and Ingram",Energy,ES,22,36788.97,2024-06-16,true
+7de2fe9b-9c05-a4f9-0d93-0bdedf215c38,Torres-Boone,Energy,GB,708,21603.35,2024-04-08,false
+97cf5dca-52b8-6937-4696-8cc9ad6de946,"Wilson, Moore and Oneal",Healthcare,PL,80,110177.21,2026-03-07,false
+3ac2a55c-9871-fcdf-f8ec-12b01d6be285,"Garcia, Lee and Lynch",Healthcare,DE,38,17816.39,2025-09-18,false
+f6c18716-d641-8672-c8c6-c39fd0cfcc2a,Harris Group,Education,ES,66,26578.24,2025-01-15,false
+4329410c-116c-9a42-2c74-f85c69f05e04,Willis-Hernandez,Education,NO,19,52610.51,2021-07-27,false
+f7570375-3d9e-8e71-5453-b37dd71d411b,Conrad Ltd,Healthcare,SE,116,69156.05,2022-12-02,false
+a8a1c81c-174c-ca7c-d437-114afc7324ba,"Garcia, Baker and Brown",Finance,US,135,27682.29,2021-08-29,false
+adc75d52-7e77-bfb4-dcc2-e28a47991f80,"Ruiz, Patel and Garcia",Education,SE,14,99469.61,2025-04-30,false
+38aa948b-35dc-fca4-7116-c35a6b9c8593,Lynn-Castro,Logistics,FI,92,22207.10,2021-07-07,false
+207001f2-cb95-2d0d-f111-aa3d3a966a20,Deleon-Sanchez,Healthcare,NL,135,37060.31,2022-10-04,false
+d8b0949e-2fa8-4e33-ee62-4db2e26d5454,Sanchez and Sons,Logistics,PL,160,119299.76,2023-07-11,false
+ad76feda-3b6f-48cf-66c3-d8e0958cb803,Tucker-Wilson,Healthcare,FR,326,292988.42,2022-01-02,false
+78353f3d-4504-eb8f-bdae-84fac0d526b7,Parks-Calhoun,Finance,NO,70,829902.44,2024-09-03,false
+0704813e-9a83-9049-7b97-71227746d729,Pruitt-Morales,Retail,NO,119,51000.32,2026-04-28,false
+df27ea23-95b9-0d0f-2cde-fdc038c6d630,"Weber, Smith and Campbell",Healthcare,DE,98,73818.11,2025-09-02,false
+890f2bec-cdcc-419c-a369-a87df5d6a4ce,"Ali, Stewart and Harrison",Education,FI,48,13074.26,2023-10-18,false
+e8a2d490-2eba-99ad-4df0-fcfe965d081a,Cruz-Johnson,Healthcare,ES,131,32131.18,2025-11-11,false
+97bb9ea2-1846-b358-0429-d777f11cf965,"Medina, Rodriguez and Ryan",Retail,ES,253,86907.87,2024-10-31,false
+8cbfa3f3-f5da-422f-79fb-300dcf0186de,Velez-Knight,Finance,US,179,24205.48,2024-09-08,false
+81a7f184-95e0-52d9-280f-6bfc2e2aceeb,Sanders Ltd,Healthcare,PL,121,44334.19,2025-01-20,true
+8682cdae-65cc-e660-e57f-bd967f026e5b,Moody Inc,Energy,FR,53,111623.18,2022-12-27,false
+a1b94964-e839-1c4f-ff02-d03c2609de2a,"Duncan, Wall and Richardson",Education,GB,72,362149.14,2022-03-22,false
+00de0d8e-e6ea-8459-b977-627c485711da,"Smith, Jones and Reyes",Logistics,DE,205,100305.88,2023-03-19,false
+836eda19-dc13-dfeb-9034-c8332022ddf0,Bell-Lopez,Software,NL,12,82348.66,2025-02-12,true
+d0fe4e2f-79c1-2d2d-f07f-a77226250ca4,"Stevenson, Young and Hale",Retail,SE,60,34092.81,2024-10-25,false
+3ce271c1-5bb6-4a38-a230-20be2246aa30,"Davis, Wilson and Lamb",Healthcare,US,176,113322.90,2026-04-12,false
+ecf05c46-4919-0920-6bc7-071d07f1a9c9,Vance-Martinez,Software,ES,33,166494.93,2023-11-04,false
+de37d1ca-684a-0162-3e43-338ae77356cf,"Weiss, Jones and Hodges",Logistics,ES,12,158635.52,2022-12-15,false
+92c942bc-d352-98d2-d3a7-eda76bcfc717,Douglas-Perkins,Energy,GB,66,20935.45,2022-05-25,false
+67f4defc-f558-6c11-0969-b8630346db9e,Frye and Sons,Logistics,GB,8,12802.44,2022-07-08,false
+998ff13d-729c-cfd6-57c9-a45a5f576b23,"Alexander, Martinez and Strickland",Healthcare,NL,42,224974.36,2025-02-18,false
+a317630d-40ab-0c31-b4d2-268ceff13fa3,Rojas-Lyons,Manufacturing,DE,103,16801.18,2025-12-22,false
+9b7f63e9-4b54-657b-930e-3b3283575d10,Tate-Roberts,Healthcare,ES,62,138674.41,2022-10-11,false
+323cdf2f-578a-18f3-7ec8-db7f44ede424,"Edwards, Salazar and Charles",Retail,IT,53,20733.31,2022-03-05,true
+b4f7646a-5268-0c9f-a347-4a835448c0f2,Ramsey-Nixon,Logistics,SE,39,25630.46,2022-01-09,false
+74743f21-f014-e1b9-6af9-1307fd4a4a0b,"Daniel, Porter and Richards",Energy,NL,36,61148.43,2025-10-30,false
+7bfa311f-b0df-2b42-d4f1-261c2fea904f,"Hansen, West and Ramirez",Software,FI,62,72572.52,2022-10-04,false
+9c2f461c-598b-dcfe-9a7d-8104a58c4ee5,Gregory PLC,Healthcare,US,78,68025.69,2023-04-10,false
+aa01a18e-f2d6-4c5e-0369-afac0e4e5aa2,"Allen, Fox and Rollins",Education,FI,35,2360097.54,2026-04-12,false
+528b19c3-b917-3993-b062-0201987d398f,"Galvan, Moses and Mcpherson",Software,NO,7,9007.99,2024-05-24,false
+ede9d657-45ca-3247-993f-0231bdf171c7,Huffman and Sons,Retail,FI,788,33432.92,2024-12-10,false
+8adced08-aab1-94fd-1113-3635fcee945e,Collier-Lee,Retail,SE,68,71515.76,2022-09-13,false
+49ffe64a-78d1-a5a8-8c8e-7d518077c33f,"Mcdonald, Ramirez and Romero",Education,NL,63,173324.30,2023-09-22,false
+0e0a76c3-430b-b338-2ac7-2dede81dc328,"White, Johnson and Stafford",Healthcare,UA,219,579010.76,2026-02-01,false
+f6b32081-eec1-8af4-a077-bdfb8c2b7208,"Maddox, Williams and Grant",Finance,IT,553,36989.21,2023-02-22,false
+4fe74567-19bf-829a-941c-58f338fa4195,"May, Sanchez and Flores",Education,FI,108,15607.27,2022-07-13,false
+66e93d67-da0a-6538-5398-f290c1a38aef,Smith Inc,Logistics,IT,142,741859.94,2022-06-27,false
+4d6c4ad7-cc02-1946-8100-8f4ea60b31fd,"Williams, Anderson and Price",Manufacturing,PL,37,9667.45,2023-09-04,false
+f3b45698-205f-76dd-d63d-8ca8524c1a72,Roberson-Jones,Manufacturing,PL,127,122950.90,2026-03-06,true
+f3e619bf-e74f-d7f8-02a2-cbc4093c8e86,"Gonzalez, Scott and Anderson",Healthcare,UA,52,245271.09,2025-02-25,false
+cb7a8309-5a13-10f6-a1fd-d7b6529bf064,Gomez and Sons,Logistics,ES,42,14007.68,2024-07-19,false
+35b0c7f2-d56e-638e-f7c2-c98e83bf97e2,"Gray, Hoffman and Nichols",Education,GB,208,69446.20,2025-08-16,false
+1ba1e7cd-ab6b-349c-8f81-40800dd2d5e5,Holloway-Montgomery,Finance,DE,167,44076.37,2022-10-21,false
+bf2d8297-e586-8c5c-63c9-03542f935c2a,Mcdonald PLC,Manufacturing,FR,56,82743.83,2023-01-20,false
+b0bfaf56-a681-8157-7c2a-624f5e4f978b,"Thomas, Bradley and Johnson",Software,NL,57,13996.76,2022-11-23,false
+caffc000-50c4-41a7-1cf6-908e0a5cc396,"Craig, Thomas and Jimenez",Retail,NL,44,376845.22,2022-12-11,false
+22bc9caa-8285-af25-20b9-e00be46466c2,Guerra-Martinez,Software,FI,123,93645.82,2022-11-07,false
+39c95860-52b8-08d3-2843-5a1136e816b1,"Scott, Carter and Fitzgerald",Education,DE,161,449040.66,2024-03-21,false
+a1dfd2d1-88d6-6ae0-fd88-1d7cb037d6cb,"Conway, Velazquez and Davis",Retail,SE,49,19095.71,2022-10-28,false
+4edec098-8547-b9e7-36b3-9713404973ee,Harris PLC,Energy,NO,254,44296.88,2023-02-07,false
+3206054f-34dc-8eb6-2ca8-922f353c231a,Simmons-Houston,Retail,PL,29,137274.43,2023-07-03,false
+45301971-1ffe-03de-7f82-01183b3bbc4b,"Young, Henderson and Hernandez",Retail,NO,9,47655.53,2023-05-08,false
+382cf2bb-b72e-94ea-7051-7129d45dbd79,Olson Inc,Retail,SE,180,3096.75,2025-08-06,false
+b01a052b-bb6d-6cae-ad7f-fe07a3376643,Wade PLC,Finance,US,151,178346.09,2023-06-11,false
+d10b5bbd-ef82-227a-7501-121a56c9969d,Peterson-Lopez,Healthcare,UA,318,512864.78,2024-11-15,false
+3bbafec5-122b-582e-a233-d698d85ccf17,"Gomez, Woods and Cummings",Finance,ES,44,152824.93,2025-01-29,false
+d27174ac-ce60-40e0-597a-5cea21804ed4,"Levy, Reynolds and Smith",Logistics,IT,103,275959.29,2023-05-08,false
+bbc3aae5-96f0-def8-8a80-a379b7c8352e,"Jones, Washington and Stephens",Software,UA,60,99386.94,2024-05-19,false
+647352fb-5384-9f56-3778-a0c3b3c4bfe0,Cooke Inc,Software,GB,161,72949.22,2025-01-24,false
+9eed929f-f9e8-31a8-1450-71773b5fc59e,Mullins-Booker,Education,NL,29,170761.37,2022-02-10,true
+a4389768-ac1f-b2a6-ae9b-7ddd054fd756,Wallace Group,Finance,US,83,48805.85,2023-04-29,false
+75f66336-bbda-45e8-ae9f-53fa11a838ff,"Cuevas, Goodwin and Zimmerman",Software,FI,891,155897.48,2022-01-25,false
+57dba825-83c4-b028-3995-236285fd13cb,"David, Dixon and Welch",Healthcare,ES,96,121351.79,2021-08-01,true
+75e8dcf2-f6df-76c3-73ae-1d23a1f45635,Macdonald PLC,Software,DE,53,1279698.19,2021-07-31,false
+f66617ef-4321-eb1a-6078-bb5b002df807,White PLC,Finance,NL,39,103061.54,2022-09-18,false
+586ecbeb-d010-fff9-5f60-978173dabfee,"Marsh, Ramos and Keith",Logistics,NL,302,11149.37,2026-05-11,false
+d524c8a6-f6a9-2c72-8d09-c5ddc2f01a66,"Reed, Everett and Marsh",Finance,DE,157,121040.16,2025-03-21,false
+8104d0af-37b2-502c-3991-91d4a57a1ef9,Smith-Baxter,Finance,ES,28,96260.52,2021-08-01,false
+4f129266-4a8f-50c2-dc03-c39f9b5327af,Ritter Ltd,Software,IT,28,39312.90,2025-02-12,false
+c3d05af5-ad71-5eb7-bb1f-4f8e2e4619d0,Black-Shah,Retail,NO,104,34906.48,2021-07-23,false
+2837c102-8a4d-fad3-1f1f-0b39445700a4,Anderson-Gonzalez,Logistics,ES,46,239170.40,2022-11-26,false
+43594ef7-0ede-4233-05a4-1ecc90c203b5,"Anderson, Jones and Miller",Finance,NL,118,48362.60,2023-12-27,false
+d6f78495-efaa-53e0-f3c9-408d795ee128,Ellis PLC,Logistics,GB,59,75067.30,2023-09-21,false
+6a61060b-c097-4d0d-bd67-5e10444d61fe,Alvarez PLC,Education,ES,41,241819.56,2026-01-08,false
+0f7aa4d8-30cc-2510-7781-5eb154033b8a,Gibbs PLC,Logistics,ES,316,84616.22,2022-09-30,true
+fdda1e73-b022-20f7-0045-121955d2c6ff,"James, Rodriguez and Bryant",Education,GB,64,83255.51,2023-10-23,false
+aedac629-6aa8-591b-9cae-cff7f3411ab4,Elliott Inc,Retail,PL,123,40164.09,2026-05-03,false
+99eb056c-58e9-76be-e4e9-7d462f3f1d41,Arnold-Smith,Finance,FR,28,395604.41,2023-01-10,false
+5fcaa10a-eac0-7c83-5774-f3b417925b6d,Jackson Group,Finance,FR,72,158790.42,2022-07-25,false
+8d128931-5119-6197-f96f-65dfb2adf900,Harris Inc,Healthcare,SE,113,255831.69,2021-10-25,false
+95cbcd2a-5962-e9e5-00ef-a0bd5f75abfe,Herman-Simmons,Energy,US,99,597315.97,2023-03-13,false
+aebe0543-6912-3bb4-989b-25b6a1b3ec69,Rivera Ltd,Retail,SE,61,4630.73,2025-08-13,false
+07c655c8-84c2-de37-a118-fff20e32d80d,Smith and Sons,Software,IT,18,232145.53,2023-12-28,false
+d2a5aa31-2212-7983-02e5-5313aeed0d1b,Booth-Barrera,Education,NO,118,117833.54,2024-04-03,false
+ecde9262-e4f1-8bec-6ebf-a710838a8d1f,Robles-Marshall,Software,DE,176,36199.20,2022-09-24,false
+51f8a69a-2171-41d0-4098-0e01191ef808,Howard and Sons,Education,NO,197,20240.07,2022-06-14,false
+2aa78e30-e4fe-4088-cc75-41f4ed46d94c,"Holmes, Moss and Peters",Education,FR,314,38840.91,2023-08-12,false
+633914c8-726d-f84a-6012-f95fcfb48101,Fernandez and Sons,Logistics,FI,44,27487.72,2023-10-04,false
+cea1e8a1-98d1-8be6-b2c3-af36bca8921a,Perez PLC,Logistics,FI,98,199491.27,2022-08-26,false
+671a86c4-2f21-a621-aa74-b4a57490f869,"Mcbride, Bauer and Freeman",Retail,US,245,100138.84,2023-04-29,true
+6a449d64-55b5-c930-8d05-f365f7a069a2,Hawkins and Sons,Education,NL,158,31103.49,2023-01-17,false
+9c38fddd-f852-aed1-1859-268e355b6c40,"Thomas, Woods and Anderson",Manufacturing,NO,55,520770.75,2021-08-18,false
+55bf1fdb-0b22-144a-3211-a4143e2eb32e,Chung-Barrett,Healthcare,SE,173,48899.29,2024-02-13,false
+5923ddf4-71e6-84dd-e8c5-aca7c7f081da,Aguilar PLC,Logistics,GB,40,326453.90,2021-07-14,true
+03ebcc72-eeeb-3a57-ff04-61954c1ea91b,"Warner, Wheeler and Graham",Education,FR,216,16881.05,2023-01-17,false
+9d3e0888-f0bd-6afb-96c8-dc3989b82e45,Roberts Inc,Manufacturing,FI,421,165294.18,2024-10-19,false
+e736659c-66d0-2a55-a7f4-62f06887fcba,Craig-Perkins,Logistics,FI,56,115030.77,2023-12-29,false
+6d0e0330-3620-8350-675c-e7cbbe1e5340,Melton-King,Education,NO,87,1594.29,2024-01-11,false
+8cc540b3-3f6b-41d3-c232-95d61f2a8695,Cruz LLC,Education,FR,25,43637.74,2024-03-31,false
+b2a75272-e5df-cb4e-f6e2-6e4fb85d53fd,"Li, Newman and Martin",Healthcare,FI,417,46137.27,2024-04-23,false
+2e203ff5-02a5-a8eb-3cc6-e1b56889af94,Cobb Ltd,Software,US,44,6416.80,2022-09-09,false
+0a3fb312-4b10-9bf3-9796-dd80210bed13,Vang Group,Energy,NO,218,46727.74,2025-05-16,false
+aa61d65f-16cb-f231-7b27-afbfac7758ce,Lucas-Hill,Retail,SE,161,68871.15,2024-02-11,false
+877db3bc-e238-9b04-274e-d0e9b6e2c4cb,Bell-Camacho,Logistics,UA,151,134372.78,2021-05-23,false
+190762ed-8bad-2ad4-e891-573b765f4031,Cooper-Hahn,Healthcare,NO,877,608101.53,2024-08-19,false
+d0f0e58c-6fcd-a356-b87b-aea905b20be5,Johnson-Smith,Software,FR,15,101536.40,2023-02-01,true
+211ec610-daf2-7b0c-e61c-8e17132264bc,Morris-Davidson,Energy,NO,225,11920.72,2023-02-15,false
+fe7def63-dd0b-63b1-4351-704f4d798614,Jones-Hill,Healthcare,GB,70,18084.73,2025-12-20,false
+99b34a4f-8312-8234-03ce-2e3fc7093e63,Burke Ltd,Retail,NL,79,37907.95,2022-05-29,false
+23b34e31-290b-dac0-1610-0df81532137f,Torres and Sons,Energy,UA,154,10532.64,2022-11-20,false
+674d9e13-90cd-3b17-1568-d5f3b4a99766,"Brooks, Riley and Hall",Software,PL,7,156906.68,2026-02-24,false
+69d053b5-1601-eda3-4ec6-d9a6ba6bcb19,Green and Sons,Healthcare,UA,79,10622.03,2025-05-17,false
+f0632543-aacc-3177-dba2-f6c8ff470b84,Bradford Ltd,Software,FR,51,23167.31,2024-09-25,true
+27dfd72f-3643-6236-f4bd-1003a6948605,Smith-Tapia,Logistics,SE,112,216056.42,2025-09-17,false
+7dd67ab0-a437-18ed-6d37-ef1e08100134,Mason PLC,Energy,GB,32,21777.60,2025-06-15,false
+ebc7949b-1f9f-fed0-b47b-44a2c3ae8389,"Alexander, Vazquez and Perez",Finance,US,128,61537.24,2022-12-08,false
+c1c17016-3e0f-0513-0d38-69bc700fc9e5,Stevenson-Armstrong,Retail,FR,89,183335.50,2024-05-30,true
+01f4a50e-084e-e8de-60ac-e453f9ad8271,"Navarro, Eaton and Bond",Logistics,SE,241,22760.82,2022-01-03,false
+4197f3af-ee1f-fa43-c034-c1c6e087a0d2,"Davis, Clark and Mcneil",Finance,IT,38,521586.69,2024-10-18,false
+e507e823-961d-00ae-ede9-8927a49bd656,Mays LLC,Finance,PL,709,57499.74,2025-09-08,false
+caa37705-f3bd-42b0-dd26-8e54ea9d06a9,Marsh-Williams,Energy,NL,69,83623.01,2024-12-25,false
+1fd741cb-2019-5e94-e2e0-18b9df3f8ee4,Johnson Inc,Finance,US,162,17654.57,2026-04-06,false
+f47b18d6-c108-b5f6-5a10-c5cd038c3f1f,Padilla PLC,Healthcare,PL,32,52331.31,2024-03-31,true
+8d9c0f2a-16f5-b6e2-a8c7-a059bdf33945,Rich-Ryan,Healthcare,SE,216,49611.17,2022-05-31,false
+317f2196-deab-aa5b-0c9c-e955f9dc964e,Mcgee Group,Retail,NO,610,12910.80,2024-09-22,false
+174cc91d-69f3-181c-b3c7-f4575b26e935,Stevens Group,Manufacturing,UA,125,66208.26,2022-08-18,false
+57a2a574-32a0-4219-7c93-f717171c95a7,"Thompson, Hull and Fox",Manufacturing,NL,10,357975.79,2022-09-17,false
+f847f83a-35c3-bbf2-0dee-35712acb4788,Smith-Green,Manufacturing,DE,143,175592.73,2023-08-23,false
+c814a675-f7eb-a4b9-eea9-dcb7be924c10,Johnson-Harris,Manufacturing,UA,72,42718.13,2025-11-14,false
+2de252f6-77c4-30bb-1649-82e6692ea2fb,Thompson Ltd,Energy,IT,48,14805.98,2022-08-25,false
+59d1acea-2d93-8aa0-3798-6a88b7058ab3,"Hudson, Guzman and Walker",Retail,ES,58,33354.90,2022-12-06,false
+8e57ce1d-07f9-b0cc-165e-6ed2381da585,"Wright, Hebert and Bradshaw",Education,IT,344,114962.06,2024-11-01,false
+b3e98c91-69ea-c3fa-1c48-228689132c26,Martin Inc,Software,SE,61,76461.80,2022-08-04,true
+7917234e-8289-1d4f-330a-9762a6704000,King Ltd,Energy,FR,62,12039.66,2025-01-07,false
+668870d2-6cb2-2b90-2191-ac785b5b09c7,Macdonald-Evans,Healthcare,UA,64,76413.62,2025-02-11,true
+10991415-5712-8fef-6a43-f22f6d5334cc,Webb-Haynes,Software,PL,93,63065.33,2023-03-27,false
+7681b034-157a-f7b5-d092-94529b001f48,Hodges-Jenkins,Education,DE,22,22843.22,2022-07-04,false
+f985a30e-a08f-a1d7-29de-ebeb690a4f72,"Young, Summers and Mayer",Finance,GB,86,24405.20,2021-10-23,false
+19903478-e3c2-112f-6213-509f9c904ea0,Clark LLC,Manufacturing,FR,66,1769.02,2022-08-22,false
+7d4288ac-7325-5444-efe1-62eacc5bf54e,"Johnson, Strickland and Williams",Healthcare,PL,29,1386172.51,2022-07-06,false
+2e109134-98bb-c2da-37c4-07f92b823411,"Woods, Hudson and Hanson",Healthcare,FR,70,86864.41,2026-04-18,false
+49341f56-39f7-4ecd-d09e-cdf1f30865b9,Cole-Perry,Finance,US,167,624343.04,2023-02-13,false
+753ee002-1a6e-c6c4-e1c4-bf47a076ecc1,Lawrence-Moore,Manufacturing,UA,185,238637.44,2024-10-19,false
+8e951502-34b2-7ce5-8fc7-b4e29a2f0cae,Bradley Ltd,Energy,ES,112,86869.33,2024-08-01,false
+6187b29f-2b45-b6d2-c30f-076adc9bcbc1,"Williams, Collins and Davis",Finance,US,147,62076.81,2021-10-09,true
+5f18d3d1-0dfd-0eb8-fc1d-42b9c2b8f226,"Davis, Horton and Mullen",Logistics,US,71,119563.03,2024-09-04,false
+83cfc561-5d44-4b28-4ed4-27b47414d840,Deleon Inc,Logistics,SE,76,37191.58,2022-12-19,false
+5367dad3-62ce-cb22-dc79-41d8efd6aef8,Hale-Wall,Manufacturing,IT,70,27467.95,2024-08-27,false
+7216fb9a-00b9-ddbb-7f0b-493b10ea8682,Andrews-Riley,Healthcare,SE,228,283422.29,2022-08-20,false
+e331d561-a5db-13d6-8967-887036d0e61f,Montgomery-Steele,Finance,NO,17,147154.38,2024-03-13,false
+96bb9554-82d5-fec6-fe53-6589d3c45acf,Hart-Owens,Education,NO,148,153343.53,2025-10-15,false
+04569f2d-6429-ac1a-54b7-b1ba9de35b07,"Gomez, Wiley and Sims",Education,FR,69,83799.39,2024-04-24,false
+3b131d36-874f-43b4-6d61-3b87b9a9000e,Moreno LLC,Manufacturing,PL,56,53128.51,2024-09-25,false
+691974a5-fd3b-67b4-2290-095725f53fe3,Lopez Inc,Energy,IT,96,103052.89,2024-01-31,false
+d8d9e362-815d-ed64-aa2c-ba459b63718a,"Martin, Harris and Clayton",Education,PL,84,250096.15,2025-07-04,false
+b124f07e-96d6-fc42-9cea-bc4756d19ddc,Peters-Smith,Healthcare,IT,77,145174.66,2022-12-24,true
+7e8abd99-72cc-8659-2db2-8322c37ee89e,Lee-Hernandez,Retail,US,275,29900.72,2023-05-23,false
+c409baa9-6c13-173e-dfec-5b12cc0e7684,"Miller, Perez and Butler",Retail,FI,110,269786.73,2021-09-13,false
+7febca44-68e1-f31e-e4de-9e61a4331865,"Davis, Buck and Fisher",Finance,UA,17,48166.70,2022-10-01,false
+44c4f3ff-e851-9e73-9b68-3493bb4905ab,Townsend-Harris,Healthcare,US,270,3231.47,2023-02-02,false
+f2a9bf7c-547b-1bbb-ea13-4d7e0fca9e04,Nichols-Wells,Retail,US,144,71157.50,2021-11-20,false
+2dbb98d6-2d64-c6fa-70fa-357167577c94,Lin and Sons,Software,IT,47,47626.93,2023-12-15,false
+687444f2-5fa8-9d72-26fa-22d93f9570dc,"May, Cooper and Cervantes",Energy,SE,109,74235.51,2022-05-22,false
+0443e47b-0bae-ebaf-01cb-3d8e24b5aeef,"Gray, Griffith and Perez",Retail,NL,49,21116.19,2022-08-05,false
+42e8329b-6003-0cdb-91f2-ec74c84e61f3,Robles Inc,Energy,FR,42,33400.17,2022-03-14,false
+1afb903d-b30f-ca21-8e2b-e53dcc0e7a33,Humphrey-Smith,Finance,PL,21,35006.57,2021-11-14,false
+29afd020-b094-8186-5687-fc4131bf5793,Jackson PLC,Healthcare,NL,358,41213.02,2023-04-12,false
+2816c004-cc47-d2b9-5163-f0ad373ca441,Rodriguez and Sons,Education,US,44,4963.01,2024-04-19,false
+fd31d1cc-623c-56b2-2f24-5dc3a4a7dd37,Campbell LLC,Logistics,NL,54,80752.15,2024-01-12,false
+3a811fc0-e479-792f-aad7-10133159569c,Robbins-Gould,Software,NO,44,59271.51,2022-03-20,false
+3606fd73-4d4f-0f21-59bb-e782997cb40c,Anderson-Carter,Education,UA,39,35289.31,2023-01-08,true
+49975f98-d661-5a67-2c27-9cfb271cf249,Torres LLC,Education,NO,374,19010.75,2023-08-13,false
+df720225-1a8e-dc48-6dc7-2306be806d0f,Hahn Ltd,Manufacturing,NL,333,13522.89,2022-05-02,false
+19d416bb-b431-db1e-11c6-06b47d2d5b7d,May and Sons,Logistics,PL,261,50908.79,2023-11-09,true
+85d44585-b403-7937-7ea6-74f6c2d3236c,Friedman and Sons,Education,NL,107,9204.33,2023-06-13,false
+2fc19469-8ef5-511d-97a5-520914bd07b0,"Fuentes, Moss and Aguilar",Manufacturing,GB,189,56768.62,2022-07-13,false
+cb66f934-3ff5-d6a2-a25e-39504fb80022,Rodgers-King,Retail,NL,20,31994.41,2022-04-04,false
+0097468a-e2f8-efac-8726-4c12a1f96d2e,Hale Ltd,Education,UA,81,50114.74,2026-01-18,false
+53fbcf36-77f3-d34d-1c4d-df0764b824a7,Green Inc,Energy,UA,368,3647.59,2021-06-08,false
+2f654a9b-be9a-cad8-f9d4-17b66781c550,Velez Inc,Healthcare,NL,90,205471.57,2024-01-13,false
+1a4708b0-24ae-f0cb-58de-7d0651d34127,Rodriguez-Reyes,Healthcare,FI,148,76671.39,2025-01-15,false
+171bafeb-cb85-1035-8855-7861d12b9cd6,Robinson-Cox,Education,NO,776,69173.34,2022-12-18,true
+b12b29c0-f12e-c5f8-9f0c-8567d0508b98,"Olsen, Schneider and Curry",Education,NL,143,55745.62,2024-05-07,false
+167301e8-46ce-ebdf-5647-35aa56de31a3,Wheeler LLC,Education,FR,1281,9309.31,2024-07-08,false
+e58dec86-ecd0-1d40-58a3-cd6269263fd5,"White, Simmons and Ferrell",Energy,UA,490,71784.74,2025-04-03,false
+70e432db-debf-078b-bdc2-8b5877282767,"Salinas, Cooper and Robinson",Logistics,NO,91,105216.17,2025-07-23,false
+65edd1e9-479d-3fe4-f5f0-6aef618ddf89,Curry and Sons,Healthcare,GB,55,33622.02,2025-09-28,false
+7a6a9311-e265-1365-e474-2403de058c30,Holder-Thompson,Logistics,NO,547,5111.28,2024-07-10,false
+0fcda75f-8d0d-981c-2ca4-c7025f384837,Hughes PLC,Logistics,DE,24,95333.01,2023-10-05,false
+66742022-0f0e-3b06-c6e2-73e3fa77f112,Delgado-Carroll,Education,GB,133,39983.62,2022-01-30,false
+221b3d6b-2a06-89e1-f6ea-80410cf2484c,Parsons and Sons,Energy,NL,567,9896.13,2021-12-30,false
+91edd757-3207-7ac7-1ec0-84286c01159c,Mahoney-Young,Logistics,DE,54,21860.25,2025-01-12,false
+be475cee-6132-7805-d915-dd171db9f456,"Pearson, Chase and Yang",Education,IT,92,76937.73,2024-09-23,false
+a70a377c-e234-2044-cd85-763d1a67e556,Hernandez LLC,Retail,NL,379,39792.05,2022-09-27,false
+2c97d42a-3fb8-64e6-0be2-146cb14fc301,Powell-Gomez,Healthcare,NO,28,55233.30,2023-06-10,false
+0e3e6df2-561f-0b30-ed26-65851d80a84d,Reyes and Sons,Finance,IT,143,21918.55,2022-01-28,false
+07458ed7-eebd-1343-e067-e2fe57128e98,Howe-Chen,Finance,NO,92,7607.80,2023-01-13,false
+3cb76517-6717-c52a-3953-2640f9222f9e,Daniel and Sons,Finance,NO,30,788562.41,2023-02-18,false
+6ecf1cab-28aa-77cf-42f8-ad6a60ddf6c9,"Boyle, Perez and Chandler",Finance,ES,64,154202.81,2021-09-21,false
+399ab798-2ab7-8366-2904-1b6687e17a55,Gregory-Walker,Software,ES,169,83217.06,2024-05-22,false
+4cde1cdb-4234-bd3f-50ca-a5a01820d69a,Hall Inc,Energy,PL,601,76542.61,2025-06-16,false
+9fac7bab-f43c-3779-6926-be572a0372a0,Briggs-Weeks,Education,PL,103,42186.00,2026-04-21,true
+195074af-0d80-09fd-b794-88b64bdd6790,Mitchell-Scott,Education,DE,109,42729.48,2023-05-28,false
+00b081e1-9da3-e6fa-6f54-5155eeee7041,Gallagher LLC,Manufacturing,GB,75,99816.68,2022-10-18,false
+1cb2d722-90e1-57e4-ec64-f2b6498782ec,Escobar Group,Energy,UA,188,19015.01,2024-05-20,false
+0ea5651a-9429-fdc5-a043-f6cd759e68c1,Stone-Cantrell,Finance,SE,206,215633.74,2022-10-07,false
+744e5062-392e-8674-1c4a-2ade37474f3f,Kim Group,Manufacturing,GB,622,65923.70,2024-08-02,false
+95b1b181-f56e-f142-1bef-e169bb866b7a,Thomas-Bridges,Manufacturing,IT,19,28128.32,2024-05-11,false
+dfe7a0be-ac3e-0594-af0c-4545355f3d0a,Bell-Castaneda,Finance,FR,91,348069.61,2021-07-13,false
+cefb2312-7ebd-cb3e-6209-c70b4f1dae47,Wolf LLC,Education,US,223,59476.07,2021-07-06,false
+ed9d122f-b9d4-6e0a-4286-e042c3d96b67,Oliver and Sons,Logistics,UA,177,3561.72,2025-03-06,false
+c82020dd-2ae1-77b5-7c12-cfbfee2449be,Nash-Gonzalez,Retail,UA,61,20247.75,2022-07-10,false
+1a1eb5f0-0fd9-34cb-4e43-f90908f9c957,Lopez-Fletcher,Manufacturing,FI,79,166619.25,2022-08-30,false
+f0bf08b4-2062-67d8-a01b-4239e0866d0e,Johnson and Sons,Retail,US,42,56863.95,2025-06-15,false
+64a1b7ff-aa1c-d9e5-12e8-f009b55cba1b,Ford-Mcdowell,Education,FR,20,25818.66,2025-10-26,false
+20a4b092-cfe6-a237-651c-d9a3eeeac4d7,"Nguyen, Vargas and Rodriguez",Retail,FR,64,323784.23,2025-09-02,false
+460bfe06-97d3-96a2-c658-779716a7cfed,"Leon, Harrison and Smith",Software,FR,58,540453.24,2023-10-25,false
