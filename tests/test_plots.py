@@ -85,3 +85,11 @@ def test_plot_line_returns_valid_png(call_tool, load_df_into_session):
     load_df_into_session("d", _NUMERIC_DF)
     result = call_tool("plot", {"name": "d", "kind": "line", "x": "x", "y": "y"})
     _assert_valid_png(result)
+
+
+def test_plot_scatter_returns_valid_png(call_tool, load_df_into_session):
+    load_df_into_session("d", _NUMERIC_DF)
+    result = call_tool(
+        "plot", {"name": "d", "kind": "scatter", "x": "x", "y": "y", "hue": "g"}
+    )
+    _assert_valid_png(result)
