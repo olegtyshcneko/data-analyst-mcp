@@ -92,6 +92,16 @@ def test_profile_dataset_errors_when_name_missing(call_tool: Any) -> None:
     assert result["error"]["type"] == "not_found"
 
 
+def test_profile_dataset_reports_summary_totals(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("profile_dataset", {"name": "messy"})
+
+    assert result["ok"] is True
+    assert result["summary"]["total_rows"] == 5000
+    assert result["summary"]["total_columns"] == 12
+
+
 def test_list_datasets_reports_registered_entries(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 
