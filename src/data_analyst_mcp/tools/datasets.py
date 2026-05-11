@@ -130,6 +130,34 @@ def _is_numeric(dtype: str) -> bool:
 _STRING_DTYPES = {"VARCHAR", "CHAR", "TEXT", "BLOB", "STRING"}
 
 
+def _build_suggestions(column_profiles: list[dict[str, Any]]) -> list[str]:
+    """Pick up to three actionable next-step strings from the profile."""
+    suggestions: list[str] = []
+    for col in column_profiles:
+        flags = col.get("flags", {})
+        if flags.get("mostly_null"):
+            suggestions.append(
+                f"Column `{col['name']}` is mostly null — consider dropping or imputing."
+            )
+            break
+    for col in column_profiles:
+        flags = col.get("flags", {})
+        if flags.get("looks_like_categorical") and col.get("distinct_count", 0) <= 10:
+            suggestions.append(
+                f"Column `{col['name']}` looks categorical — try compare_groups across it."
+            )
+            break
+    for col in column_profiles:
+        if col.get("numeric"):
+            suggestions.append(
+                f"Numeric column `{col['name']}` is available — describe_column would surface outliers."
+            )
+            break
+    if not suggestions:
+        suggestions.append("Run describe_column on individual columns to dig deeper.")
+    return suggestions[:3]
+
+
 def _top_values(con: Any, table: str, quoted: str, limit: int = 5) -> list[dict[str, Any]]:
     """Return the top ``limit`` most-frequent values for a column."""
     rows = con.execute(
@@ -315,6 +343,8 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
         for row in head_rows
     ]
 
+    suggestions = _build_suggestions(column_profiles)
+
     return {
         "ok": True,
         "summary": {
@@ -323,6 +353,7 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
         },
         "columns": column_profiles,
         "head": head,
+        "suggestions": suggestions,
     }
 
 
