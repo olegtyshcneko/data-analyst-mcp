@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
+from data_analyst_mcp.recorder import get_recorder
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,21 @@ def load_dataset(payload: LoadDatasetInput) -> dict[str, Any]:
         rows=rows,
         columns=columns,
     )
+
+    md = (
+        f"### Loaded dataset `{name}`\n"
+        f"- Source: `{payload.path}`\n"
+        f"- {rows} rows x {len(columns)} columns"
+    )
+    code = (
+        f'con.execute("""\n'
+        f"    CREATE OR REPLACE TABLE {name} AS\n"
+        f"    SELECT * FROM {read_call}\n"
+        f'""")\n'
+        f'{name}_df = con.sql("SELECT * FROM {name}").df()\n'
+        f"{name}_df.head()"
+    )
+    get_recorder().record(markdown=md, code=code, tool_name="load_dataset")
 
     return {
         "ok": True,
