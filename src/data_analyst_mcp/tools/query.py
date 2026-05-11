@@ -90,7 +90,7 @@ def query(payload: QueryInput) -> dict[str, Any]:
     total = _total_rows(con, payload.sql)
 
     md = f"### Query\n\n```\n{payload.sql.strip()}\n```\n\n- {len(rows)} rows returned"
-    code = final_sql
+    code = f"con.sql({final_sql!r}).df()"
     get_recorder().record(markdown=md, code=code, tool_name="query")
 
     truncated = auto_limited and total > len(rows)
