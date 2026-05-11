@@ -555,3 +555,36 @@ def test_call_tool_fit_model_poisson_returns_full_envelope(call_tool, load_df_in
     )
     assert result["ok"] is True
     assert {"coefficients", "fit", "diagnostics", "warnings", "interpretation"} <= set(result)
+
+
+# === Recorder fidelity — emitted code cell matches the runtime template ===
+
+
+def test_fit_model_emitted_code_cell_matches_runtime_template(call_tool, load_df_into_session):
+    """The recorded code cell must (a) reload the dataset via DuckDB, and
+    (b) fit the same statsmodels model with the same formula + cov_type.
+
+    Re-execution against the same data is a Phase 6 integration test; here
+    we just verify the cell text is syntactically equivalent to the template
+    we would run by hand.
+    """
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("duncan", _duncan_df())
+    call_tool(
+        "fit_model",
+        {
+            "name": "duncan",
+            "formula": "prestige ~ income + education",
+            "kind": "ols",
+            "robust": True,
+        },
+    )
+    code = get_recorder().cells[1]["source"]
+    expected = (
+        'import statsmodels.formula.api as smf\n'
+        'df = con.sql("SELECT * FROM duncan").df()\n'
+        'model = smf.ols("prestige ~ income + education", data=df).fit(cov_type="HC3")\n'
+        'model.summary()'
+    )
+    assert code == expected
