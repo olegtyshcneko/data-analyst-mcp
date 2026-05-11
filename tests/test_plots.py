@@ -152,3 +152,18 @@ def test_plot_tool_is_registered_via_fastmcp(server):
 
     names = asyncio.run(_list())
     assert "plot" in names
+
+
+def test_plot_png_roundtrips_through_pil(call_tool, load_df_into_session):
+    from io import BytesIO
+
+    from PIL import Image
+
+    load_df_into_session("d", _NUMERIC_DF)
+    result = call_tool("plot", {"name": "d", "kind": "scatter", "x": "x", "y": "y"})
+    raw = _assert_valid_png(result)
+    with Image.open(BytesIO(raw)) as im:
+        assert im.format == "PNG"
+        w, h = im.size
+    assert w == result["width"]
+    assert h == result["height"]
