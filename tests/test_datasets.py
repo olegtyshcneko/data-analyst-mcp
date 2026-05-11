@@ -179,6 +179,24 @@ def test_profile_dataset_returns_temporal_stats(call_tool: Any) -> None:
     assert t["modal_weekday"] in {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
 
 
+def test_profile_dataset_returns_top5_most_frequent_per_column(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("profile_dataset", {"name": "messy"})
+
+    by_name = {c["name"]: c for c in result["columns"]}
+    country = by_name["country"]
+    assert "top_values" in country
+    top = country["top_values"]
+    assert len(top) <= 5
+    # Each entry has value + count.
+    for item in top:
+        assert "value" in item
+        assert "count" in item
+    # The leading country is one of the high-frequency cases (PL/US/DE/UA).
+    assert top[0]["value"] in {"PL", "US", "DE", "UA"}
+
+
 def test_list_datasets_reports_registered_entries(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 
