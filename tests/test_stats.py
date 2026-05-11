@@ -348,3 +348,9 @@ def test_test_hypothesis_unknown_dataset_returns_not_found(call_tool):
     )
     assert result["ok"] is False
     assert result["error"]["type"] == "not_found"
+
+
+def test_test_hypothesis_unknown_kind_returns_invalid_kind(call_tool):
+    result = call_tool("test_hypothesis", {"kind": "bogus"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "invalid_kind"
