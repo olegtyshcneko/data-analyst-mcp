@@ -16,6 +16,23 @@ from typing import Any
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _reset_session_and_recorder() -> Iterator[None]:
+    """Wipe the module-level session + recorder state before every test."""
+    from data_analyst_mcp import session
+
+    session.reset()
+    try:
+        from data_analyst_mcp import recorder as _recorder
+
+        _recorder.get_recorder().reset()
+    except (ImportError, AttributeError):
+        # recorder module may not exist yet during early-phase TDD cycles
+        pass
+    yield
+    session.reset()
+
+
 @pytest.fixture
 def server() -> Iterator[Any]:
     """Yield the FastMCP instance with a fresh per-test session."""
