@@ -29,3 +29,16 @@ def test_truncate_rows_over_limit_truncates_with_cursor() -> None:
     assert out["total_rows"] == 10
     assert out["truncated"] is True
     assert out["cursor"] == 3
+
+
+def test_rows_to_dicts_converts_duckdb_relation_to_list_of_dicts() -> None:
+    import duckdb
+
+    from data_analyst_mcp.formatting import rows_to_dicts
+
+    con = duckdb.connect()
+    rel = con.sql("SELECT 1 AS a, 'x' AS b UNION ALL SELECT 2, 'y' ORDER BY a")
+
+    out = rows_to_dicts(rel)
+
+    assert out == [{"a": 1, "b": "x"}, {"a": 2, "b": "y"}]

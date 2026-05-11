@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import duckdb
+
+
+def rows_to_dicts(rel: duckdb.DuckDBPyRelation) -> list[dict[str, Any]]:
+    """Stub — produces the wrong shape."""
+    return []
 
 
 def truncate_rows(rows: list[dict[str, Any]], limit: int) -> dict[str, Any]:
