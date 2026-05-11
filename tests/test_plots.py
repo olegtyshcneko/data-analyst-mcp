@@ -73,3 +73,9 @@ def test_plot_hist_returns_valid_png(call_tool, load_df_into_session):
     load_df_into_session("d", _NUMERIC_DF)
     result = call_tool("plot", {"name": "d", "kind": "hist", "x": "x"})
     _assert_valid_png(result)
+
+
+def test_plot_bar_returns_valid_png(call_tool, load_df_into_session):
+    load_df_into_session("d", _NUMERIC_DF)
+    result = call_tool("plot", {"name": "d", "kind": "bar", "x": "g"})
+    _assert_valid_png(result)
