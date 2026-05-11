@@ -165,6 +165,13 @@ def _interpretation(coefficients: list[dict[str, Any]], kind: str) -> str:
     p = strongest["p_value"]
     est = strongest["estimate"]
     sig = "statistically significant" if p < 0.05 else "not statistically significant"
+    if kind == "logistic":
+        odds = math.exp(est) - 1
+        pct = odds * 100.0
+        return (
+            f"Strongest predictor: `{name}` ({direction} effect, {sig} at α=0.05, p={p:.4g}). "
+            f"A one-unit increase changes the odds by ~{pct:.1f}% (odds ratio = {math.exp(est):.3f})."
+        )
     return (
         f"Strongest predictor: `{name}` ({direction} effect, {sig} at α=0.05, p={p:.4g}). "
         f"A one-unit increase moves the response by {est:.4g} units."
