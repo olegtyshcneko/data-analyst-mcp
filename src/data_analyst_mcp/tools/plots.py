@@ -216,13 +216,11 @@ def _plot_heatmap_tool(payload: PlotInput) -> dict[str, Any]:
     from data_analyst_mcp.tools.stats import _build_corr_matrix  # type: ignore[reportPrivateUsage]
 
     matrix = _build_corr_matrix(payload.name, chosen, "pearson")
-    fig = _build_heatmap_figure(chosen, matrix, title=payload.title)
+    fig = _build_heatmap_figure(chosen, matrix)
     return _render_to_base64(fig)
 
 
-def _build_heatmap_figure(
-    labels: list[str], matrix: list[list[float]], *, title: str | None = None
-) -> Any:
+def _build_heatmap_figure(labels: list[str], matrix: list[list[float]]) -> Any:
     """Construct a correlation-heatmap figure (shared between ``plot`` and ``correlate``)."""
     fig, ax = _make_figure()
     # heatmaps don't want the data grid behind cells
@@ -236,8 +234,6 @@ def _build_heatmap_figure(
         for j, v in enumerate(row):
             ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=8)
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    if title is not None:
-        ax.set_title(title)
     return fig
 
 
@@ -257,8 +253,6 @@ def _plot_violin(payload: PlotInput) -> dict[str, Any]:
         ax.set_xticklabels(labels)
         ax.set_xlabel(payload.x)
     ax.set_ylabel(payload.y)
-    if payload.title is not None:
-        ax.set_title(payload.title)
     return _render_to_base64(fig)
 
 
@@ -274,8 +268,6 @@ def _plot_box(payload: PlotInput) -> dict[str, Any]:
         ax.boxplot(arrays, tick_labels=labels)
         ax.set_xlabel(payload.x)
     ax.set_ylabel(payload.y)
-    if payload.title is not None:
-        ax.set_title(payload.title)
     return _render_to_base64(fig)
 
 
@@ -301,8 +293,6 @@ def _plot_scatter(payload: PlotInput) -> dict[str, Any]:
         ax.legend(title=payload.hue, frameon=False)
     ax.set_xlabel(payload.x)
     ax.set_ylabel(payload.y)
-    if payload.title is not None:
-        ax.set_title(payload.title)
     return _render_to_base64(fig)
 
 
@@ -318,8 +308,6 @@ def _plot_line(payload: PlotInput) -> dict[str, Any]:
     ax.plot(df[payload.x].to_numpy(), df[payload.y].to_numpy())
     ax.set_xlabel(payload.x)
     ax.set_ylabel(payload.y)
-    if payload.title is not None:
-        ax.set_title(payload.title)
     return _render_to_base64(fig)
 
 
@@ -348,8 +336,6 @@ def _plot_bar(payload: PlotInput) -> dict[str, Any]:
     ax.bar(labels, heights)
     ax.set_xlabel(payload.x)
     ax.set_ylabel(y_label)
-    if payload.title is not None:
-        ax.set_title(payload.title)
     return _render_to_base64(fig)
 
 
@@ -362,8 +348,6 @@ def _plot_hist(payload: PlotInput) -> dict[str, Any]:
     ax.hist(values, bins=bins)
     ax.set_xlabel(payload.x)
     ax.set_ylabel("count")
-    if payload.title is not None:
-        ax.set_title(payload.title)
     return _render_to_base64(fig)
 
 
