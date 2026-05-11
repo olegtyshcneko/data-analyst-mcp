@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime
 from typing import Any
 
@@ -53,6 +54,7 @@ def emit_notebook(payload: EmitNotebookInput) -> dict[str, Any]:
     nbf = _nbf()
     nb: Any = get_recorder().to_notebook(include_setup=True)
     target = payload.path if payload.path is not None else _default_path()
+    target = os.path.abspath(target)
     with open(target, "w", encoding="utf-8") as fh:
         nbf.write(nb, fh)  # type: ignore[reportUnknownMemberType]
     return {"ok": True, "path": target, "n_cells": len(nb.cells)}
