@@ -126,11 +126,7 @@ def describe_column(payload: DescribeColumnInput) -> dict[str, Any]:
             FROM {table}
             """
         ).fetchone()
-        if quantiles_row is None:
-            return build_error(
-                type="empty_column",
-                message=f"Column {payload.column!r} has no rows.",
-            )
+        assert quantiles_row is not None  # DuckDB aggregate always returns one row
         keys_pct = (1, 5, 10, 25, 50, 75, 90, 95, 99)
         quantiles = {p: _json_safe(quantiles_row[i]) for i, p in enumerate(keys_pct)}
         result["quantiles"] = quantiles
@@ -172,12 +168,9 @@ def _quote(name: str) -> str:
 def _json_safe(value: Any) -> Any:
     """Coerce DuckDB-returned scalars into a JSON-serializable shape."""
     import datetime as _dt
-    import decimal
 
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
-    if isinstance(value, decimal.Decimal):
-        return float(value)
     if isinstance(value, (_dt.datetime, _dt.date, _dt.time)):
         return value.isoformat()
     return str(value)
@@ -291,15 +284,14 @@ def _outliers(
     con: Any, table: str, quoted: str, *, p25: Any, p75: Any
 ) -> dict[str, Any]:
     """IQR-rule outliers + z>3 outliers, with up to 5 example raw values."""
-    if p25 is None or p75 is None:
-        return {"iqr_count": 0, "zscore_count": 0, "examples": []}
     lo = p25 - 1.5 * (p75 - p25)
     hi = p75 + 1.5 * (p75 - p25)
     iqr_row = con.execute(
         f"SELECT COUNT(*) FROM {table} WHERE {quoted} IS NOT NULL "
         f"AND ({quoted} < {lo!r} OR {quoted} > {hi!r})"
     ).fetchone()
-    iqr_count = int(iqr_row[0]) if iqr_row else 0
+    assert iqr_row is not None
+    iqr_count = int(iqr_row[0])
     z_row = con.execute(
         f"""
         WITH s AS (
@@ -310,7 +302,8 @@ def _outliers(
           AND ABS(({quoted} - s.m) / s.sd) > 3
         """
     ).fetchone()
-    z_count = int(z_row[0]) if z_row else 0
+    assert z_row is not None
+    z_count = int(z_row[0])
     example_rows = con.execute(
         f"SELECT {quoted} FROM {table} WHERE {quoted} IS NOT NULL "
         f"AND ({quoted} < {lo!r} OR {quoted} > {hi!r}) LIMIT 5"
@@ -324,22 +317,12 @@ def _histogram(con: Any, table: str, quoted: str, bins: int) -> dict[str, Any]:
     range_row = con.execute(
         f"SELECT MIN({quoted}), MAX({quoted}) FROM {table} WHERE {quoted} IS NOT NULL"
     ).fetchone()
-    if range_row is None or range_row[0] is None or range_row[1] is None:
-        return {"bin_edges": [], "counts": []}
+    assert range_row is not None
     lo = float(range_row[0])
     hi = float(range_row[1])
-    if lo == hi:
-        return {"bin_edges": [lo, hi], "counts": [
-            int(
-                con.execute(
-                    f"SELECT COUNT(*) FROM {table} WHERE {quoted} IS NOT NULL"
-                ).fetchone()[0]  # type: ignore[index]
-            )
-        ]}
     width = (hi - lo) / bins
     edges = [lo + i * width for i in range(bins + 1)]
     edges[-1] = hi  # avoid float-drift cutoff
-    # FLOOR((x - lo) / width) bucketed; clamp to [0, bins-1].
     bucket_rows = con.execute(
         f"""
         SELECT bucket, COUNT(*) FROM (
@@ -407,13 +390,13 @@ def _temporal_stats(con: Any, table: str, quoted: str) -> dict[str, Any]:
     modal_weekday: str | None = None
     if modal_row is not None:
         wd = int(modal_row[0])
-        if 0 <= wd <= 6:
-            modal_weekday = _WEEKDAY_NAMES[wd]
+        modal_weekday = _WEEKDAY_NAMES[wd]
+    assert row is not None
     return {
-        "min": str(row[0]) if row and row[0] is not None else None,
-        "max": str(row[1]) if row and row[1] is not None else None,
-        "range_days": int(row[2]) if row and row[2] is not None else 0,
-        "null_count": int(row[3]) if row else 0,
+        "min": str(row[0]) if row[0] is not None else None,
+        "max": str(row[1]) if row[1] is not None else None,
+        "range_days": int(row[2]) if row[2] is not None else 0,
+        "null_count": int(row[3]),
         "modal_weekday": modal_weekday,
     }
 
@@ -437,8 +420,7 @@ def _string_stats(con: Any, table: str, quoted: str) -> dict[str, Any]:
         FROM {table}
         """
     ).fetchone()
-    if row is None:
-        return {}
+    assert row is not None  # DuckDB aggregate always returns one row
     keys = ("min_length", "max_length", "mean_length", "empty_count", "whitespace_count")
     return {key: _json_safe(row[i]) for i, key in enumerate(keys)}
 
@@ -461,8 +443,7 @@ def _numeric_stats(con: Any, table: str, quoted: str) -> dict[str, Any]:
         FROM {table}
         """
     ).fetchone()
-    if row is None:
-        return {}
+    assert row is not None  # DuckDB aggregate always returns one row
     keys = ("min", "max", "mean", "median", "std", "p25", "p75", "p99", "zeros", "negatives")
     return {key: _json_safe(row[i]) for i, key in enumerate(keys)}
 
