@@ -108,6 +108,9 @@ def _warnings(diagnostics: dict[str, Any], kind: str) -> list[str]:
     vif = diagnostics.get("vif")
     if isinstance(vif, dict) and any(v > 10 for v in vif.values()):
         out.append("high_multicollinearity")
+    bp = diagnostics.get("breusch_pagan_p")
+    if kind == "ols" and isinstance(bp, float) and bp < 0.05:
+        out.append("heteroskedasticity")
     return out
 
 
