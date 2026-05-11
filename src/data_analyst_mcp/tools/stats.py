@@ -699,10 +699,7 @@ def compare_groups(payload: CompareGroupsInput) -> dict[str, Any]:
 
     metric_dtype = available[payload.metric_column]
     if not _is_numeric_dtype(metric_dtype):
-        return build_error(
-            type="not_implemented",
-            message="Categorical metric path not yet wired.",
-        )
+        return _compare_groups_categorical(payload)
 
     # Continuous metric path.
     if payload.groups is not None:
@@ -785,6 +782,65 @@ def compare_groups(payload: CompareGroupsInput) -> dict[str, Any]:
         p_norm=p_norm_many,
         p_lev=p_lev_many,
     )
+
+
+def _compare_groups_categorical(payload: CompareGroupsInput) -> dict[str, Any]:
+    """Categorical-metric path: build contingency table → chi-square."""
+    import math
+
+    import numpy as np
+    from scipy import stats as _sps
+
+    con = session.get_connection()
+    rows = con.execute(
+        f"SELECT {_quote(payload.group_column)} AS g, "
+        f"{_quote(payload.metric_column)} AS m, COUNT(*) AS c "
+        f"FROM {_quote(payload.name)} "
+        f"WHERE {_quote(payload.group_column)} IS NOT NULL "
+        f"  AND {_quote(payload.metric_column)} IS NOT NULL "
+        f"GROUP BY g, m ORDER BY g, m"
+    ).fetchall()
+    g_labels = sorted({str(r[0]) for r in rows})
+    m_labels = sorted({str(r[1]) for r in rows})
+    cell: dict[tuple[str, str], int] = {(str(r[0]), str(r[1])): int(r[2]) for r in rows}
+    if payload.groups is not None:
+        g_labels = [g for g in g_labels if g in set(payload.groups)]
+    table = np.array(
+        [[cell.get((g, m), 0) for m in m_labels] for g in g_labels], dtype=float
+    )
+    chi2, p, dof, _exp = _sps.chi2_contingency(table)
+    n = float(table.sum())
+    denom = n * max(min(table.shape) - 1, 1)
+    cv = math.sqrt(float(chi2) / denom) if denom > 0 else 0.0
+    arrays = [table[i] for i in range(len(g_labels))]
+    interp = (
+        f"`{payload.group_column}` and `{payload.metric_column}` are associated "
+        f"at α=0.05 (chi-square, p={float(p):.4f}, cramers_v={cv:.3f})."
+        if float(p) < 0.05
+        else f"No evidence of association between `{payload.group_column}` and "
+        f"`{payload.metric_column}` at α=0.05 (chi-square, p={float(p):.4f})."
+    )
+    return {
+        "ok": True,
+        "test": "chi_square",
+        "statistic": float(chi2),
+        "p_value": float(p),
+        "df": int(dof),
+        "effect_size": {"name": "cramers_v", "value": float(cv)},
+        "groups": [{"name": g_labels[i], "n": int(arrays[i].sum())} for i in range(len(g_labels))],
+        "assumption_checks": {
+            "expected_cell_min": {
+                "value": float(_exp.min()),
+                "violated": float(_exp.min()) < 5,
+                "consequence": (
+                    "Expected cell < 5 — consider Fisher's exact for 2×2."
+                    if float(_exp.min()) < 5
+                    else "Chi-square expected-count assumption holds."
+                ),
+            }
+        },
+        "interpretation": interp,
+    }
 
 
 def _build_two_sample_response(
