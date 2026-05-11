@@ -87,8 +87,22 @@ class DescribeColumnInput(BaseModel):
 
 
 def describe_column(payload: DescribeColumnInput) -> dict[str, Any]:
-    """Stub — always returns ok=True so the column-not-found test fails."""
-    return {"ok": True}
+    """Single-column deep dive (numeric/categorical/temporal)."""
+    entries = session.get_datasets()
+    if payload.name not in entries:
+        return build_error(
+            type="not_found",
+            message=f"No dataset named {payload.name!r} registered.",
+        )
+    entry = entries[payload.name]
+    col_meta = next((c for c in entry.columns if c["name"] == payload.column), None)
+    if col_meta is None:
+        return build_error(
+            type="column_not_found",
+            message=f"Column {payload.column!r} is not in dataset {payload.name!r}.",
+            hint=f"Available columns: {', '.join(c['name'] for c in entry.columns)}",
+        )
+    return {"ok": True, "column": payload.column, "dtype": col_meta["dtype"]}
 
 
 class ProfileDatasetInput(BaseModel):
