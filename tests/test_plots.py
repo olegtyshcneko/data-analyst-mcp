@@ -26,3 +26,10 @@ def test_plot_invalid_kind_returns_invalid_kind(call_tool, load_df_into_session)
     result = call_tool("plot", {"name": "tiny", "kind": "pie", "x": "x"})
     assert result["ok"] is False
     assert result["error"]["type"] == "invalid_kind"
+
+
+def test_plot_missing_column_returns_column_not_found(call_tool, load_df_into_session):
+    load_df_into_session("tiny", pd.DataFrame({"x": [1, 2, 3]}))
+    result = call_tool("plot", {"name": "tiny", "kind": "hist", "x": "nope"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "column_not_found"
