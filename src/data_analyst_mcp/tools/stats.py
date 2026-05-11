@@ -678,8 +678,35 @@ def _select_two_sample_continuous(p_norm: list[float | None], p_levene: float) -
     return "student_t"
 
 
+def _record_compare_groups(payload: CompareGroupsInput, result: dict[str, Any]) -> None:
+    """Append a markdown+code cell pair describing the compare_groups call."""
+    if not result.get("ok"):
+        return
+    md_lines = [
+        f"### Compared `{payload.metric_column}` across `{payload.group_column}` groups",
+        f"- Test selected: **{result['test']}**",
+        f"- statistic = {result['statistic']:.4f}, p_value = {result['p_value']:.4f}",
+        f"- effect_size ({result['effect_size']['name']}) = {result['effect_size']['value']:.4f}",
+        f"- {result['interpretation']}",
+    ]
+    md = "\n".join(md_lines)
+    code = (
+        f"from scipy import stats\n"
+        f"df = con.sql('SELECT * FROM {payload.name}').df()\n"
+        f"# Test selected automatically by compare_groups: {result['test']}\n"
+    )
+    get_recorder().record(markdown=md, code=code, tool_name="compare_groups")
+
+
 def compare_groups(payload: CompareGroupsInput) -> dict[str, Any]:
     """Pick an appropriate statistical test for two-or-more groups."""
+    result = _compare_groups_impl(payload)
+    _record_compare_groups(payload, result)
+    return result
+
+
+def _compare_groups_impl(payload: CompareGroupsInput) -> dict[str, Any]:
+    """Decision-tree implementation; recording happens at the outer wrapper."""
     entries = session.get_datasets()
     if payload.name not in entries:
         return build_error(
