@@ -345,6 +345,24 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
 
     suggestions = _build_suggestions(column_profiles)
 
+    md_lines = [f"### Profiled `{payload.name}`"]
+    md_lines.append(f"- {entry.rows} rows x {len(entry.columns)} columns")
+    flagged = [
+        c["name"]
+        for c in column_profiles
+        if c.get("flags", {}).get("mostly_null")
+    ]
+    if flagged:
+        md_lines.append(f"- Mostly-null columns: {', '.join(flagged)}")
+    for s in suggestions[:3]:
+        md_lines.append(f"- {s}")
+    md = "\n".join(md_lines)
+    code = (
+        f"profile_df = con.sql(\"SELECT * FROM {payload.name}\").df()\n"
+        f"profile_df.describe(include='all')"
+    )
+    get_recorder().record(markdown=md, code=code, tool_name="profile_dataset")
+
     return {
         "ok": True,
         "summary": {
