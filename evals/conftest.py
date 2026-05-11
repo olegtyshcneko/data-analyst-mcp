@@ -46,9 +46,7 @@ async def mcp_session() -> AsyncIterator[ClientSession]:
             yield session
 
 
-async def call(
-    session: ClientSession, name: str, args: dict[str, Any] | None = None
-) -> Any:
+async def call(session: ClientSession, name: str, args: dict[str, Any] | None = None) -> Any:
     """Invoke ``name`` on the live session and decode the structured payload.
 
     FastMCP serializes a tool's dict return either as the protocol

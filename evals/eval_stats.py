@@ -112,7 +112,7 @@ async def eval_chi_square_industry_won():
             },
         )
         assert rows["ok"]
-        # Pivot the long-format query result into an industry × won contingency.
+        # Pivot the long-format query result into an industry-by-won contingency.
         industries: list[str] = []
         cells: dict[tuple[str, bool], int] = {}
         for row in rows["rows"]:
@@ -120,10 +120,7 @@ async def eval_chi_square_industry_won():
             if ind not in industries:
                 industries.append(ind)
             cells[(ind, bool(won))] = c
-        table = [
-            [cells.get((ind, False), 0), cells.get((ind, True), 0)]
-            for ind in industries
-        ]
+        table = [[cells.get((ind, False), 0), cells.get((ind, True), 0)] for ind in industries]
 
         r = await call(
             s,

@@ -151,9 +151,13 @@ def _coerce_bool_columns(df: Any) -> Any:
     Both are coerced to a float ``Float64`` (preserving NA as ``NaN`` so
     statsmodels drops those rows itself) before the fit dispatch.
     """
-    import pandas as pd
+    import pandas as pd  # type: ignore[reportMissingTypeStubs]
 
-    bool_cols = [c for c in df.columns if pd.api.types.is_bool_dtype(df[c].dtype)]
+    bool_cols = [
+        c
+        for c in df.columns
+        if pd.api.types.is_bool_dtype(df[c].dtype)  # type: ignore[reportUnknownMemberType]
+    ]
     if not bool_cols:
         return df
     df = df.copy()

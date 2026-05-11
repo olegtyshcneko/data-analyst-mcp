@@ -36,9 +36,7 @@ async def eval_country_high_distinct_count():
     """Dirty country variants inflate distinct count beyond the 4 canonical codes."""
     async with mcp_session() as s:
         await _load_raw(s)
-        r = await call(
-            s, "describe_column", {"name": "raw", "column": "country"}
-        )
+        r = await call(s, "describe_column", {"name": "raw", "column": "country"})
         assert r["ok"]
         # categorical describe returns value_counts; count the entries
         assert len(r["value_counts"]) >= 6, r["value_counts"]
@@ -107,9 +105,7 @@ async def eval_header_whitespace_columns_accessible():
         for expected in ("revenue", "last_login"):
             assert expected in names, names
         # Final sanity check: a query against the stripped name returns a row.
-        r = await call(
-            s, "query", {"sql": "SELECT revenue, last_login FROM raw LIMIT 1"}
-        )
+        r = await call(s, "query", {"sql": "SELECT revenue, last_login FROM raw LIMIT 1"})
         assert r["ok"], r
         assert len(r["rows"]) == 1
 
