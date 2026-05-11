@@ -90,6 +90,53 @@ def _quote(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
 
 
+_NUMERIC_DTYPES = {
+    "TINYINT",
+    "SMALLINT",
+    "INTEGER",
+    "BIGINT",
+    "HUGEINT",
+    "UTINYINT",
+    "USMALLINT",
+    "UINTEGER",
+    "UBIGINT",
+    "FLOAT",
+    "DOUBLE",
+    "REAL",
+    "DECIMAL",
+}
+
+
+def _is_numeric(dtype: str) -> bool:
+    """True if a DuckDB dtype is numeric (we strip decimal precision)."""
+    base = dtype.split("(")[0].strip().upper()
+    return base in _NUMERIC_DTYPES
+
+
+def _numeric_stats(con: Any, table: str, quoted: str) -> dict[str, Any]:
+    """Return min/max/mean/median/std/p25/p75/p99/zeros/negatives for one column."""
+    row = con.execute(
+        f"""
+        SELECT
+            MIN({quoted}),
+            MAX({quoted}),
+            AVG({quoted}),
+            MEDIAN({quoted}),
+            STDDEV_SAMP({quoted}),
+            QUANTILE_CONT({quoted}, 0.25),
+            QUANTILE_CONT({quoted}, 0.75),
+            QUANTILE_CONT({quoted}, 0.99),
+            COUNT(*) FILTER (WHERE {quoted} = 0),
+            COUNT(*) FILTER (WHERE {quoted} < 0)
+        FROM {table}
+        """
+    ).fetchone()
+    if row is None:
+        return {}
+    keys = ("min", "max", "mean", "median", "std", "p25", "p75", "p99", "zeros", "negatives")
+    return {key: row[i] for i, key in enumerate(keys)}
+
+
 def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
     """Produce a full EDA profile for the named dataset."""
     entries = session.get_datasets()
@@ -115,14 +162,15 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
         flags = {
             "mostly_null": null_frac > 0.5,
         }
-        column_profiles.append(
-            {
-                "name": col["name"],
-                "dtype": col["dtype"],
-                "null_count": null_count,
-                "flags": flags,
-            }
-        )
+        entry_dict: dict[str, Any] = {
+            "name": col["name"],
+            "dtype": col["dtype"],
+            "null_count": null_count,
+            "flags": flags,
+        }
+        if _is_numeric(col["dtype"]):
+            entry_dict["numeric"] = _numeric_stats(con, table, quoted)
+        column_profiles.append(entry_dict)
 
     return {
         "ok": True,
