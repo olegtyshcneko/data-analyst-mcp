@@ -73,6 +73,8 @@ def plot(payload: PlotInput) -> dict[str, Any]:
         return _plot_hist(payload)
     if payload.kind == "bar":
         return _plot_bar(payload)
+    if payload.kind == "line":
+        return _plot_line(payload)
     return {"ok": True, "png_base64": "", "width": 0, "height": 0}
 
 
@@ -119,6 +121,24 @@ def _encode_figure(fig: Any) -> dict[str, Any]:
         "width": int(w),
         "height": int(h),
     }
+
+
+def _plot_line(payload: PlotInput) -> dict[str, Any]:
+    """Line plot of ``y`` against ``x``, sorted by x."""
+    assert payload.x is not None and payload.y is not None
+    con = session.get_connection()
+    df: Any = con.execute(
+        f"SELECT {_quote(payload.x)}, {_quote(payload.y)} FROM {_quote(payload.name)} "
+        f"ORDER BY {_quote(payload.x)}"
+    ).df()
+    fig = _make_figure()
+    ax = fig.add_subplot(111)
+    ax.plot(df[payload.x].to_numpy(), df[payload.y].to_numpy())
+    ax.set_xlabel(payload.x)
+    ax.set_ylabel(payload.y)
+    if payload.title is not None:
+        ax.set_title(payload.title)
+    return _encode_figure(fig)
 
 
 def _plot_bar(payload: PlotInput) -> dict[str, Any]:
