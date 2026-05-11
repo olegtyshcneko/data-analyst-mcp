@@ -104,3 +104,15 @@ def test_correlate_plot_true_returns_heatmap_png_base64(call_tool, load_df_into_
     raw = base64.b64decode(result["heatmap_png_base64"])
     # PNG magic bytes
     assert raw[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_correlate_records_markdown_and_code_cells(call_tool, load_df_into_session):
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("xyz", _XYZ_DF)
+    call_tool("correlate", {"name": "xyz", "plot": False})
+    cells = get_recorder().cells
+    assert len(cells) == 2
+    assert cells[0]["cell_type"] == "markdown"
+    assert cells[1]["cell_type"] == "code"
+    assert cells[0]["metadata"]["tool_name"] == "correlate"
