@@ -91,4 +91,40 @@ def correlate(payload: CorrelateInput) -> dict[str, Any]:
                 message=f"Dataset {payload.name!r} has no numeric columns.",
                 hint="Pass an explicit `columns` list, or cast columns to numeric first.",
             )
-    return {"ok": True, "columns": chosen}
+
+    matrix = _build_corr_matrix(payload.name, chosen, payload.method)
+
+    return {
+        "ok": True,
+        "method": payload.method,
+        "labels": list(chosen),
+        "matrix": matrix,
+    }
+
+
+def _build_corr_matrix(
+    dataset_name: str, columns: list[str], method: str
+) -> list[list[float]]:
+    """Materialize columns then compute the correlation matrix."""
+    from scipy import stats as _sps
+
+    con = session.get_connection()
+    table = _quote(dataset_name)
+    select_cols = ", ".join(_quote(c) for c in columns)
+    df = con.execute(f"SELECT {select_cols} FROM {table}").df()
+    n = len(columns)
+    matrix: list[list[float]] = [[0.0] * n for _ in range(n)]
+    for i in range(n):
+        matrix[i][i] = 1.0
+        for j in range(i + 1, n):
+            a = df[columns[i]].to_numpy()
+            b = df[columns[j]].to_numpy()
+            if method == "pearson":
+                r = float(_sps.pearsonr(a, b).statistic)
+            elif method == "spearman":
+                r = float(_sps.spearmanr(a, b).statistic)
+            else:
+                r = float(_sps.kendalltau(a, b).statistic)
+            matrix[i][j] = r
+            matrix[j][i] = r
+    return matrix
