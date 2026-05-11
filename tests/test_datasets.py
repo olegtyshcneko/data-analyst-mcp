@@ -115,6 +115,18 @@ def test_profile_dataset_reports_null_counts_per_column(call_tool: Any) -> None:
     assert by_name["customer_id"]["null_count"] == 0
 
 
+def test_profile_dataset_flags_mostly_null_when_over_50_percent(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("profile_dataset", {"name": "messy"})
+
+    by_name = {c["name"]: c for c in result["columns"]}
+    # email is 78% null → mostly_null.
+    assert by_name["email"]["flags"]["mostly_null"] is True
+    # customer_id is 0% null → not mostly_null.
+    assert by_name["customer_id"]["flags"]["mostly_null"] is False
+
+
 def test_list_datasets_reports_registered_entries(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 
