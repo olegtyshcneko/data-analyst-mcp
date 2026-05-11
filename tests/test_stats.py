@@ -332,3 +332,19 @@ def test_test_hypothesis_ks_known_answer(call_tool, load_df_into_session):
     assert result["p_value"] == pytest.approx(1.0, abs=1e-4)
     assert result["effect_size"]["name"] == "ks_d"
     assert result["effect_size"]["value"] == pytest.approx(0.2, abs=1e-4)
+
+
+def test_test_hypothesis_unknown_dataset_returns_not_found(call_tool):
+    result = call_tool(
+        "test_hypothesis",
+        {
+            "kind": "t_test",
+            "name": "nope",
+            "group_column": "g",
+            "metric_column": "v",
+            "group_a": "A",
+            "group_b": "B",
+        },
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "not_found"
