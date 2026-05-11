@@ -119,7 +119,10 @@ def _build_corr_matrix(
         for j in range(i + 1, n):
             a = df[columns[i]].to_numpy()
             b = df[columns[j]].to_numpy()
-            r = float(_sps.pearsonr(a, b).statistic)
+            if method == "spearman":
+                r = float(_sps.spearmanr(a, b).statistic)
+            else:
+                r = float(_sps.pearsonr(a, b).statistic)
             matrix[i][j] = r
             matrix[j][i] = r
     return matrix
