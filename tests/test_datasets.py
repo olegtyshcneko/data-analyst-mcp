@@ -168,8 +168,9 @@ def test_profile_dataset_returns_temporal_stats(call_tool: Any) -> None:
     result = call_tool("profile_dataset", {"name": "messy"})
 
     by_name = {c["name"]: c for c in result["columns"]}
-    # The CSV header has trailing whitespace on `last_login `.
-    login = by_name["last_login "]
+    # DuckDB trims the trailing whitespace from the header so the column
+    # surfaces as `last_login`.
+    login = by_name["last_login"]
     assert "temporal" in login
     t = login["temporal"]
     for key in ("min", "max", "range_days", "null_count", "modal_weekday"):

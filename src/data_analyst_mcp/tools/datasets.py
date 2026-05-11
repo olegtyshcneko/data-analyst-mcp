@@ -115,6 +115,53 @@ def _is_numeric(dtype: str) -> bool:
 
 _STRING_DTYPES = {"VARCHAR", "CHAR", "TEXT", "BLOB", "STRING"}
 
+_TEMPORAL_DTYPES = {"DATE", "TIMESTAMP", "TIMESTAMPTZ", "TIMESTAMP_NS", "TIMESTAMP_MS",
+                    "TIMESTAMP_S", "TIME", "TIMETZ", "DATETIME"}
+
+_WEEKDAY_NAMES = ("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+
+
+def _is_temporal(dtype: str) -> bool:
+    """True if the DuckDB dtype is a date/time-shaped value."""
+    base = dtype.split("(")[0].strip().upper()
+    return base in _TEMPORAL_DTYPES
+
+
+def _temporal_stats(con: Any, table: str, quoted: str) -> dict[str, Any]:
+    """min/max/range_days/null_count/modal_weekday for a temporal column."""
+    row = con.execute(
+        f"""
+        SELECT
+            MIN({quoted}),
+            MAX({quoted}),
+            DATE_DIFF('day', MIN({quoted}), MAX({quoted})),
+            COUNT(*) - COUNT({quoted})
+        FROM {table}
+        """
+    ).fetchone()
+    modal_row = con.execute(
+        f"""
+        SELECT DAYOFWEEK({quoted}) AS wd, COUNT(*) AS c
+        FROM {table}
+        WHERE {quoted} IS NOT NULL
+        GROUP BY wd
+        ORDER BY c DESC, wd ASC
+        LIMIT 1
+        """
+    ).fetchone()
+    modal_weekday: str | None = None
+    if modal_row is not None:
+        wd = int(modal_row[0])
+        if 0 <= wd <= 6:
+            modal_weekday = _WEEKDAY_NAMES[wd]
+    return {
+        "min": str(row[0]) if row and row[0] is not None else None,
+        "max": str(row[1]) if row and row[1] is not None else None,
+        "range_days": int(row[2]) if row and row[2] is not None else 0,
+        "null_count": int(row[3]) if row else 0,
+        "modal_weekday": modal_weekday,
+    }
+
 
 def _is_string(dtype: str) -> bool:
     """True if a DuckDB dtype represents a string-shaped value."""
@@ -198,6 +245,8 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
         }
         if _is_numeric(col["dtype"]):
             entry_dict["numeric"] = _numeric_stats(con, table, quoted)
+        elif _is_temporal(col["dtype"]):
+            entry_dict["temporal"] = _temporal_stats(con, table, quoted)
         elif _is_string(col["dtype"]):
             entry_dict["string"] = _string_stats(con, table, quoted)
         column_profiles.append(entry_dict)
