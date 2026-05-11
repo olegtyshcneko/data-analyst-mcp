@@ -254,7 +254,7 @@ def _make_figure() -> tuple[Any, Any]:
     return fig, ax
 
 
-def _render_to_base64(fig: Any) -> dict[str, Any]:
+def render_to_base64(fig: Any) -> dict[str, Any]:
     """Render ``fig`` to a PNG and return the ``{ok, png_base64, width, height}`` envelope.
 
     Uses the object-oriented ``FigureCanvasAgg`` so we never touch
@@ -339,12 +339,12 @@ def _plot_heatmap_tool(payload: PlotInput) -> dict[str, Any]:
     from data_analyst_mcp.tools.stats import _build_corr_matrix  # type: ignore[reportPrivateUsage]
 
     matrix = _build_corr_matrix(payload.name, chosen, "pearson")
-    fig = _build_heatmap_figure(chosen, matrix)
+    fig = build_heatmap_figure(chosen, matrix)
     _apply_title(fig.axes[0], payload.title)
-    return _render_to_base64(fig)
+    return render_to_base64(fig)
 
 
-def _build_heatmap_figure(labels: list[str], matrix: list[list[float]]) -> Any:
+def build_heatmap_figure(labels: list[str], matrix: list[list[float]]) -> Any:
     """Construct a correlation-heatmap figure (shared between ``plot`` and ``correlate``)."""
     fig, ax = _make_figure()
     # heatmaps don't want the data grid behind cells
@@ -378,7 +378,7 @@ def _plot_violin(payload: PlotInput) -> dict[str, Any]:
         ax.set_xlabel(payload.x)
     ax.set_ylabel(payload.y)
     _apply_title(ax, payload.title)
-    return _render_to_base64(fig)
+    return render_to_base64(fig)
 
 
 def _plot_box(payload: PlotInput) -> dict[str, Any]:
@@ -394,7 +394,7 @@ def _plot_box(payload: PlotInput) -> dict[str, Any]:
         ax.set_xlabel(payload.x)
     ax.set_ylabel(payload.y)
     _apply_title(ax, payload.title)
-    return _render_to_base64(fig)
+    return render_to_base64(fig)
 
 
 def _plot_scatter(payload: PlotInput) -> dict[str, Any]:
@@ -420,7 +420,7 @@ def _plot_scatter(payload: PlotInput) -> dict[str, Any]:
     ax.set_xlabel(payload.x)
     ax.set_ylabel(payload.y)
     _apply_title(ax, payload.title)
-    return _render_to_base64(fig)
+    return render_to_base64(fig)
 
 
 def _plot_line(payload: PlotInput) -> dict[str, Any]:
@@ -436,7 +436,7 @@ def _plot_line(payload: PlotInput) -> dict[str, Any]:
     ax.set_xlabel(payload.x)
     ax.set_ylabel(payload.y)
     _apply_title(ax, payload.title)
-    return _render_to_base64(fig)
+    return render_to_base64(fig)
 
 
 def _plot_bar(payload: PlotInput) -> dict[str, Any]:
@@ -465,7 +465,7 @@ def _plot_bar(payload: PlotInput) -> dict[str, Any]:
     ax.set_xlabel(payload.x)
     ax.set_ylabel(y_label)
     _apply_title(ax, payload.title)
-    return _render_to_base64(fig)
+    return render_to_base64(fig)
 
 
 def _plot_hist(payload: PlotInput) -> dict[str, Any]:
@@ -478,7 +478,7 @@ def _plot_hist(payload: PlotInput) -> dict[str, Any]:
     ax.set_xlabel(payload.x)
     ax.set_ylabel("count")
     _apply_title(ax, payload.title)
-    return _render_to_base64(fig)
+    return render_to_base64(fig)
 
 
 _REQUIRES_X: frozenset[str] = frozenset({"hist", "bar", "line", "scatter"})

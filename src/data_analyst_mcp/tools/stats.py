@@ -1040,10 +1040,10 @@ def _render_heatmap_png(labels: list[str], matrix: list[list[float]]) -> str:
     Shares the figure-construction helper with ``tools.plots`` so both call
     sites produce the same style.
     """
-    from data_analyst_mcp.tools.plots import _build_heatmap_figure, _render_to_base64  # type: ignore[reportPrivateUsage]
+    from data_analyst_mcp.tools.plots import build_heatmap_figure, render_to_base64
 
-    fig = _build_heatmap_figure(labels, matrix)
-    return _render_to_base64(fig)["png_base64"]
+    fig = build_heatmap_figure(labels, matrix)
+    return render_to_base64(fig)["png_base64"]
 
 
 def _pairwise_corr(a: Any, b: Any, method: str) -> float:
