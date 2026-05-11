@@ -111,9 +111,7 @@ def load_dataset(
     parser warnings.
     """
     try:
-        payload = _datasets.LoadDatasetInput(
-            path=path, name=name, read_options=read_options
-        )
+        payload = _datasets.LoadDatasetInput(path=path, name=name, read_options=read_options)
         return _datasets.load_dataset(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("load_dataset failed")

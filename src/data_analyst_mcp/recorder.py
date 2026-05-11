@@ -41,9 +41,7 @@ def _build_setup_source() -> str:
             call = f"{reader}('{entry.path}', SAMPLE_SIZE=-1)"
         else:
             call = f"{reader}('{entry.path}')"
-        lines.append(
-            f"con.execute(\"\"\"CREATE OR REPLACE TABLE {name} AS SELECT * FROM {call}\"\"\")"
-        )
+        lines.append(f'con.execute("""CREATE OR REPLACE TABLE {name} AS SELECT * FROM {call}""")')
     return "\n".join(lines)
 
 
@@ -66,14 +64,20 @@ class NotebookRecorder:
         """
         import nbformat as _nbformat
 
-        nb = _nbformat.v4.new_notebook()
+        nb: Any = _nbformat.v4.new_notebook()  # type: ignore[reportUnknownMemberType]
         if include_setup:
-            nb.cells.append(_nbformat.v4.new_code_cell(_build_setup_source()))
+            nb.cells.append(
+                _nbformat.v4.new_code_cell(_build_setup_source())  # type: ignore[reportUnknownMemberType]
+            )
         for cell in self.cells:
             if cell["cell_type"] == "markdown":
-                nb.cells.append(_nbformat.v4.new_markdown_cell(cell["source"]))
+                nb.cells.append(
+                    _nbformat.v4.new_markdown_cell(cell["source"])  # type: ignore[reportUnknownMemberType]
+                )
             else:
-                nb.cells.append(_nbformat.v4.new_code_cell(cell["source"]))
+                nb.cells.append(
+                    _nbformat.v4.new_code_cell(cell["source"])  # type: ignore[reportUnknownMemberType]
+                )
         return nb
 
     def record(self, *, markdown: str, code: str, tool_name: str) -> None:

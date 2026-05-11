@@ -39,7 +39,7 @@ class LoadDatasetInput(BaseModel):
         default=None,
         description=(
             "Optional DuckDB reader options forwarded into the read_* call, "
-            "e.g. {\"header\": false, \"delim\": \";\"} for CSV. Use this "
+            'e.g. {"header": false, "delim": ";"} for CSV. Use this '
             "only when auto-detection produces wrong results."
         ),
     )
@@ -215,8 +215,7 @@ def _build_suggestions(column_profiles: list[dict[str, Any]]) -> list[str]:
         (
             c
             for c in column_profiles
-            if c.get("flags", {}).get("looks_like_categorical")
-            and c.get("distinct_count", 0) <= 10
+            if c.get("flags", {}).get("looks_like_categorical") and c.get("distinct_count", 0) <= 10
         ),
         None,
     )
@@ -278,9 +277,7 @@ def _categorical_describe(con: Any, table: str, quoted: str) -> dict[str, Any]:
     return {"value_counts": counts, "entropy": entropy}
 
 
-def _outliers(
-    con: Any, table: str, quoted: str, *, p25: Any, p75: Any
-) -> dict[str, Any]:
+def _outliers(con: Any, table: str, quoted: str, *, p25: Any, p75: Any) -> dict[str, Any]:
     """IQR-rule outliers + z>3 outliers, with up to 5 example raw values."""
     lo = p25 - 1.5 * (p75 - p25)
     hi = p75 + 1.5 * (p75 - p25)
@@ -351,8 +348,18 @@ def _top_values(con: Any, table: str, quoted: str, limit: int = 5) -> list[dict[
     ).fetchall()
     return [{"value": _json_safe(r[0]), "count": int(r[1])} for r in rows]
 
-_TEMPORAL_DTYPES = {"DATE", "TIMESTAMP", "TIMESTAMPTZ", "TIMESTAMP_NS", "TIMESTAMP_MS",
-                    "TIMESTAMP_S", "TIME", "TIMETZ", "DATETIME"}
+
+_TEMPORAL_DTYPES = {
+    "DATE",
+    "TIMESTAMP",
+    "TIMESTAMPTZ",
+    "TIMESTAMP_NS",
+    "TIMESTAMP_MS",
+    "TIMESTAMP_S",
+    "TIME",
+    "TIMETZ",
+    "DATETIME",
+}
 
 _WEEKDAY_NAMES = ("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
 
@@ -480,15 +487,9 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
         dtype_is_temporal = _is_temporal(col["dtype"])
         flags = {
             "mostly_null": null_frac > 0.5,
-            "looks_like_id": (
-                dtype_is_string
-                and distinct_frac >= 0.95
-                and non_null > 100
-            ),
+            "looks_like_id": (dtype_is_string and distinct_frac >= 0.95 and non_null > 100),
             "looks_like_categorical": (
-                dtype_is_string
-                and distinct_count <= 50
-                and non_null > distinct_count
+                dtype_is_string and distinct_count <= 50 and non_null > distinct_count
             ),
             "looks_like_timestamp": dtype_is_temporal,
             "high_cardinality": distinct_frac > 0.9 and non_null > 100,
@@ -511,9 +512,7 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
         entry_dict["top_values"] = _top_values(con, table, quoted)
         column_profiles.append(entry_dict)
 
-    head_rows = con.execute(
-        f"SELECT * FROM {table} LIMIT {int(payload.sample_rows)}"
-    ).fetchall()
+    head_rows = con.execute(f"SELECT * FROM {table} LIMIT {int(payload.sample_rows)}").fetchall()
     head_cols = [c["name"] for c in entry.columns]
     head = [
         {col: _json_safe(value) for col, value in zip(head_cols, row, strict=True)}
@@ -524,18 +523,14 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
 
     md_lines = [f"### Profiled `{payload.name}`"]
     md_lines.append(f"- {entry.rows} rows x {len(entry.columns)} columns")
-    flagged = [
-        c["name"]
-        for c in column_profiles
-        if c.get("flags", {}).get("mostly_null")
-    ]
+    flagged = [c["name"] for c in column_profiles if c.get("flags", {}).get("mostly_null")]
     if flagged:
         md_lines.append(f"- Mostly-null columns: {', '.join(flagged)}")
     for s in suggestions[:3]:
         md_lines.append(f"- {s}")
     md = "\n".join(md_lines)
     code = (
-        f"profile_df = con.sql(\"SELECT * FROM {payload.name}\").df()\n"
+        f'profile_df = con.sql("SELECT * FROM {payload.name}").df()\n'
         f"profile_df.describe(include='all')"
     )
     get_recorder().record(markdown=md, code=code, tool_name="profile_dataset")

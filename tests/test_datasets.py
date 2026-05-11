@@ -136,8 +136,7 @@ def test_profile_dataset_returns_numeric_stats(call_tool: Any) -> None:
     age = by_name["age"]
     assert "numeric" in age
     stats = age["numeric"]
-    for key in ("min", "max", "mean", "median", "std", "p25", "p75", "p99",
-                "zeros", "negatives"):
+    for key in ("min", "max", "mean", "median", "std", "p25", "p75", "p99", "zeros", "negatives"):
         assert key in stats
     # age values are in [18, 80] roughly per the generator.
     assert stats["min"] >= 0
