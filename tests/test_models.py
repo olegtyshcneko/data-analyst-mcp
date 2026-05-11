@@ -203,3 +203,23 @@ def test_fit_model_ols_emits_heteroskedasticity_warning(call_tool, load_df_into_
     # het_breuschpagan p on this fixture (seed 20260511) = 0.00014260162314631662
     assert result["diagnostics"]["breusch_pagan_p"] < 0.05
     assert "heteroskedasticity" in result["warnings"]
+
+
+def _heavy_tail_df() -> pd.DataFrame:
+    """Build an OLS fixture with t(3) heavy-tailed noise (JB p << 0.05)."""
+    rng = np.random.default_rng(20260511)
+    n = 200
+    x = rng.standard_normal(n)
+    noise = rng.standard_t(df=3, size=n) * 2
+    y = x + noise
+    return pd.DataFrame({"y": y, "x": x})
+
+
+def test_fit_model_ols_emits_non_normal_residuals_warning(call_tool, load_df_into_session):
+    load_df_into_session("heavy", _heavy_tail_df())
+    result = call_tool(
+        "fit_model", {"name": "heavy", "formula": "y ~ x", "kind": "ols"}
+    )
+    # jarque_bera p on this fixture (seed 20260511) = 0.0023420079865034194
+    assert result["diagnostics"]["jarque_bera_p"] < 0.05
+    assert "non_normal_residuals" in result["warnings"]
