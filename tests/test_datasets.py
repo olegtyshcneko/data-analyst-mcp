@@ -102,6 +102,19 @@ def test_profile_dataset_reports_summary_totals(call_tool: Any) -> None:
     assert result["summary"]["total_columns"] == 12
 
 
+def test_profile_dataset_reports_null_counts_per_column(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("profile_dataset", {"name": "messy"})
+
+    by_name = {c["name"]: c for c in result["columns"]}
+    # email has exactly 3900 empty cells per the fixture spec; DuckDB reads
+    # empty CSV cells as NULLs by default.
+    assert by_name["email"]["null_count"] == 3900
+    # customer_id is never null.
+    assert by_name["customer_id"]["null_count"] == 0
+
+
 def test_list_datasets_reports_registered_entries(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 
