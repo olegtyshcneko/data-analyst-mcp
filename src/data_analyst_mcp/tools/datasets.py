@@ -141,6 +141,7 @@ def describe_column(payload: DescribeColumnInput) -> dict[str, Any]:
         iqr = (p75 - p25) if (p25 is not None and p75 is not None) else 0.0
         result["iqr"] = iqr
         result["histogram"] = _histogram(con, table, quoted, bins=payload.bins)
+        result["outliers"] = _outliers(con, table, quoted, p25=p25, p75=p75)
 
     return result
 
@@ -230,6 +231,38 @@ def _build_suggestions(column_profiles: list[dict[str, Any]]) -> list[str]:
     if not suggestions:
         suggestions.append("Run describe_column on individual columns to dig deeper.")
     return suggestions[:3]
+
+
+def _outliers(
+    con: Any, table: str, quoted: str, *, p25: Any, p75: Any
+) -> dict[str, Any]:
+    """IQR-rule outliers + z>3 outliers, with up to 5 example raw values."""
+    if p25 is None or p75 is None:
+        return {"iqr_count": 0, "zscore_count": 0, "examples": []}
+    lo = p25 - 1.5 * (p75 - p25)
+    hi = p75 + 1.5 * (p75 - p25)
+    iqr_row = con.execute(
+        f"SELECT COUNT(*) FROM {table} WHERE {quoted} IS NOT NULL "
+        f"AND ({quoted} < {lo!r} OR {quoted} > {hi!r})"
+    ).fetchone()
+    iqr_count = int(iqr_row[0]) if iqr_row else 0
+    z_row = con.execute(
+        f"""
+        WITH s AS (
+            SELECT AVG({quoted}) AS m, STDDEV_SAMP({quoted}) AS sd FROM {table}
+        )
+        SELECT COUNT(*) FROM {table}, s
+        WHERE {quoted} IS NOT NULL AND s.sd > 0
+          AND ABS(({quoted} - s.m) / s.sd) > 3
+        """
+    ).fetchone()
+    z_count = int(z_row[0]) if z_row else 0
+    example_rows = con.execute(
+        f"SELECT {quoted} FROM {table} WHERE {quoted} IS NOT NULL "
+        f"AND ({quoted} < {lo!r} OR {quoted} > {hi!r}) LIMIT 5"
+    ).fetchall()
+    examples = [_json_safe(r[0]) for r in example_rows]
+    return {"iqr_count": iqr_count, "zscore_count": z_count, "examples": examples}
 
 
 def _histogram(con: Any, table: str, quoted: str, bins: int) -> dict[str, Any]:
