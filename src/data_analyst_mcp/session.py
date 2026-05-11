@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import duckdb
 
 
 @dataclass(frozen=True)
@@ -24,13 +27,17 @@ class DatasetEntry:
 
 
 _datasets: dict[str, DatasetEntry] = {}
+_connection: duckdb.DuckDBPyConnection | None = None
 
 
-def get_connection() -> Any:
-    """Stub — returns a fresh handle each call so the singleton test fails."""
-    import duckdb
+def get_connection() -> duckdb.DuckDBPyConnection:
+    """Return the per-process DuckDB connection, creating it on first use."""
+    global _connection
+    if _connection is None:
+        import duckdb as _duckdb
 
-    return duckdb.connect()
+        _connection = _duckdb.connect()
+    return _connection
 
 
 def register(
