@@ -359,3 +359,19 @@ def test_fit_model_logistic_returns_pseudo_r_squared_fit_block(call_tool, load_d
     assert fit["n_obs"] == 500
     assert fit["df_resid"] == 497
     assert fit["pseudo_r_squared"] == pytest.approx(0.1996690625, abs=1e-3)
+
+
+def test_fit_model_logistic_diagnostics_omit_ols_only_fields(call_tool, load_df_into_session):
+    load_df_into_session("logi", _logistic_df())
+    result = call_tool(
+        "fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"}
+    )
+    diag = result["diagnostics"]
+    # condition_number is always present (numpy.linalg.cond fallback).
+    assert isinstance(diag["condition_number"], float)
+    # OLS-specific residual diagnostics MUST be null for logistic.
+    assert diag["breusch_pagan_p"] is None
+    assert diag["durbin_watson"] is None
+    assert diag["jarque_bera_p"] is None
+    # VIF is OLS-only per spec §5.9.
+    assert diag["vif"] is None
