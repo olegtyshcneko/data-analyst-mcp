@@ -271,15 +271,10 @@ def _categorical_describe(con: Any, table: str, quoted: str) -> dict[str, Any]:
     ).fetchall()
     total = sum(int(r[1]) for r in rows)
     entropy = 0.0
-    if total > 0:
-        for r in rows:
-            p = int(r[1]) / total
-            if p > 0:
-                entropy -= p * math.log2(p)
+    for r in rows:
+        p = int(r[1]) / total
+        entropy -= p * math.log2(p)
     counts = [{"value": _json_safe(r[0]), "count": int(r[1])} for r in rows[:50]]
-    if len(rows) > 50:
-        other_count = sum(int(r[1]) for r in rows[50:])
-        counts.append({"value": "<other>", "count": other_count})
     return {"value_counts": counts, "entropy": entropy}
 
 
