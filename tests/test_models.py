@@ -336,3 +336,26 @@ def test_fit_model_logistic_returns_pinned_coefficients(call_tool, load_df_into_
     assert by_name["z"]["estimate"] == pytest.approx(-0.7152252266, abs=1e-3)
     # m.bse:  x = 0.12914932615314562
     assert by_name["x"]["std_err"] == pytest.approx(0.12914932615, abs=1e-3)
+
+
+def test_fit_model_logistic_returns_pseudo_r_squared_fit_block(call_tool, load_df_into_session):
+    load_df_into_session("logi", _logistic_df())
+    result = call_tool(
+        "fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"}
+    )
+    fit = result["fit"]
+    # Logistic does NOT report r_squared / adj_r_squared.
+    assert "r_squared" not in fit
+    assert "adj_r_squared" not in fit
+    # Pinned from m.aic / m.bic / m.nobs / m.df_resid / m.prsquared on the
+    # seeded fixture:
+    #   aic            = 552.8780654766584
+    #   bic            = 565.521889771925
+    #   nobs           = 500
+    #   df_resid       = 497
+    #   prsquared      = 0.19966906245268023
+    assert fit["aic"] == pytest.approx(552.8780655, abs=1e-2)
+    assert fit["bic"] == pytest.approx(565.5218898, abs=1e-2)
+    assert fit["n_obs"] == 500
+    assert fit["df_resid"] == 497
+    assert fit["pseudo_r_squared"] == pytest.approx(0.1996690625, abs=1e-3)
