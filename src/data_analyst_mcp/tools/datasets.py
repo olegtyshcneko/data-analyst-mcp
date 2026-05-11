@@ -85,6 +85,11 @@ class ProfileDatasetInput(BaseModel):
     )
 
 
+def _quote(name: str) -> str:
+    """Quote a SQL identifier (column or table) safely for DuckDB."""
+    return '"' + name.replace('"', '""') + '"'
+
+
 def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
     """Produce a full EDA profile for the named dataset."""
     entries = session.get_datasets()
@@ -95,12 +100,31 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
             hint="Call list_datasets to see what is available.",
         )
     entry = entries[payload.name]
+    con = session.get_connection()
+    table = _quote(payload.name)
+
+    column_profiles: list[dict[str, Any]] = []
+    for col in entry.columns:
+        quoted = _quote(col["name"])
+        null_count_row = con.execute(
+            f"SELECT COUNT(*) - COUNT({quoted}) FROM {table}"
+        ).fetchone()
+        null_count = int(null_count_row[0]) if null_count_row else 0
+        column_profiles.append(
+            {
+                "name": col["name"],
+                "dtype": col["dtype"],
+                "null_count": null_count,
+            }
+        )
+
     return {
         "ok": True,
         "summary": {
             "total_rows": entry.rows,
             "total_columns": len(entry.columns),
         },
+        "columns": column_profiles,
     }
 
 
