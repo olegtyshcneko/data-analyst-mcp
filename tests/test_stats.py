@@ -300,3 +300,35 @@ def test_test_hypothesis_kruskal_known_answer(call_tool, load_df_into_session):
     assert result["p_value"] == pytest.approx(0.0172840527, abs=1e-4)
     assert result["effect_size"]["name"] == "epsilon_squared"
     assert result["effect_size"]["value"] == pytest.approx(0.5797101449, abs=1e-4)
+
+
+def _make_ks_df() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "g": ["A"] * 5 + ["B"] * 5,
+            "v": [1.0, 2.0, 3.0, 4.0, 5.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        }
+    )
+
+
+def test_test_hypothesis_ks_known_answer(call_tool, load_df_into_session):
+    load_df_into_session("kspairs", _make_ks_df())
+    result = call_tool(
+        "test_hypothesis",
+        {
+            "kind": "ks",
+            "name": "kspairs",
+            "group_column": "g",
+            "metric_column": "v",
+            "group_a": "A",
+            "group_b": "B",
+        },
+    )
+    # scipy.stats.ks_2samp([1,2,3,4,5], [2,3,4,5,6])
+    #   D=0.2, p=1.0  (asymptotic fallback for small n)
+    assert result["ok"] is True
+    assert result["test"] == "ks"
+    assert result["statistic"] == pytest.approx(0.2, abs=1e-4)
+    assert result["p_value"] == pytest.approx(1.0, abs=1e-4)
+    assert result["effect_size"]["name"] == "ks_d"
+    assert result["effect_size"]["value"] == pytest.approx(0.2, abs=1e-4)
