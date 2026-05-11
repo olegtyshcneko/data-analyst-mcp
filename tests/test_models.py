@@ -275,3 +275,25 @@ def test_fit_model_ols_returns_plain_english_interpretation(call_tool, load_df_i
     # Strongest signal on Duncan = `education` (smallest p, p ≈ 1.73e-6),
     # and its coefficient is positive, so the interpretation must mention it.
     assert "education" in interp
+
+
+def test_fit_model_ols_records_markdown_and_code_cells(call_tool, load_df_into_session):
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("duncan", _duncan_df())
+    call_tool(
+        "fit_model",
+        {
+            "name": "duncan",
+            "formula": "prestige ~ income + education",
+            "kind": "ols",
+        },
+    )
+    cells = get_recorder().cells
+    assert len(cells) == 2
+    assert cells[0]["cell_type"] == "markdown"
+    assert cells[1]["cell_type"] == "code"
+    assert cells[0]["metadata"]["tool_name"] == "fit_model"
+    assert cells[1]["metadata"]["tool_name"] == "fit_model"
+    assert "prestige ~ income + education" in cells[1]["source"]
+    assert "smf.ols" in cells[1]["source"]
