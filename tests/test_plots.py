@@ -111,3 +111,12 @@ def test_plot_heatmap_returns_valid_png(call_tool, load_df_into_session):
     load_df_into_session("d", _NUMERIC_DF)
     result = call_tool("plot", {"name": "d", "kind": "heatmap"})
     _assert_valid_png(result)
+
+
+def test_plot_title_changes_rendered_bytes(call_tool, load_df_into_session):
+    load_df_into_session("d", _NUMERIC_DF)
+    plain = call_tool("plot", {"name": "d", "kind": "hist", "x": "x"})
+    titled = call_tool("plot", {"name": "d", "kind": "hist", "x": "x", "title": "Hello"})
+    _assert_valid_png(plain)
+    _assert_valid_png(titled)
+    assert plain["png_base64"] != titled["png_base64"]
