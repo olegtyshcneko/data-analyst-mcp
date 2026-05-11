@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Literal
+from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -116,6 +116,182 @@ def correlate(payload: CorrelateInput) -> dict[str, Any]:
     )
     get_recorder().record(markdown=md, code=code, tool_name="correlate")
     return out
+
+
+class _TwoSampleColumns(BaseModel):
+    """Shared fields for kinds that compare two groups within one dataset."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(..., description="Registered dataset name.")
+    group_column: str = Field(..., description="Column holding the group labels.")
+    metric_column: str = Field(..., description="Numeric metric column to test.")
+    group_a: str = Field(..., description="Label of the first group.")
+    group_b: str = Field(..., description="Label of the second group.")
+
+
+class TTestInput(_TwoSampleColumns):
+    """Student's t-test (equal variances assumed)."""
+
+    kind: Literal["t_test"] = "t_test"
+
+
+class WelchInput(_TwoSampleColumns):
+    """Welch's t-test (unequal variances)."""
+
+    kind: Literal["welch"] = "welch"
+
+
+class MannWhitneyInput(_TwoSampleColumns):
+    """Mann-Whitney U (non-parametric two-sample)."""
+
+    kind: Literal["mann_whitney"] = "mann_whitney"
+
+
+class KSInput(_TwoSampleColumns):
+    """Kolmogorov-Smirnov two-sample distribution test."""
+
+    kind: Literal["ks"] = "ks"
+
+
+class AnovaInput(BaseModel):
+    """One-way ANOVA across all distinct group labels in ``group_column``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["anova"] = "anova"
+    name: str = Field(..., description="Registered dataset name.")
+    group_column: str = Field(..., description="Column holding the group labels.")
+    metric_column: str = Field(..., description="Numeric metric column to test.")
+
+
+class KruskalInput(BaseModel):
+    """Kruskal-Wallis H test (non-parametric many-sample)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["kruskal"] = "kruskal"
+    name: str = Field(..., description="Registered dataset name.")
+    group_column: str = Field(..., description="Column holding the group labels.")
+    metric_column: str = Field(..., description="Numeric metric column to test.")
+
+
+class ChiSquareInput(BaseModel):
+    """Chi-square test of independence on an explicit contingency table."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["chi_square"] = "chi_square"
+    table: list[list[int]] = Field(
+        ..., description="r×c integer contingency table as a list of rows."
+    )
+
+
+class FisherInput(BaseModel):
+    """Fisher's exact test on an explicit 2×2 contingency table."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["fisher"] = "fisher"
+    table: list[list[int]] = Field(
+        ..., description="2×2 integer contingency table as a list of two rows."
+    )
+
+
+TestHypothesisInput = Annotated[
+    Union[  # noqa: UP007
+        TTestInput,
+        WelchInput,
+        MannWhitneyInput,
+        KSInput,
+        AnovaInput,
+        KruskalInput,
+        ChiSquareInput,
+        FisherInput,
+    ],
+    Field(discriminator="kind"),
+]
+
+
+_ALLOWED_KINDS = {
+    "t_test",
+    "welch",
+    "mann_whitney",
+    "ks",
+    "anova",
+    "kruskal",
+    "chi_square",
+    "fisher",
+}
+
+
+def _materialize_group(name: str, group_col: str, metric_col: str, label: str) -> Any:
+    """Return a numpy array of the metric for rows where group equals label."""
+    con = session.get_connection()
+    table = _quote(name)
+    rel = con.execute(
+        f"SELECT {_quote(metric_col)} FROM {table} WHERE {_quote(group_col)} = ?",
+        [label],
+    )
+    df = rel.df()
+    return df[metric_col].to_numpy()
+
+
+def _cohens_d(a: Any, b: Any) -> float:
+    """Pooled Cohen's d (ddof=1) for two independent samples."""
+    import math
+
+    n1, n2 = len(a), len(b)
+    s1 = float(a.std(ddof=1))
+    s2 = float(b.std(ddof=1))
+    sp = math.sqrt(((n1 - 1) * s1**2 + (n2 - 1) * s2**2) / (n1 + n2 - 2))
+    if sp == 0.0:
+        return 0.0
+    return (float(a.mean()) - float(b.mean())) / sp
+
+
+def _run_t_test(payload: TTestInput) -> dict[str, Any]:
+    """Student's t-test (equal_var=True)."""
+    from scipy import stats as _sps
+
+    a = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_a)
+    b = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_b)
+    r = _sps.ttest_ind(a, b, equal_var=True)
+    interp = _interpret_two_sample(payload.group_a, payload.group_b, float(r.pvalue))
+    return {
+        "ok": True,
+        "test": "t_test",
+        "statistic": float(r.statistic),
+        "p_value": float(r.pvalue),
+        "df": float(r.df),
+        "effect_size": {"name": "cohens_d", "value": _cohens_d(a, b)},
+        "n_a": int(len(a)),
+        "n_b": int(len(b)),
+        "interpretation": interp,
+    }
+
+
+def _interpret_two_sample(a: str, b: str, p: float) -> str:
+    """One-sentence plain-English interpretation of a two-sample p-value."""
+    if p < 0.05:
+        return (
+            f"Groups `{a}` and `{b}` differ at α=0.05 (p={p:.4f})."
+        )
+    return (
+        f"No statistically significant difference between `{a}` and `{b}` at α=0.05 (p={p:.4f})."
+    )
+
+
+def test_hypothesis(payload: Any) -> dict[str, Any]:
+    """Dispatch to a kind-specific handler. ``payload`` is the validated union."""
+    kind = payload.kind
+    if kind == "t_test":
+        return _run_t_test(payload)
+    return build_error(
+        type="invalid_kind",
+        message=f"Unknown kind {kind!r}.",
+        hint=f"Allowed kinds: {sorted(_ALLOWED_KINDS)}.",
+    )
 
 
 def _render_heatmap_png(labels: list[str], matrix: list[list[float]]) -> str:

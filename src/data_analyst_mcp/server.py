@@ -142,6 +142,50 @@ def correlate(
         return build_error(type="internal", message=str(exc))
 
 
+@mcp.tool()
+def test_hypothesis(
+    kind: str,
+    name: str | None = None,
+    group_column: str | None = None,
+    metric_column: str | None = None,
+    group_a: str | None = None,
+    group_b: str | None = None,
+    table: list[list[int]] | None = None,
+) -> dict[str, Any]:
+    """Run a named statistical hypothesis test.
+
+    ``kind`` is one of ``t_test``, ``welch``, ``mann_whitney``, ``chi_square``,
+    ``fisher``, ``anova``, ``kruskal``, ``ks``. Two-sample tests need ``name``,
+    ``group_column``, ``metric_column``, ``group_a``, ``group_b``; ANOVA and
+    Kruskal-Wallis need ``name``, ``group_column``, ``metric_column``;
+    chi-square and Fisher need a ``table`` contingency matrix. Returns a
+    uniform shape with ``test``, ``statistic``, ``p_value``, ``effect_size``,
+    ``df``, ``n_a``, ``n_b``, ``interpretation``.
+    """
+    try:
+        from pydantic import TypeAdapter
+
+        adapter: TypeAdapter[Any] = TypeAdapter(_stats.TestHypothesisInput)
+        raw: dict[str, Any] = {"kind": kind}
+        if name is not None:
+            raw["name"] = name
+        if group_column is not None:
+            raw["group_column"] = group_column
+        if metric_column is not None:
+            raw["metric_column"] = metric_column
+        if group_a is not None:
+            raw["group_a"] = group_a
+        if group_b is not None:
+            raw["group_b"] = group_b
+        if table is not None:
+            raw["table"] = table
+        payload = adapter.validate_python(raw)
+        return _stats.test_hypothesis(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("test_hypothesis failed")
+        return build_error(type="internal", message=str(exc))
+
+
 def main() -> None:  # pragma: no cover - exercised by the console-script smoke test
     """Run the MCP server on stdio. Console-script entry point."""
     logger.info("starting data-analyst-mcp on stdio")
