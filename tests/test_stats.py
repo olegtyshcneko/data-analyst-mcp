@@ -378,6 +378,23 @@ def test_compare_groups_unknown_column_returns_column_not_found(call_tool, load_
     assert result["error"]["type"] == "column_not_found"
 
 
+def test_compare_groups_picks_student_t_when_normal_equal_var(call_tool, load_df_into_session):
+    load_df_into_session("pairs", _make_two_group_df())
+    result = call_tool(
+        "compare_groups",
+        {"name": "pairs", "group_column": "g", "metric_column": "v", "groups": ["A", "B"]},
+    )
+    # Shapiro A == Shapiro B (mirrored data) → p≈0.967, Levene p=1.0
+    # So normality OK + equal_var OK → student_t.
+    # scipy.stats.ttest_ind([1..5], [3..7], equal_var=True) → t=-2.0, p=0.0805162380
+    assert result["ok"] is True
+    assert result["test"] == "student_t"
+    assert result["statistic"] == pytest.approx(-2.0, abs=1e-4)
+    assert result["p_value"] == pytest.approx(0.0805162380, abs=1e-4)
+    assert result["effect_size"]["name"] == "cohens_d"
+    assert result["effect_size"]["value"] == pytest.approx(-1.2649110641, abs=1e-4)
+
+
 def test_test_hypothesis_records_cells_on_success(call_tool, load_df_into_session):
     from data_analyst_mcp.recorder import get_recorder
 
