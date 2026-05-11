@@ -56,3 +56,11 @@ def test_query_explicit_limit_is_honored(call_tool: Any) -> None:
 
     assert result["ok"] is True
     assert len(result["rows"]) == 7
+
+
+def test_query_truncated_true_when_rows_hit_limit(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("query", {"sql": "SELECT customer_id FROM messy", "limit": 10})
+
+    assert result["truncated"] is True
