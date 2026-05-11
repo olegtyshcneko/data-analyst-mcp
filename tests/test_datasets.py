@@ -295,6 +295,23 @@ def test_describe_column_numeric_returns_outliers(call_tool: Any) -> None:
     assert len(out["examples"]) <= 5
 
 
+def test_describe_column_categorical_returns_value_counts_and_entropy(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("describe_column", {"name": "messy", "column": "country"})
+
+    assert "value_counts" in result
+    vc = result["value_counts"]
+    assert isinstance(vc, list)
+    # Total values per the fixture has 8-ish distinct values; capped at 50.
+    assert len(vc) <= 50
+    for item in vc:
+        assert "value" in item
+        assert "count" in item
+    assert "entropy" in result
+    assert result["entropy"] > 0
+
+
 def test_profile_dataset_records_cell_pair_on_success(call_tool: Any) -> None:
     from data_analyst_mcp.recorder import get_recorder
 
