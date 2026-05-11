@@ -64,6 +64,8 @@ def _extension(path: str) -> str:
 
 def _build_read_call(path: str, fmt: str) -> str:
     """Render the DuckDB read_* call used in the CREATE TABLE statement."""
+    if fmt == "parquet":
+        return f"read_parquet('{path}')"
     return f"read_csv_auto('{path}', SAMPLE_SIZE=-1)"
 
 
