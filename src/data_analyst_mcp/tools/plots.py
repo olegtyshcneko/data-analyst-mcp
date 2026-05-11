@@ -121,6 +121,12 @@ def _apply_style(fig: Any, ax: Any) -> None:
     ax.tick_params(colors="#444444", labelsize=9)
 
 
+def _apply_title(ax: Any, title: str | None) -> None:
+    """Set an axis title when one was provided; no-op otherwise."""
+    if title is not None:
+        ax.set_title(title)
+
+
 def _make_figure() -> tuple[Any, Any]:
     """Construct a fresh ``Figure`` + ``Axes`` with the project's standard style."""
     from matplotlib.figure import Figure
@@ -217,6 +223,7 @@ def _plot_heatmap_tool(payload: PlotInput) -> dict[str, Any]:
 
     matrix = _build_corr_matrix(payload.name, chosen, "pearson")
     fig = _build_heatmap_figure(chosen, matrix)
+    _apply_title(fig.axes[0], payload.title)
     return _render_to_base64(fig)
 
 
@@ -253,6 +260,7 @@ def _plot_violin(payload: PlotInput) -> dict[str, Any]:
         ax.set_xticklabels(labels)
         ax.set_xlabel(payload.x)
     ax.set_ylabel(payload.y)
+    _apply_title(ax, payload.title)
     return _render_to_base64(fig)
 
 
@@ -268,6 +276,7 @@ def _plot_box(payload: PlotInput) -> dict[str, Any]:
         ax.boxplot(arrays, tick_labels=labels)
         ax.set_xlabel(payload.x)
     ax.set_ylabel(payload.y)
+    _apply_title(ax, payload.title)
     return _render_to_base64(fig)
 
 
@@ -293,6 +302,7 @@ def _plot_scatter(payload: PlotInput) -> dict[str, Any]:
         ax.legend(title=payload.hue, frameon=False)
     ax.set_xlabel(payload.x)
     ax.set_ylabel(payload.y)
+    _apply_title(ax, payload.title)
     return _render_to_base64(fig)
 
 
@@ -308,6 +318,7 @@ def _plot_line(payload: PlotInput) -> dict[str, Any]:
     ax.plot(df[payload.x].to_numpy(), df[payload.y].to_numpy())
     ax.set_xlabel(payload.x)
     ax.set_ylabel(payload.y)
+    _apply_title(ax, payload.title)
     return _render_to_base64(fig)
 
 
@@ -336,6 +347,7 @@ def _plot_bar(payload: PlotInput) -> dict[str, Any]:
     ax.bar(labels, heights)
     ax.set_xlabel(payload.x)
     ax.set_ylabel(y_label)
+    _apply_title(ax, payload.title)
     return _render_to_base64(fig)
 
 
@@ -348,6 +360,7 @@ def _plot_hist(payload: PlotInput) -> dict[str, Any]:
     ax.hist(values, bins=bins)
     ax.set_xlabel(payload.x)
     ax.set_ylabel("count")
+    _apply_title(ax, payload.title)
     return _render_to_base64(fig)
 
 
