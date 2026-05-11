@@ -93,3 +93,28 @@ def test_fit_model_ols_returns_pinned_coefficients(call_tool, load_df_into_sessi
     #   income → (0.3572343324484092, 0.8402313106105811)
     assert by_name["income"]["ci_low"] == pytest.approx(0.3572343324, abs=1e-3)
     assert by_name["income"]["ci_high"] == pytest.approx(0.8402313106, abs=1e-3)
+
+
+def test_fit_model_ols_returns_pinned_fit_block(call_tool, load_df_into_session):
+    load_df_into_session("duncan", _duncan_df())
+    result = call_tool(
+        "fit_model",
+        {
+            "name": "duncan",
+            "formula": "prestige ~ income + education",
+            "kind": "ols",
+        },
+    )
+    fit = result["fit"]
+    # m.rsquared       = 0.8281734172543813
+    # m.rsquared_adj   = 0.8199911990283995
+    # m.aic            = 363.9644534078201
+    # m.bic            = 369.38444087713106
+    # m.nobs           = 45.0
+    # m.df_resid       = 42.0
+    assert fit["r_squared"] == pytest.approx(0.82817341725, abs=1e-3)
+    assert fit["adj_r_squared"] == pytest.approx(0.81999119903, abs=1e-3)
+    assert fit["aic"] == pytest.approx(363.96445341, abs=1e-3)
+    assert fit["bic"] == pytest.approx(369.38444088, abs=1e-3)
+    assert fit["n_obs"] == 45
+    assert fit["df_resid"] == 42
