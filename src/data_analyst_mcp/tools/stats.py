@@ -442,6 +442,33 @@ def _run_anova(payload: AnovaInput) -> dict[str, Any]:
     }
 
 
+def _run_kruskal(payload: KruskalInput) -> dict[str, Any]:
+    """Kruskal-Wallis H test across distinct group labels."""
+    from scipy import stats as _sps
+
+    labels, groups = _materialize_groups(payload.name, payload.group_column, payload.metric_column)
+    r = _sps.kruskal(*groups)
+    n_total = sum(len(g) for g in groups)
+    eps = float(r.statistic) / (n_total - 1) if n_total > 1 else 0.0
+    p = float(r.pvalue)
+    interp = (
+        f"At least one of {labels} differs at α=0.05 (Kruskal-Wallis, p={p:.4f})."
+        if p < 0.05
+        else f"No evidence of group differences at α=0.05 (Kruskal-Wallis, p={p:.4f})."
+    )
+    return {
+        "ok": True,
+        "test": "kruskal",
+        "statistic": float(r.statistic),
+        "p_value": p,
+        "df": None,
+        "effect_size": {"name": "epsilon_squared", "value": eps},
+        "n_a": int(len(groups[0])) if groups else 0,
+        "n_b": int(len(groups[1])) if len(groups) > 1 else 0,
+        "interpretation": interp,
+    }
+
+
 def test_hypothesis(payload: Any) -> dict[str, Any]:
     """Dispatch to a kind-specific handler. ``payload`` is the validated union."""
     kind = payload.kind
@@ -457,6 +484,8 @@ def test_hypothesis(payload: Any) -> dict[str, Any]:
         return _run_fisher(payload)
     if kind == "anova":
         return _run_anova(payload)
+    if kind == "kruskal":
+        return _run_kruskal(payload)
     return build_error(
         type="invalid_kind",
         message=f"Unknown kind {kind!r}.",
