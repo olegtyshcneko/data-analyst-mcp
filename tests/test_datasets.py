@@ -251,6 +251,21 @@ def test_describe_column_errors_on_missing_column(call_tool: Any) -> None:
     assert result["error"]["type"] == "column_not_found"
 
 
+def test_describe_column_numeric_returns_quantiles_skew_kurt_iqr(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("describe_column", {"name": "messy", "column": "score"})
+
+    assert result["ok"] is True
+    q = result["quantiles"]
+    for p in (1, 5, 10, 25, 50, 75, 90, 95, 99):
+        assert p in q or str(p) in q
+    assert "skewness" in result
+    assert "kurtosis" in result
+    assert "iqr" in result
+    assert result["iqr"] > 0
+
+
 def test_profile_dataset_records_cell_pair_on_success(call_tool: Any) -> None:
     from data_analyst_mcp.recorder import get_recorder
 
