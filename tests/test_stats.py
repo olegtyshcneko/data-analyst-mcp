@@ -307,6 +307,33 @@ def test_compare_groups_picks_chi_square_for_categorical_metric(call_tool, load_
     assert result["effect_size"]["value"] == pytest.approx(0.1352246808, abs=1e-4)
 
 
+def _make_fisher_categorical_df() -> pd.DataFrame:
+    # 2x2 with low cell counts so expected_min < 5.
+    # Total counts: A,x=8 ; A,y=2 ; B,x=1 ; B,y=5 → expected_min ≈ 2.625
+    return pd.DataFrame(
+        {
+            "g": ["A"] * 10 + ["B"] * 6,
+            "metric": ["x"] * 8 + ["y"] * 2 + ["x"] * 1 + ["y"] * 5,
+        }
+    )
+
+
+def test_compare_groups_picks_fisher_when_2x2_expected_low(call_tool, load_df_into_session):
+    load_df_into_session("fisherfix", _make_fisher_categorical_df())
+    result = call_tool(
+        "compare_groups",
+        {"name": "fisherfix", "group_column": "g", "metric_column": "metric"},
+    )
+    # 2x2 table [[8,2],[1,5]] has expected cells with min ≈ 2.625 (< 5) → fisher_exact
+    # scipy.stats.fisher_exact([[8,2],[1,5]]) → odds_ratio=20.0, p=0.0349650350
+    assert result["ok"] is True
+    assert result["test"] == "fisher_exact"
+    assert result["statistic"] == pytest.approx(20.0, abs=1e-4)
+    assert result["p_value"] == pytest.approx(0.0349650350, abs=1e-4)
+    assert result["effect_size"]["name"] == "odds_ratio"
+    assert result["effect_size"]["value"] == pytest.approx(20.0, abs=1e-4)
+
+
 def _make_three_group_non_normal_df() -> pd.DataFrame:
     import numpy as np
 
