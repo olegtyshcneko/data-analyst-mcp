@@ -86,7 +86,13 @@ class ProfileDatasetInput(BaseModel):
 
 
 def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
-    """Stub — always returns ok=True so the not-found test fails."""
+    """Produce a full EDA profile for the named dataset."""
+    if payload.name not in session.get_datasets():
+        return build_error(
+            type="not_found",
+            message=f"No dataset named {payload.name!r} registered.",
+            hint="Call list_datasets to see what is available.",
+        )
     return {"ok": True}
 
 
