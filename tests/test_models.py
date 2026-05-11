@@ -257,3 +257,21 @@ def test_fit_model_ols_robust_switches_to_hc3_standard_errors(
     assert rb["education"]["std_err"] == pytest.approx(0.14946918649, abs=1e-3)
     # And they MUST differ from the non-robust std errors.
     assert rb["income"]["std_err"] != pytest.approx(pl["income"]["std_err"], abs=1e-6)
+
+
+def test_fit_model_ols_returns_plain_english_interpretation(call_tool, load_df_into_session):
+    load_df_into_session("duncan", _duncan_df())
+    result = call_tool(
+        "fit_model",
+        {
+            "name": "duncan",
+            "formula": "prestige ~ income + education",
+            "kind": "ols",
+        },
+    )
+    interp = result["interpretation"]
+    assert isinstance(interp, str)
+    assert len(interp) > 30
+    # Strongest signal on Duncan = `education` (smallest p, p ≈ 1.73e-6),
+    # and its coefficient is positive, so the interpretation must mention it.
+    assert "education" in interp
