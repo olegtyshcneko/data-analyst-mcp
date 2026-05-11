@@ -71,6 +71,8 @@ def plot(payload: PlotInput) -> dict[str, Any]:
             )
     if payload.kind == "hist":
         return _plot_hist(payload)
+    if payload.kind == "bar":
+        return _plot_bar(payload)
     return {"ok": True, "png_base64": "", "width": 0, "height": 0}
 
 
@@ -117,6 +119,37 @@ def _encode_figure(fig: Any) -> dict[str, Any]:
         "width": int(w),
         "height": int(h),
     }
+
+
+def _plot_bar(payload: PlotInput) -> dict[str, Any]:
+    """Bar chart: count rows per ``payload.x`` (or aggregate ``y`` by mean)."""
+    assert payload.x is not None
+    con = session.get_connection()
+    table = _quote(payload.name)
+    x_q = _quote(payload.x)
+    if payload.y is None:
+        rows = con.execute(
+            f"SELECT {x_q} AS k, COUNT(*) AS v FROM {table} "
+            f"WHERE {x_q} IS NOT NULL GROUP BY {x_q} ORDER BY {x_q}"
+        ).fetchall()
+        y_label = "count"
+    else:
+        y_q = _quote(payload.y)
+        rows = con.execute(
+            f"SELECT {x_q} AS k, AVG({y_q}) AS v FROM {table} "
+            f"WHERE {x_q} IS NOT NULL GROUP BY {x_q} ORDER BY {x_q}"
+        ).fetchall()
+        y_label = f"avg({payload.y})"
+    labels = [str(r[0]) for r in rows]
+    heights = [float(r[1]) for r in rows]
+    fig = _make_figure()
+    ax = fig.add_subplot(111)
+    ax.bar(labels, heights)
+    ax.set_xlabel(payload.x)
+    ax.set_ylabel(y_label)
+    if payload.title is not None:
+        ax.set_title(payload.title)
+    return _encode_figure(fig)
 
 
 def _plot_hist(payload: PlotInput) -> dict[str, Any]:
