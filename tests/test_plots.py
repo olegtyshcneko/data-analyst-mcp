@@ -33,3 +33,10 @@ def test_plot_missing_column_returns_column_not_found(call_tool, load_df_into_se
     result = call_tool("plot", {"name": "tiny", "kind": "hist", "x": "nope"})
     assert result["ok"] is False
     assert result["error"]["type"] == "column_not_found"
+
+
+def test_plot_scatter_without_y_returns_missing_required_param(call_tool, load_df_into_session):
+    load_df_into_session("tiny", pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}))
+    result = call_tool("plot", {"name": "tiny", "kind": "scatter", "x": "a"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "missing_required_param"
