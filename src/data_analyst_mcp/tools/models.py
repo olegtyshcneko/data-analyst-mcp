@@ -93,13 +93,55 @@ def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
         raise _FormulaError(str(exc)) from exc
 
     diagnostics = _diagnostics(m, payload.kind)
+    coefficients = _coefficients(m)
     return {
         "ok": True,
-        "coefficients": _coefficients(m),
+        "coefficients": coefficients,
         "fit": _fit_block(m, payload.kind),
         "diagnostics": diagnostics,
         "warnings": _warnings(diagnostics, payload.kind),
+        "interpretation": _interpretation(coefficients, payload.kind),
     }
+
+
+def _interpretation(coefficients: list[dict[str, Any]], kind: str) -> str:
+    """Return a 2-3 sentence plain-English summary of the fitted model.
+
+    Picks the strongest non-intercept signal (smallest p-value) and reports
+    its direction and magnitude in kind-appropriate terms:
+      - OLS: a unit change in the predictor moves the outcome by ``estimate``;
+      - logistic: the predictor's odds-ratio (``exp(estimate) - 1``);
+      - Poisson: the multiplicative effect on the expected count (``exp``).
+    """
+    import math
+
+    non_intercept = [c for c in coefficients if c["name"] != "Intercept"]
+    if not non_intercept:
+        return "Model fit succeeded; only an intercept term was estimated."
+    strongest = min(non_intercept, key=lambda c: c["p_value"])
+    direction = "positive" if strongest["estimate"] >= 0 else "negative"
+    name = strongest["name"]
+    p = strongest["p_value"]
+    est = strongest["estimate"]
+    sig = "statistically significant" if p < 0.05 else "not statistically significant"
+    if kind == "logistic":
+        odds = math.exp(est) - 1
+        pct = odds * 100.0
+        return (
+            f"Strongest predictor: `{name}` ({direction} effect, {sig} at α=0.05, p={p:.4g}). "
+            f"A one-unit increase changes the odds by ~{pct:.1f}% (odds ratio = {math.exp(est):.3f})."
+        )
+    if kind == "poisson":
+        mult = math.exp(est)
+        pct = (mult - 1.0) * 100.0
+        return (
+            f"Strongest predictor: `{name}` ({direction} effect, {sig} at α=0.05, p={p:.4g}). "
+            f"A one-unit increase multiplies the expected count by {mult:.3f} (~{pct:.1f}%)."
+        )
+    return (
+        f"Strongest predictor: `{name}` ({direction} effect, {sig} at α=0.05, p={p:.4g}). "
+        f"A one-unit increase moves the response by {est:.4g} units."
+    )
 
 
 def _warnings(diagnostics: dict[str, Any], kind: str) -> list[str]:
