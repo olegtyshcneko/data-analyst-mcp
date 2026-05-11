@@ -127,6 +127,25 @@ def test_profile_dataset_flags_mostly_null_when_over_50_percent(call_tool: Any) 
     assert by_name["customer_id"]["flags"]["mostly_null"] is False
 
 
+def test_profile_dataset_returns_numeric_stats(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("profile_dataset", {"name": "messy"})
+
+    by_name = {c["name"]: c for c in result["columns"]}
+    age = by_name["age"]
+    assert "numeric" in age
+    stats = age["numeric"]
+    for key in ("min", "max", "mean", "median", "std", "p25", "p75", "p99",
+                "zeros", "negatives"):
+        assert key in stats
+    # age values are in [18, 80] roughly per the generator.
+    assert stats["min"] >= 0
+    assert stats["max"] <= 200
+    assert stats["zeros"] == 0
+    assert stats["negatives"] == 0
+
+
 def test_list_datasets_reports_registered_entries(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 
