@@ -722,12 +722,19 @@ def compare_groups(payload: CompareGroupsInput) -> dict[str, Any]:
         test = _select_two_sample_continuous(p_norm, p_lev)
         from scipy import stats as _sps
 
-        if test == "welch_t":
-            r = _sps.ttest_ind(a, b, equal_var=False)
+        if test == "mann_whitney":
+            mw = _sps.mannwhitneyu(a, b, alternative="two-sided")
+            stat, p = float(mw.statistic), float(mw.pvalue)
+            df = float("nan")
+            rbis = 1.0 - 2.0 * stat / (len(a) * len(b))
+            effect = {"name": "rank_biserial", "value": rbis}
         else:
-            r = _sps.ttest_ind(a, b, equal_var=True)
-        effect = {"name": "cohens_d", "value": _cohens_d(a, b)}
-        stat, p, df = float(r.statistic), float(r.pvalue), float(r.df)
+            if test == "welch_t":
+                r = _sps.ttest_ind(a, b, equal_var=False)
+            else:
+                r = _sps.ttest_ind(a, b, equal_var=True)
+            effect = {"name": "cohens_d", "value": _cohens_d(a, b)}
+            stat, p, df = float(r.statistic), float(r.pvalue), float(r.df)
 
         return _build_two_sample_response(
             test=test,
