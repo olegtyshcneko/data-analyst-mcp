@@ -279,8 +279,6 @@ def _fit_block(m: Any, kind: str) -> dict[str, Any]:
     if kind == "ols":
         out["r_squared"] = float(m.rsquared)
         out["adj_r_squared"] = float(m.rsquared_adj)
-    else:
-        out["pseudo_r_squared"] = float(m.prsquared)
     return out
 
 
