@@ -24,6 +24,21 @@ mcp: FastMCP = FastMCP("data-analyst-mcp")
 
 
 @mcp.tool()
+def list_datasets() -> dict[str, Any]:
+    """List every dataset currently registered in this session.
+
+    Each entry reports name, row count, column count, and the registration
+    timestamp so the agent can pick a target for downstream tools without
+    re-loading.
+    """
+    try:
+        return _datasets.list_datasets()
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("list_datasets failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
 def load_dataset(
     path: str,
     name: str | None = None,

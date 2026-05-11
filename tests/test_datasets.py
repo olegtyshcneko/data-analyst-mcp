@@ -79,6 +79,12 @@ def test_load_dataset_supports_parquet(call_tool: Any, tmp_path: Any) -> None:
     assert {c["name"] for c in result["columns"]} == {"a", "b"}
 
 
+def test_list_datasets_returns_empty_on_fresh_session(call_tool: Any) -> None:
+    result = call_tool("list_datasets", {})
+
+    assert result == {"ok": True, "datasets": []}
+
+
 def test_load_dataset_supports_jsonl(call_tool: Any, tmp_path: Any) -> None:
     p = tmp_path / "tiny.jsonl"
     p.write_text('{"a": 1, "b": "x"}\n{"a": 2, "b": "y"}\n')

@@ -71,6 +71,11 @@ def _build_read_call(path: str, fmt: str) -> str:
     return f"read_csv_auto('{path}', SAMPLE_SIZE=-1)"
 
 
+def list_datasets() -> dict[str, Any]:
+    """Stub — returns a sentinel list so the empty-list test fails."""
+    return {"ok": True, "datasets": [{"sentinel": True}]}
+
+
 def load_dataset(payload: LoadDatasetInput) -> dict[str, Any]:
     """Register a file as a DuckDB table in the session."""
     ext = _extension(payload.path)
