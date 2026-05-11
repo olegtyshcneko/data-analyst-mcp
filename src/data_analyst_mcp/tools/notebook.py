@@ -59,7 +59,7 @@ def emit_notebook(payload: EmitNotebookInput) -> dict[str, Any]:
     try:
         with open(target, "w", encoding="utf-8") as fh:
             nbf.write(nb, fh)  # type: ignore[reportUnknownMemberType]
-    except OSError as exc:
+    except FileNotFoundError as exc:
         return build_error(
             type="write_failed",
             message=f"Could not write notebook to {target!r}: {exc}.",
