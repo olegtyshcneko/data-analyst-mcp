@@ -92,7 +92,30 @@ def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
         # Patsy / NameError / column-binding failures all bubble up here.
         raise _FormulaError(str(exc)) from exc
 
-    return build_error(
-        type="not_implemented",
-        message=f"fit_model({payload.kind}) is not yet implemented past the smoke path.",
-    )
+    return {
+        "ok": True,
+        "coefficients": _coefficients(m),
+    }
+
+
+def _coefficients(m: Any) -> list[dict[str, Any]]:
+    """Build the per-coefficient envelope from a fitted statsmodels result."""
+    params: Any = m.params
+    bse: Any = m.bse
+    tvals: Any = m.tvalues
+    pvals: Any = m.pvalues
+    ci: Any = m.conf_int()
+    out: list[dict[str, Any]] = []
+    for name in params.index:
+        out.append(
+            {
+                "name": str(name),
+                "estimate": float(params[name]),
+                "std_err": float(bse[name]),
+                "t": float(tvals[name]),
+                "p_value": float(pvals[name]),
+                "ci_low": float(ci.loc[name, 0]),
+                "ci_high": float(ci.loc[name, 1]),
+            }
+        )
+    return out
