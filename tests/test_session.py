@@ -33,3 +33,16 @@ def test_register_inserts_a_dataset_entry() -> None:
     assert entry.rows == 42
     assert entry.columns == [{"name": "id", "dtype": "INTEGER"}]
     assert entry.registered_at is not None
+
+
+def test_get_connection_returns_singleton_duckdb_handle() -> None:
+    from data_analyst_mcp import session
+
+    session.reset()
+    con_a = session.get_connection()
+    con_b = session.get_connection()
+
+    assert con_a is con_b
+    # Smoke: the handle is usable as a DuckDB connection.
+    result = con_a.sql("SELECT 1 AS x").fetchall()
+    assert result == [(1,)]

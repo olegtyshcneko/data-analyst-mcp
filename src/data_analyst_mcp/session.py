@@ -26,6 +26,13 @@ class DatasetEntry:
 _datasets: dict[str, DatasetEntry] = {}
 
 
+def get_connection() -> Any:
+    """Stub — returns a fresh handle each call so the singleton test fails."""
+    import duckdb
+
+    return duckdb.connect()
+
+
 def register(
     *,
     name: str,
