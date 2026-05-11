@@ -358,6 +358,35 @@ def _run_chi_square(payload: ChiSquareInput) -> dict[str, Any]:
     }
 
 
+def _run_fisher(payload: FisherInput) -> dict[str, Any]:
+    """Fisher's exact test on a 2x2 contingency table."""
+    import numpy as np
+    from scipy import stats as _sps
+
+    table = np.array(payload.table, dtype=float)
+    r = _sps.fisher_exact(table)
+    odds = float(r.statistic)
+    p = float(r.pvalue)
+    interp = (
+        f"Variables are not independent at α=0.05 (Fisher exact, p={p:.4f})."
+        if p < 0.05
+        else f"No evidence against independence at α=0.05 (Fisher exact, p={p:.4f})."
+    )
+    n_a = int(table[0].sum()) if table.shape[0] >= 1 else 0
+    n_b = int(table[1].sum()) if table.shape[0] >= 2 else 0
+    return {
+        "ok": True,
+        "test": "fisher",
+        "statistic": odds,
+        "p_value": p,
+        "df": None,
+        "effect_size": {"name": "odds_ratio", "value": odds},
+        "n_a": n_a,
+        "n_b": n_b,
+        "interpretation": interp,
+    }
+
+
 def test_hypothesis(payload: Any) -> dict[str, Any]:
     """Dispatch to a kind-specific handler. ``payload`` is the validated union."""
     kind = payload.kind
@@ -369,6 +398,8 @@ def test_hypothesis(payload: Any) -> dict[str, Any]:
         return _run_mann_whitney(payload)
     if kind == "chi_square":
         return _run_chi_square(payload)
+    if kind == "fisher":
+        return _run_fisher(payload)
     return build_error(
         type="invalid_kind",
         message=f"Unknown kind {kind!r}.",
