@@ -224,6 +224,11 @@ def _diagnostics(m: Any, kind: str) -> dict[str, Any]:
         out["durbin_watson"] = float(durbin_watson(np.asarray(m.resid)))
         out["jarque_bera_p"] = float(jb[1])
         out["vif"] = _vif_per_coefficient(m)
+    else:
+        out["breusch_pagan_p"] = None
+        out["durbin_watson"] = None
+        out["jarque_bera_p"] = None
+        out["vif"] = None
     return out
 
 
