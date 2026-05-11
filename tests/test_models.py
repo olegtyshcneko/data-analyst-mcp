@@ -297,3 +297,42 @@ def test_fit_model_ols_records_markdown_and_code_cells(call_tool, load_df_into_s
     assert cells[1]["metadata"]["tool_name"] == "fit_model"
     assert "prestige ~ income + education" in cells[1]["source"]
     assert "smf.ols" in cells[1]["source"]
+
+
+# === Logistic — known-answer on a seeded synthetic dataset ===
+#
+# Generated with numpy.random.default_rng(20260511), n=500:
+#   x, z ~ N(0,1); logit = -0.5 + 1.2 x - 0.8 z; p = sigmoid(logit);
+#   y = (uniform < p).
+# Fitted once via smf.logit("y ~ x + z").fit(disp=0); pinned params below
+# are the LITERAL output (not the data-generating parameters) so the
+# assertion is fully reproducible.
+
+
+def _logistic_df() -> pd.DataFrame:
+    rng = np.random.default_rng(20260511)
+    n = 500
+    x = rng.standard_normal(n)
+    z = rng.standard_normal(n)
+    logit = -0.5 + 1.2 * x - 0.8 * z
+    p = 1 / (1 + np.exp(-logit))
+    y = (rng.random(n) < p).astype(int)
+    return pd.DataFrame({"y": y, "x": x, "z": z})
+
+
+def test_fit_model_logistic_returns_pinned_coefficients(call_tool, load_df_into_session):
+    load_df_into_session("logi", _logistic_df())
+    result = call_tool(
+        "fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"}
+    )
+    assert result["ok"] is True
+    # smf.logit("y ~ x + z", data=logi).fit(disp=0).params:
+    #   Intercept = -0.2936185311262021
+    #   x         =  1.1464343597441933
+    #   z         = -0.7152252266279717
+    by_name = {c["name"]: c for c in result["coefficients"]}
+    assert by_name["Intercept"]["estimate"] == pytest.approx(-0.2936185311, abs=1e-3)
+    assert by_name["x"]["estimate"] == pytest.approx(1.1464343597, abs=1e-3)
+    assert by_name["z"]["estimate"] == pytest.approx(-0.7152252266, abs=1e-3)
+    # m.bse:  x = 0.12914932615314562
+    assert by_name["x"]["std_err"] == pytest.approx(0.12914932615, abs=1e-3)
