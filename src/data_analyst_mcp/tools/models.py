@@ -127,8 +127,8 @@ def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
             m = smf.ols(payload.formula, data=df).fit(cov_type=cov_type)
         elif payload.kind == "logistic":
             m = smf.logit(payload.formula, data=df).fit(disp=0)
-        else:
-            raise _FormulaError(f"kind={payload.kind!r} not yet supported")
+        else:  # poisson
+            m = smf.poisson(payload.formula, data=df).fit(disp=0)
     except Exception as exc:
         # Patsy / NameError / column-binding failures all bubble up here.
         raise _FormulaError(str(exc)) from exc
