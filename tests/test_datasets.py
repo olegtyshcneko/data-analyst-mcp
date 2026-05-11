@@ -230,6 +230,18 @@ def test_profile_dataset_returns_head_sample(call_tool: Any) -> None:
     assert "customer_id" in result["head"][0]
 
 
+def test_profile_dataset_returns_suggestions(call_tool: Any) -> None:
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool("profile_dataset", {"name": "messy"})
+
+    assert "suggestions" in result
+    assert isinstance(result["suggestions"], list)
+    assert 1 <= len(result["suggestions"]) <= 3
+    for s in result["suggestions"]:
+        assert isinstance(s, str)
+
+
 def test_list_datasets_reports_registered_entries(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 
