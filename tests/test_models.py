@@ -423,3 +423,36 @@ def test_fit_model_logistic_records_markdown_and_code_cells(call_tool, load_df_i
     assert cells[0]["cell_type"] == "markdown"
     assert cells[1]["cell_type"] == "code"
     assert "smf.logit" in cells[1]["source"]
+
+
+# === Poisson — known-answer on a seeded synthetic dataset ===
+#
+# Generated with numpy.random.default_rng(20260511), n=400:
+#   x ~ N(0,1); lambda = exp(0.5 + 0.7 x); y ~ Poisson(lambda).
+# Fitted via smf.poisson("y ~ x").fit(disp=0). Pinned params are the LITERAL
+# REPL output (≤1e-2 tolerance — MLE recovery on Poisson is noisier).
+
+
+def _poisson_df() -> pd.DataFrame:
+    rng = np.random.default_rng(20260511)
+    n = 400
+    x = rng.standard_normal(n)
+    lam = np.exp(0.5 + 0.7 * x)
+    y = rng.poisson(lam)
+    return pd.DataFrame({"y": y, "x": x})
+
+
+def test_fit_model_poisson_returns_pinned_coefficients(call_tool, load_df_into_session):
+    load_df_into_session("pois", _poisson_df())
+    result = call_tool(
+        "fit_model", {"name": "pois", "formula": "y ~ x", "kind": "poisson"}
+    )
+    assert result["ok"] is True
+    # smf.poisson("y ~ x", data=pois).fit(disp=0).params:
+    #   Intercept = 0.4955550345349605
+    #   x         = 0.7087011623187054
+    by_name = {c["name"]: c for c in result["coefficients"]}
+    assert by_name["Intercept"]["estimate"] == pytest.approx(0.4955550345, abs=1e-2)
+    assert by_name["x"]["estimate"] == pytest.approx(0.7087011623, abs=1e-2)
+    # m.bse:  x = 0.03469217336544108
+    assert by_name["x"]["std_err"] == pytest.approx(0.0346921734, abs=1e-2)
