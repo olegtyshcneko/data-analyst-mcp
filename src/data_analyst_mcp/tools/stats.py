@@ -634,6 +634,15 @@ def compare_groups(payload: CompareGroupsInput) -> dict[str, Any]:
             message=f"No dataset named {payload.name!r} registered.",
             hint="Call list_datasets to see what is available.",
         )
+    entry = entries[payload.name]
+    available = {c["name"]: c["dtype"] for c in entry.columns}
+    for col in (payload.group_column, payload.metric_column):
+        if col not in available:
+            return build_error(
+                type="column_not_found",
+                message=f"Column {col!r} is not in dataset {payload.name!r}.",
+                hint=f"Available columns: {', '.join(sorted(available))}",
+            )
     return {"ok": True}
 
 
