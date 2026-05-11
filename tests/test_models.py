@@ -38,3 +38,58 @@ def test_fit_model_missing_column_returns_formula_error(call_tool, load_df_into_
     )
     assert result["ok"] is False
     assert result["error"]["type"] == "formula_error"
+
+
+# === OLS — known-answer via statsmodels Duncan dataset ===
+#
+# All OLS expected values below are pinned from a one-time REPL run of
+#   statsmodels.api.datasets.get_rdataset("Duncan", "carData").data
+# fitted with smf.ols("prestige ~ income + education", data=df).fit().
+# Source comment on each assertion cites the exact attribute used.
+
+
+def _duncan_df() -> pd.DataFrame:
+    """Load the Duncan occupational prestige dataset as a DataFrame.
+
+    Cached in-memory once per test session via statsmodels' get_rdataset.
+    """
+    import statsmodels.api as sm
+
+    ds = sm.datasets.get_rdataset("Duncan", "carData", cache=True)
+    return ds.data
+
+
+def test_fit_model_ols_returns_pinned_coefficients(call_tool, load_df_into_session):
+    load_df_into_session("duncan", _duncan_df())
+    result = call_tool(
+        "fit_model",
+        {
+            "name": "duncan",
+            "formula": "prestige ~ income + education",
+            "kind": "ols",
+        },
+    )
+    assert result["ok"] is True
+    # smf.ols("prestige ~ income + education", data=duncan).fit().params:
+    #   Intercept = -6.064662922103344
+    #   income    =  0.5987328215294951
+    #   education =  0.5458339094008795
+    by_name = {c["name"]: c for c in result["coefficients"]}
+    assert by_name["Intercept"]["estimate"] == pytest.approx(-6.064662922, abs=1e-3)
+    assert by_name["income"]["estimate"] == pytest.approx(0.5987328215, abs=1e-3)
+    assert by_name["education"]["estimate"] == pytest.approx(0.5458339094, abs=1e-3)
+    # m.bse — non-robust:
+    #   Intercept = 4.271941174529124
+    #   income    = 0.11966734981235409
+    #   education = 0.09825264133039983
+    assert by_name["income"]["std_err"] == pytest.approx(0.1196673498, abs=1e-3)
+    # m.tvalues:
+    #   income    = 5.003309778885767
+    assert by_name["income"]["t"] == pytest.approx(5.003309779, abs=1e-3)
+    # m.pvalues:
+    #   income    = 1.0531839714905279e-05
+    assert by_name["income"]["p_value"] == pytest.approx(1.0531839715e-05, abs=1e-7)
+    # m.conf_int():
+    #   income → (0.3572343324484092, 0.8402313106105811)
+    assert by_name["income"]["ci_low"] == pytest.approx(0.3572343324, abs=1e-3)
+    assert by_name["income"]["ci_high"] == pytest.approx(0.8402313106, abs=1e-3)
