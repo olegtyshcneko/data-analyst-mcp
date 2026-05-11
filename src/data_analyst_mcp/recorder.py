@@ -31,11 +31,23 @@ _FORMAT_TO_READER: dict[str, str] = {
 
 
 def _build_setup_source() -> str:
-    """Compose the setup-cell body from the live session registry."""
+    """Compose the setup-cell body from the live session registry.
+
+    In-memory datasets (``format == "dataframe"``) have no on-disk path and
+    cannot be reloaded inside the notebook — we emit a commented note so the
+    reader knows the table was present in the live session but must be
+    rematerialized by hand.
+    """
     from data_analyst_mcp import session as _session
 
     lines = [_SETUP_IMPORTS]
     for name, entry in _session.get_datasets().items():
+        if entry.format == "dataframe":
+            lines.append(
+                f"# Note: in-memory dataset {name!r} was registered live and is "
+                f"not reloaded here — rematerialize it from your own source."
+            )
+            continue
         reader = _FORMAT_TO_READER.get(entry.format, "read_csv_auto")
         if reader == "read_csv_auto":
             call = f"{reader}('{entry.path}', SAMPLE_SIZE=-1)"
