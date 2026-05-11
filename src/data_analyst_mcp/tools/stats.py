@@ -625,6 +625,59 @@ class CompareGroupsInput(BaseModel):
     )
 
 
+def _top_n_labels(name: str, group_col: str, n: int) -> list[str]:
+    """Return the top-N most-frequent (non-null) labels of ``group_col``."""
+    con = session.get_connection()
+    rows = con.execute(
+        f"SELECT {_quote(group_col)} AS lab, COUNT(*) AS c "
+        f"FROM {_quote(name)} "
+        f"WHERE {_quote(group_col)} IS NOT NULL "
+        f"GROUP BY lab ORDER BY c DESC, lab ASC LIMIT {int(n)}"
+    ).fetchall()
+    return [str(r[0]) for r in rows]
+
+
+def _all_labels(name: str, group_col: str) -> list[str]:
+    """Return every distinct (non-null) label of ``group_col``."""
+    con = session.get_connection()
+    rows = con.execute(
+        f"SELECT DISTINCT {_quote(group_col)} FROM {_quote(name)} "
+        f"WHERE {_quote(group_col)} IS NOT NULL ORDER BY 1"
+    ).fetchall()
+    return [str(r[0]) for r in rows]
+
+
+def _shapiro_p(arr: Any) -> float | None:
+    """Return Shapiro-Wilk p-value, sampling at most 5000 elements; None if n<3."""
+    import numpy as np
+    from scipy import stats as _sps
+
+    if len(arr) < 3:
+        return None
+    if len(arr) > 5000:
+        rng = np.random.default_rng(0)
+        idx = rng.choice(len(arr), size=5000, replace=False)
+        arr = arr[idx]
+    return float(_sps.shapiro(arr).pvalue)
+
+
+def _levene_p(*groups: Any) -> float:
+    """Return Levene's test p-value across the given groups."""
+    from scipy import stats as _sps
+
+    return float(_sps.levene(*groups).pvalue)
+
+
+def _select_two_sample_continuous(p_norm: list[float | None], p_levene: float) -> str:
+    """Pick student_t, welch_t, or mann_whitney for a 2-sample continuous compare."""
+    normality_violated = any(p is not None and p < 0.05 for p in p_norm)
+    if normality_violated:
+        return "mann_whitney"
+    if p_levene < 0.05:
+        return "welch_t"
+    return "student_t"
+
+
 def compare_groups(payload: CompareGroupsInput) -> dict[str, Any]:
     """Pick an appropriate statistical test for two-or-more groups."""
     entries = session.get_datasets()
@@ -643,7 +696,142 @@ def compare_groups(payload: CompareGroupsInput) -> dict[str, Any]:
                 message=f"Column {col!r} is not in dataset {payload.name!r}.",
                 hint=f"Available columns: {', '.join(sorted(available))}",
             )
-    return {"ok": True}
+
+    metric_dtype = available[payload.metric_column]
+    if not _is_numeric_dtype(metric_dtype):
+        return build_error(
+            type="not_implemented",
+            message="Categorical metric path not yet wired.",
+        )
+
+    # Continuous metric path.
+    if payload.groups is not None:
+        labels = list(payload.groups)
+    else:
+        labels = _top_n_labels(payload.name, payload.group_column, 2)
+
+    arrays = [
+        _materialize_group(payload.name, payload.group_column, payload.metric_column, lab)
+        for lab in labels
+    ]
+
+    if len(labels) == 2:
+        a, b = arrays
+        p_norm = [_shapiro_p(a), _shapiro_p(b)]
+        p_lev = _levene_p(a, b)
+        test = _select_two_sample_continuous(p_norm, p_lev)
+        from scipy import stats as _sps
+
+        if test == "student_t":
+            r = _sps.ttest_ind(a, b, equal_var=True)
+            effect = {"name": "cohens_d", "value": _cohens_d(a, b)}
+            stat, p, df = float(r.statistic), float(r.pvalue), float(r.df)
+        elif test == "welch_t":
+            r = _sps.ttest_ind(a, b, equal_var=False)
+            effect = {"name": "cohens_d", "value": _cohens_d(a, b)}
+            stat, p, df = float(r.statistic), float(r.pvalue), float(r.df)
+        else:  # mann_whitney
+            r = _sps.mannwhitneyu(a, b, alternative="two-sided")
+            stat, p = float(r.statistic), float(r.pvalue)
+            df = float("nan")
+            rbis = 1.0 - 2.0 * stat / (len(a) * len(b))
+            effect = {"name": "rank_biserial", "value": rbis}
+
+        return _build_two_sample_response(
+            test=test,
+            stat=stat,
+            p=p,
+            df=df,
+            effect=effect,
+            labels=labels,
+            arrays=arrays,
+            p_norm=p_norm,
+            p_lev=p_lev,
+        )
+
+    return build_error(
+        type="not_implemented",
+        message=">2-sample continuous path not wired yet.",
+    )
+
+
+def _build_two_sample_response(
+    *,
+    test: str,
+    stat: float,
+    p: float,
+    df: float,
+    effect: dict[str, Any],
+    labels: list[str],
+    arrays: list[Any],
+    p_norm: list[float | None],
+    p_lev: float,
+) -> dict[str, Any]:
+    """Assemble the standard compare_groups envelope for the 2-sample path."""
+    normality_violated = any(pn is not None and pn < 0.05 for pn in p_norm)
+    equal_var_violated = p_lev < 0.05
+    if test == "student_t":
+        norm_consequence = "Normality holds; pooled variance acceptable."
+        var_consequence = "Pooled variance acceptable."
+    elif test == "welch_t":
+        norm_consequence = "Normality holds."
+        var_consequence = "Switched from Student to Welch's t."
+    else:
+        norm_consequence = "Switched from t-test to Mann-Whitney U."
+        var_consequence = (
+            "Welch-vs-Student moot — switched to rank-based test."
+        )
+    assumption_checks: dict[str, Any] = {
+        "normality_test": {
+            "name": "shapiro",
+            "p": _min_non_none(p_norm),
+            "violated": normality_violated,
+            "consequence": norm_consequence,
+        },
+        "equal_variances_test": {
+            "name": "levene",
+            "p": p_lev,
+            "violated": equal_var_violated,
+            "consequence": var_consequence,
+        },
+    }
+    interp = _build_interpretation_two(test, labels, p, effect)
+    return {
+        "ok": True,
+        "test": test,
+        "statistic": stat,
+        "p_value": p,
+        "df": df if df == df else None,  # NaN → None
+        "effect_size": effect,
+        "groups": [{"name": labels[i], "n": int(len(arrays[i]))} for i in range(len(labels))],
+        "assumption_checks": assumption_checks,
+        "interpretation": interp,
+    }
+
+
+def _min_non_none(vals: list[float | None]) -> float | None:
+    """Smallest finite value in ``vals`` or None when all are None."""
+    finite = [v for v in vals if v is not None]
+    return min(finite) if finite else None
+
+
+def _build_interpretation_two(test: str, labels: list[str], p: float, effect: dict[str, Any]) -> str:
+    """One-sentence plain-English interpretation for a 2-sample result."""
+    a, b = labels[0], labels[1]
+    name_h = {
+        "student_t": "Student's t",
+        "welch_t": "Welch's t",
+        "mann_whitney": "Mann-Whitney U",
+    }.get(test, test)
+    if p < 0.05:
+        return (
+            f"Groups `{a}` and `{b}` differ significantly ({name_h}, p={p:.4f}, "
+            f"{effect['name']}={effect['value']:.3f})."
+        )
+    return (
+        f"No statistically significant difference between `{a}` and `{b}` at α=0.05 "
+        f"({name_h}, p={p:.4f}, {effect['name']}={effect['value']:.3f})."
+    )
 
 
 def _render_heatmap_png(labels: list[str], matrix: list[list[float]]) -> str:
