@@ -96,7 +96,53 @@ def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
         "ok": True,
         "coefficients": _coefficients(m),
         "fit": _fit_block(m, payload.kind),
+        "diagnostics": _diagnostics(m, payload.kind),
     }
+
+
+def _diagnostics(m: Any, kind: str) -> dict[str, Any]:
+    """Build the diagnostics envelope.
+
+    OLS gets the full battery (Breusch-Pagan, Durbin-Watson, Jarque-Bera,
+    condition number). Logistic / Poisson only get ``condition_number`` —
+    BP/DW/JB are OLS-specific residual diagnostics and are reported as
+    ``None`` for non-OLS kinds to keep a stable shape.
+    """
+    import numpy as np
+
+    out: dict[str, Any] = {"condition_number": _condition_number(m)}
+    if kind == "ols":
+        from statsmodels.stats.diagnostic import het_breuschpagan  # type: ignore[reportMissingTypeStubs]
+        from statsmodels.stats.stattools import (  # type: ignore[reportMissingTypeStubs]
+            durbin_watson,
+            jarque_bera,
+        )
+
+        bp = het_breuschpagan(np.asarray(m.resid), np.asarray(m.model.exog))
+        jb = jarque_bera(np.asarray(m.resid))
+        out["breusch_pagan_p"] = float(bp[1])
+        out["durbin_watson"] = float(durbin_watson(np.asarray(m.resid)))
+        out["jarque_bera_p"] = float(jb[1])
+    else:
+        out["breusch_pagan_p"] = None
+        out["durbin_watson"] = None
+        out["jarque_bera_p"] = None
+    return out
+
+
+def _condition_number(m: Any) -> float:
+    """Return the condition number of the design matrix as a float.
+
+    OLS results expose ``condition_number`` directly; for GLM-family results
+    we fall back to ``numpy.linalg.cond`` on the exog matrix so the field is
+    always populated.
+    """
+    cn = getattr(m, "condition_number", None)
+    if cn is not None:
+        return float(cn)
+    import numpy as np
+
+    return float(np.linalg.cond(np.asarray(m.model.exog)))
 
 
 def _fit_block(m: Any, kind: str) -> dict[str, Any]:
