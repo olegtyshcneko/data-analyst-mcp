@@ -813,6 +813,39 @@ def _compare_groups_categorical(payload: CompareGroupsInput) -> dict[str, Any]:
     denom = n * max(min(table.shape) - 1, 1)
     cv = math.sqrt(float(chi2) / denom) if denom > 0 else 0.0
     arrays = [table[i] for i in range(len(g_labels))]
+
+    # 2x2 with any expected cell < 5 → Fisher's exact (more accurate at low n)
+    if table.shape == (2, 2) and float(_exp.min()) < 5:
+        fr = _sps.fisher_exact(table)
+        odds = float(fr.statistic)
+        p_f = float(fr.pvalue)
+        interp_f = (
+            f"`{payload.group_column}` and `{payload.metric_column}` are associated "
+            f"at α=0.05 (Fisher exact, p={p_f:.4f}, odds_ratio={odds:.3f})."
+            if p_f < 0.05
+            else f"No evidence of association between `{payload.group_column}` and "
+            f"`{payload.metric_column}` at α=0.05 (Fisher exact, p={p_f:.4f})."
+        )
+        return {
+            "ok": True,
+            "test": "fisher_exact",
+            "statistic": odds,
+            "p_value": p_f,
+            "df": None,
+            "effect_size": {"name": "odds_ratio", "value": odds},
+            "groups": [
+                {"name": g_labels[i], "n": int(arrays[i].sum())} for i in range(len(g_labels))
+            ],
+            "assumption_checks": {
+                "expected_cell_min": {
+                    "value": float(_exp.min()),
+                    "violated": True,
+                    "consequence": "Switched to Fisher's exact (2×2 with expected<5).",
+                }
+            },
+            "interpretation": interp_f,
+        }
+
     interp = (
         f"`{payload.group_column}` and `{payload.metric_column}` are associated "
         f"at α=0.05 (chi-square, p={float(p):.4f}, cramers_v={cv:.3f})."
