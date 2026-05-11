@@ -506,3 +506,17 @@ def test_fit_model_poisson_no_overdispersion_warning_on_clean_fixture(
     )
     # Pearson dispersion ≈ 0.95 on the clean fixture → no warning.
     assert "overdispersion" not in result["warnings"]
+
+
+def test_fit_model_poisson_records_markdown_and_code_cells(call_tool, load_df_into_session):
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("pois", _poisson_df())
+    call_tool(
+        "fit_model", {"name": "pois", "formula": "y ~ x", "kind": "poisson"}
+    )
+    cells = get_recorder().cells
+    assert len(cells) == 2
+    assert cells[0]["cell_type"] == "markdown"
+    assert cells[1]["cell_type"] == "code"
+    assert "smf.poisson" in cells[1]["source"]
