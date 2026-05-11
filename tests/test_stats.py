@@ -395,6 +395,38 @@ def test_compare_groups_picks_student_t_when_normal_equal_var(call_tool, load_df
     assert result["effect_size"]["value"] == pytest.approx(-1.2649110641, abs=1e-4)
 
 
+def _make_welch_selection_df() -> pd.DataFrame:
+    import numpy as np
+
+    a = np.random.RandomState(0).normal(0, 1, 30)
+    b = np.random.RandomState(1).normal(0, 5, 30)
+    return pd.DataFrame(
+        {
+            "g": ["A"] * 30 + ["B"] * 30,
+            "v": list(a) + list(b),
+        }
+    )
+
+
+def test_compare_groups_picks_welch_when_unequal_variances(call_tool, load_df_into_session):
+    load_df_into_session("welchfix", _make_welch_selection_df())
+    result = call_tool(
+        "compare_groups",
+        {"name": "welchfix", "group_column": "g", "metric_column": "v", "groups": ["A", "B"]},
+    )
+    # On rs.normal(0,1,30) and rs.normal(0,5,30):
+    #   shapiro A p≈0.525, B p≈0.635 (both > 0.05 → normal)
+    #   levene p ≈ 3.78e-7 (< 0.05 → equal_var violated)
+    # scipy.stats.ttest_ind(a, b, equal_var=False) → t=0.7749163420, p=0.4441383708
+    assert result["ok"] is True
+    assert result["test"] == "welch_t"
+    assert result["statistic"] == pytest.approx(0.7749163420, abs=1e-4)
+    assert result["p_value"] == pytest.approx(0.4441383708, abs=1e-4)
+    assert result["effect_size"]["name"] == "cohens_d"
+    assert result["effect_size"]["value"] == pytest.approx(0.2000825391, abs=1e-4)
+    assert result["assumption_checks"]["equal_variances_test"]["violated"] is True
+
+
 def test_test_hypothesis_records_cells_on_success(call_tool, load_df_into_session):
     from data_analyst_mcp.recorder import get_recorder
 
