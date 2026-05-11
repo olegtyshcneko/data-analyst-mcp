@@ -496,9 +496,20 @@ def _run_ks(payload: KSInput) -> dict[str, Any]:
     }
 
 
+_DATASET_KINDS = {"t_test", "welch", "mann_whitney", "ks", "anova", "kruskal"}
+
+
 def test_hypothesis(payload: Any) -> dict[str, Any]:
     """Dispatch to a kind-specific handler. ``payload`` is the validated union."""
     kind = payload.kind
+    if kind in _DATASET_KINDS:
+        ds_name = payload.name
+        if ds_name not in session.get_datasets():
+            return build_error(
+                type="not_found",
+                message=f"No dataset named {ds_name!r} registered.",
+                hint="Call list_datasets to see what is available.",
+            )
     if kind == "t_test":
         return _run_t_test(payload)
     if kind == "welch":
