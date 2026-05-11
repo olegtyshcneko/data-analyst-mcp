@@ -95,9 +95,7 @@ def _plot_impl(payload: PlotInput) -> dict[str, Any]:
 
 
 def _record_plot(payload: PlotInput, result: dict[str, Any]) -> None:
-    """Append a markdown+code cell pair describing the plot call (on success)."""
-    if not result.get("ok"):
-        return
+    """Append a markdown+code cell pair describing the plot call."""
     md = _plot_markdown(payload)
     code = _plot_code(payload)
     get_recorder().record(markdown=md, code=code, tool_name="plot")
