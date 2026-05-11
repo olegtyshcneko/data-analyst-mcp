@@ -430,6 +430,32 @@ def test_fit_model_logistic_coerces_bool_endog_to_numeric(call_tool, load_df_int
     assert by_name["x"]["estimate"] is not None
 
 
+def test_fit_model_logistic_coerces_nullable_boolean_endog(call_tool, load_df_into_session):
+    """Nullable pandas BooleanDtype endogs must also be coerced.
+
+    DuckDB returns a pandas extension ``BooleanDtype`` (not numpy ``bool``)
+    whenever a CSV boolean column contains NULL — which is the exact shape
+    of ``synthetic_crm/opportunities.csv``'s ``won`` column (NULL while the
+    opportunity is still open). statsmodels rejects that dtype with
+    ``Cannot interpret 'BooleanDtype' as a data type``.
+    """
+    df = pd.DataFrame(
+        {
+            "y": pd.array(
+                [True, False, True, False, True, None, True, False, True, False],
+                dtype="boolean",
+            ),
+            "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+        }
+    )
+    load_df_into_session("ext_logi", df)
+    result = call_tool(
+        "fit_model",
+        {"name": "ext_logi", "formula": "y ~ x", "kind": "logistic"},
+    )
+    assert result["ok"] is True, result
+
+
 # === Poisson — known-answer on a seeded synthetic dataset ===
 #
 # Generated with numpy.random.default_rng(20260511), n=400:
