@@ -21,3 +21,10 @@ def test_emit_notebook_on_empty_session_writes_a_valid_notebook(
 
     nb = nbf.read(r["path"], as_version=4)
     nbf.validate(nb)
+
+
+def test_emit_notebook_returns_absolute_path(call_tool, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    r = call_tool("emit_notebook", {"path": "relative.ipynb"})
+    assert r["ok"] is True
+    assert Path(r["path"]).is_absolute()
