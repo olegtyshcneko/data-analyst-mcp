@@ -282,11 +282,34 @@ def _interpret_two_sample(a: str, b: str, p: float) -> str:
     )
 
 
+def _run_welch(payload: WelchInput) -> dict[str, Any]:
+    """Welch's t-test (equal_var=False)."""
+    from scipy import stats as _sps
+
+    a = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_a)
+    b = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_b)
+    r = _sps.ttest_ind(a, b, equal_var=False)
+    interp = _interpret_two_sample(payload.group_a, payload.group_b, float(r.pvalue))
+    return {
+        "ok": True,
+        "test": "welch",
+        "statistic": float(r.statistic),
+        "p_value": float(r.pvalue),
+        "df": float(r.df),
+        "effect_size": {"name": "cohens_d", "value": _cohens_d(a, b)},
+        "n_a": int(len(a)),
+        "n_b": int(len(b)),
+        "interpretation": interp,
+    }
+
+
 def test_hypothesis(payload: Any) -> dict[str, Any]:
     """Dispatch to a kind-specific handler. ``payload`` is the validated union."""
     kind = payload.kind
     if kind == "t_test":
         return _run_t_test(payload)
+    if kind == "welch":
+        return _run_welch(payload)
     return build_error(
         type="invalid_kind",
         message=f"Unknown kind {kind!r}.",
