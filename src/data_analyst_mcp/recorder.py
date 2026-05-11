@@ -5,10 +5,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    import nbformat
+    import nbformat  # noqa: F401  (used by type-hint of NotebookNode)
 
 
 class NotebookRecorder:
-    """Stub — exposes cells as a sentinel so the empty-list test fails."""
+    """Records one markdown + one code cell per successful tool call."""
 
-    cells: list[Any] = [object()]
+    def __init__(self) -> None:
+        self.cells: list[dict[str, Any]] = []
+
+
+_recorder = NotebookRecorder()
+
+
+def get_recorder() -> NotebookRecorder:
+    """Return the module-level singleton recorder."""
+    return _recorder
