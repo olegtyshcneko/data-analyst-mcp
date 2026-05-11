@@ -520,3 +520,38 @@ def test_fit_model_poisson_records_markdown_and_code_cells(call_tool, load_df_in
     assert cells[0]["cell_type"] == "markdown"
     assert cells[1]["cell_type"] == "code"
     assert "smf.poisson" in cells[1]["source"]
+
+
+# === MCP wiring — exercise the full FastMCP call_tool path per kind ===
+
+
+def test_call_tool_fit_model_ols_returns_full_envelope(call_tool, load_df_into_session):
+    load_df_into_session("duncan", _duncan_df())
+    result = call_tool(
+        "fit_model",
+        {
+            "name": "duncan",
+            "formula": "prestige ~ income + education",
+            "kind": "ols",
+        },
+    )
+    assert result["ok"] is True
+    assert {"coefficients", "fit", "diagnostics", "warnings", "interpretation"} <= set(result)
+
+
+def test_call_tool_fit_model_logistic_returns_full_envelope(call_tool, load_df_into_session):
+    load_df_into_session("logi", _logistic_df())
+    result = call_tool(
+        "fit_model", {"name": "logi", "formula": "y ~ x + z", "kind": "logistic"}
+    )
+    assert result["ok"] is True
+    assert {"coefficients", "fit", "diagnostics", "warnings", "interpretation"} <= set(result)
+
+
+def test_call_tool_fit_model_poisson_returns_full_envelope(call_tool, load_df_into_session):
+    load_df_into_session("pois", _poisson_df())
+    result = call_tool(
+        "fit_model", {"name": "pois", "formula": "y ~ x", "kind": "poisson"}
+    )
+    assert result["ok"] is True
+    assert {"coefficients", "fit", "diagnostics", "warnings", "interpretation"} <= set(result)
