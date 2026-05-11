@@ -141,3 +141,14 @@ def test_plot_error_records_no_cells(call_tool):
     result = call_tool("plot", {"name": "nope", "kind": "hist", "x": "x"})
     assert result["ok"] is False
     assert get_recorder().cells == []
+
+
+def test_plot_tool_is_registered_via_fastmcp(server):
+    import asyncio
+
+    async def _list() -> list[str]:
+        tools = await server.list_tools()
+        return [t.name for t in tools]
+
+    names = asyncio.run(_list())
+    assert "plot" in names
