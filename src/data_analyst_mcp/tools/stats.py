@@ -501,6 +501,18 @@ def _run_ks(payload: KSInput) -> dict[str, Any]:
 _DATASET_KINDS = {"t_test", "welch", "mann_whitney", "ks", "anova", "kruskal"}
 
 
+_KIND_HANDLERS: dict[str, Any] = {
+    "t_test": _run_t_test,
+    "welch": _run_welch,
+    "mann_whitney": _run_mann_whitney,
+    "chi_square": _run_chi_square,
+    "fisher": _run_fisher,
+    "anova": _run_anova,
+    "kruskal": _run_kruskal,
+    "ks": _run_ks,
+}
+
+
 def test_hypothesis(payload: Any) -> dict[str, Any]:
     """Dispatch to a kind-specific handler. ``payload`` is the validated union."""
     kind = payload.kind
@@ -512,27 +524,80 @@ def test_hypothesis(payload: Any) -> dict[str, Any]:
                 message=f"No dataset named {ds_name!r} registered.",
                 hint="Call list_datasets to see what is available.",
             )
-    if kind == "t_test":
-        return _run_t_test(payload)
-    if kind == "welch":
-        return _run_welch(payload)
-    if kind == "mann_whitney":
-        return _run_mann_whitney(payload)
-    if kind == "chi_square":
-        return _run_chi_square(payload)
-    if kind == "fisher":
-        return _run_fisher(payload)
-    if kind == "anova":
-        return _run_anova(payload)
-    if kind == "kruskal":
-        return _run_kruskal(payload)
-    if kind == "ks":
-        return _run_ks(payload)
-    return build_error(
-        type="invalid_kind",
-        message=f"Unknown kind {kind!r}.",
-        hint=f"Allowed kinds: {sorted(ALLOWED_KINDS)}.",
+    handler = _KIND_HANDLERS.get(kind)
+    if handler is None:
+        return build_error(
+            type="invalid_kind",
+            message=f"Unknown kind {kind!r}.",
+            hint=f"Allowed kinds: {sorted(ALLOWED_KINDS)}.",
+        )
+    result = handler(payload)
+    _record_test_hypothesis(payload, result)
+    return result
+
+
+def _record_test_hypothesis(payload: Any, result: dict[str, Any]) -> None:
+    """Append a markdown+code cell pair describing the test_hypothesis call."""
+    if not result.get("ok"):
+        return
+    kind = payload.kind
+    md = (
+        f"### Hypothesis test (`{kind}`)\n"
+        f"- statistic = {result['statistic']:.4f}\n"
+        f"- p_value = {result['p_value']:.4f}\n"
+        f"- effect_size ({result['effect_size']['name']}) = {result['effect_size']['value']:.4f}\n"
+        f"- {result['interpretation']}"
     )
+    code = _code_for_kind(payload)
+    get_recorder().record(markdown=md, code=code, tool_name="test_hypothesis")
+
+
+def _code_for_kind(payload: Any) -> str:
+    """Render a reproducible scipy snippet for the given payload."""
+    kind = payload.kind
+    if kind in {"t_test", "welch"}:
+        equal_var = "True" if kind == "t_test" else "False"
+        return (
+            f"from scipy import stats\n"
+            f"a = con.sql(\"SELECT {payload.metric_column} FROM {payload.name} "
+            f"WHERE {payload.group_column} = '{payload.group_a}'\").df()['{payload.metric_column}']\n"
+            f"b = con.sql(\"SELECT {payload.metric_column} FROM {payload.name} "
+            f"WHERE {payload.group_column} = '{payload.group_b}'\").df()['{payload.metric_column}']\n"
+            f"stats.ttest_ind(a, b, equal_var={equal_var})"
+        )
+    if kind == "mann_whitney":
+        return (
+            f"from scipy import stats\n"
+            f"a = con.sql(\"SELECT {payload.metric_column} FROM {payload.name} "
+            f"WHERE {payload.group_column} = '{payload.group_a}'\").df()['{payload.metric_column}']\n"
+            f"b = con.sql(\"SELECT {payload.metric_column} FROM {payload.name} "
+            f"WHERE {payload.group_column} = '{payload.group_b}'\").df()['{payload.metric_column}']\n"
+            f"stats.mannwhitneyu(a, b, alternative='two-sided')"
+        )
+    if kind == "ks":
+        return (
+            f"from scipy import stats\n"
+            f"a = con.sql(\"SELECT {payload.metric_column} FROM {payload.name} "
+            f"WHERE {payload.group_column} = '{payload.group_a}'\").df()['{payload.metric_column}']\n"
+            f"b = con.sql(\"SELECT {payload.metric_column} FROM {payload.name} "
+            f"WHERE {payload.group_column} = '{payload.group_b}'\").df()['{payload.metric_column}']\n"
+            f"stats.ks_2samp(a, b)"
+        )
+    if kind in {"anova", "kruskal"}:
+        fname = "f_oneway" if kind == "anova" else "kruskal"
+        return (
+            f"from scipy import stats\n"
+            f"df = con.sql('SELECT * FROM {payload.name}').df()\n"
+            f"groups = [g['{payload.metric_column}'].to_numpy() "
+            f"for _, g in df.groupby('{payload.group_column}')]\n"
+            f"stats.{fname}(*groups)"
+        )
+    if kind == "chi_square":
+        return (
+            f"from scipy import stats\n"
+            f"stats.chi2_contingency({payload.table!r})"
+        )
+    return f"from scipy import stats\nstats.fisher_exact({payload.table!r})"
 
 
 def _render_heatmap_png(labels: list[str], matrix: list[list[float]]) -> str:
