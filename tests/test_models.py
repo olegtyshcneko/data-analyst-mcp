@@ -160,3 +160,27 @@ def test_fit_model_ols_returns_pinned_vif_per_coefficient(call_tool, load_df_int
     assert vif["education"] == pytest.approx(2.10490047, abs=1e-3)
     # Intercept must NOT appear in the VIF dict.
     assert "Intercept" not in vif
+
+
+def _collinear_df() -> pd.DataFrame:
+    """Build a deliberately collinear OLS fixture (VIF >> 10)."""
+    rng = np.random.default_rng(20260511)
+    n = 50
+    x1 = rng.standard_normal(n)
+    x2 = x1 + rng.standard_normal(n) * 0.01
+    y = rng.standard_normal(n)
+    return pd.DataFrame({"y": y, "x1": x1, "x2": x2})
+
+
+def test_fit_model_ols_emits_high_multicollinearity_warning(call_tool, load_df_into_session):
+    load_df_into_session("collinear", _collinear_df())
+    result = call_tool(
+        "fit_model",
+        {"name": "collinear", "formula": "y ~ x1 + x2", "kind": "ols"},
+    )
+    # variance_inflation_factor on this fixture (seed 20260511):
+    #   vif x1 ≈ 6672.05, vif x2 ≈ 6672.05  → high_multicollinearity must fire
+    vif = result["diagnostics"]["vif"]
+    assert vif["x1"] > 10
+    assert vif["x2"] > 10
+    assert "high_multicollinearity" in result["warnings"]
