@@ -469,6 +469,33 @@ def _run_kruskal(payload: KruskalInput) -> dict[str, Any]:
     }
 
 
+def _run_ks(payload: KSInput) -> dict[str, Any]:
+    """Two-sample Kolmogorov-Smirnov."""
+    from scipy import stats as _sps
+
+    a = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_a)
+    b = _materialize_group(payload.name, payload.group_column, payload.metric_column, payload.group_b)
+    r = _sps.ks_2samp(a, b)
+    p = float(r.pvalue)
+    interp = (
+        f"Distributions of `{payload.group_a}` and `{payload.group_b}` differ at "
+        f"α=0.05 (KS 2-sample, p={p:.4f})."
+        if p < 0.05
+        else f"No evidence of distributional difference at α=0.05 (KS 2-sample, p={p:.4f})."
+    )
+    return {
+        "ok": True,
+        "test": "ks",
+        "statistic": float(r.statistic),
+        "p_value": p,
+        "df": None,
+        "effect_size": {"name": "ks_d", "value": float(r.statistic)},
+        "n_a": int(len(a)),
+        "n_b": int(len(b)),
+        "interpretation": interp,
+    }
+
+
 def test_hypothesis(payload: Any) -> dict[str, Any]:
     """Dispatch to a kind-specific handler. ``payload`` is the validated union."""
     kind = payload.kind
@@ -486,6 +513,8 @@ def test_hypothesis(payload: Any) -> dict[str, Any]:
         return _run_anova(payload)
     if kind == "kruskal":
         return _run_kruskal(payload)
+    if kind == "ks":
+        return _run_ks(payload)
     return build_error(
         type="invalid_kind",
         message=f"Unknown kind {kind!r}.",
