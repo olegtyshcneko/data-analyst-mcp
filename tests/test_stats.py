@@ -215,3 +215,20 @@ def test_test_hypothesis_mann_whitney_known_answer(call_tool, load_df_into_sessi
     assert result["effect_size"]["value"] == pytest.approx(0.64, abs=1e-4)
     assert result["n_a"] == 5
     assert result["n_b"] == 5
+
+
+def test_test_hypothesis_chi_square_known_answer(call_tool):
+    result = call_tool(
+        "test_hypothesis",
+        {"kind": "chi_square", "table": [[10, 20, 30], [6, 9, 17]]},
+    )
+    # scipy.stats.chi2_contingency([[10,20,30],[6,9,17]])
+    #   chi2=0.27157465150403504, p=0.873028283380073, df=2
+    #   N=92, cramers_v = sqrt(chi2 / (N * (min(2,3)-1))) = 0.054331...
+    assert result["ok"] is True
+    assert result["test"] == "chi_square"
+    assert result["statistic"] == pytest.approx(0.2715746515, abs=1e-4)
+    assert result["p_value"] == pytest.approx(0.8730282834, abs=1e-4)
+    assert result["df"] == 2
+    assert result["effect_size"]["name"] == "cramers_v"
+    assert result["effect_size"]["value"] == pytest.approx(0.0543313757, abs=1e-4)
