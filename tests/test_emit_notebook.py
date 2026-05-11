@@ -49,5 +49,12 @@ def test_emit_notebook_errors_when_parent_directory_missing(call_tool, tmp_path)
     assert r["error"]["type"] == "write_failed"
 
 
+def test_emit_notebook_errors_when_path_is_a_directory(call_tool, tmp_path):
+    # Passing an existing directory as `path` should fail cleanly.
+    r = call_tool("emit_notebook", {"path": str(tmp_path)})
+    assert r["ok"] is False
+    assert r["error"]["type"] == "write_failed"
+
+
 
 
