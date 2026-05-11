@@ -165,5 +165,16 @@ def test_include_outputs_is_a_documented_noop(call_tool, tmp_path):
         assert cell.outputs == []
 
 
+def test_emit_notebook_itself_is_not_recorded(call_tool, tmp_path):
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv = Path(__file__).parent.parent / "fixtures" / "messy.csv"
+    call_tool("load_dataset", {"path": str(csv), "name": "raw"})
+    before = len(get_recorder().cells)
+    call_tool("emit_notebook", {"path": str(tmp_path / "out.ipynb")})
+    after = len(get_recorder().cells)
+    assert before == after
+
+
 
 
