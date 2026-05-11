@@ -722,8 +722,10 @@ def compare_groups(payload: CompareGroupsInput) -> dict[str, Any]:
         test = _select_two_sample_continuous(p_norm, p_lev)
         from scipy import stats as _sps
 
-        # Only student_t implemented so far; other branches added in later cycles.
-        r = _sps.ttest_ind(a, b, equal_var=True)
+        if test == "welch_t":
+            r = _sps.ttest_ind(a, b, equal_var=False)
+        else:
+            r = _sps.ttest_ind(a, b, equal_var=True)
         effect = {"name": "cohens_d", "value": _cohens_d(a, b)}
         stat, p, df = float(r.statistic), float(r.pvalue), float(r.df)
 
