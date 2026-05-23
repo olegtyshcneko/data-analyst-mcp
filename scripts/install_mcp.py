@@ -224,7 +224,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--installed",
         action="store_true",
-        help="wire `uvx --from git+...@%s` instead of the local checkout" % GIT_REF,
+        help=f"wire `uvx --from git+...@{GIT_REF}` instead of the local checkout",
     )
     parser.add_argument(
         "--name",
@@ -247,7 +247,7 @@ def main(argv: list[str] | None = None) -> int:
                     client, args.name, installed=args.installed, dry_run=args.dry_run
                 )
             )
-        except Exception as exc:  # noqa: BLE001 — surface any client-specific failure
+        except Exception as exc:
             print(f"FAILED: {exc}", file=sys.stderr)
             return 1
         print()
