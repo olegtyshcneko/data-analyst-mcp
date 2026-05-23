@@ -101,3 +101,200 @@ def test_to_notebook_without_setup_returns_recorded_cells() -> None:
     assert nb.cells[0].source == "### M"
     assert nb.cells[1].cell_type == "code"
     assert nb.cells[1].source == "x = 1"
+
+
+# ---- Model-registry recorder slices (Phase 5c) --------------------------
+
+
+def test_setup_cell_emits_hash_assert_for_registered_model(tmp_path) -> None:
+    """The setup cell for a session with a registered model contains a
+    SHA-256 assert against the training CSV bytes plus a smf.<kind>(...)
+    rehydration line keyed on the model's formula."""
+    import hashlib
+
+    import pandas as pd
+
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import NotebookRecorder
+    from data_analyst_mcp.tools import models as _models
+
+    session.reset()
+    csv = tmp_path / "train.csv"
+    df = pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0]})
+    df.to_csv(csv, index=False)
+    expected_hash = hashlib.sha256(csv.read_bytes()).hexdigest()
+
+    # Register the dataset via the normal load_dataset path so its `path`
+    # is the absolute CSV location.
+    session.register(
+        name="train",
+        path=str(csv),
+        read_options={},
+        format="csv",
+        rows=5,
+        columns=[{"name": "y", "dtype": "DOUBLE"}, {"name": "x", "dtype": "DOUBLE"}],
+    )
+    con = session.get_connection()
+    con.execute(f"CREATE OR REPLACE TABLE train AS SELECT * FROM read_csv_auto('{csv}')")
+
+    # Register a model whose training_dataset_hash matches the file.
+    payload = _models.FitModelInput(
+        name="train", formula="y ~ x", kind="ols", robust=False, model_name="m"
+    )
+    _models.fit_model(payload)
+
+    rec = NotebookRecorder()
+    nb = rec.to_notebook(include_setup=True)
+    setup_src = nb.cells[0].source
+
+    assert "import hashlib" in setup_src
+    assert "import statsmodels.formula.api as smf" in setup_src
+    assert expected_hash in setup_src
+    assert "actual_hash_m = hashlib.sha256(" in setup_src
+    assert "assert actual_hash_m == expected_hash_m" in setup_src
+    # Re-fit line.
+    assert 'm = smf.ols("y ~ x"' in setup_src
+    assert "data=train_df" in setup_src
+
+
+def test_setup_cell_skips_hash_assert_for_in_memory_model(
+    load_df_into_session,
+) -> None:
+    """Models fit on an in-memory dataset (no file) skip the hash assert
+    but still emit a re-fit line — the rehydration just runs against the
+    same in-memory DataFrame the reader has to provide."""
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import NotebookRecorder
+    from data_analyst_mcp.tools import models as _models
+
+    load_df_into_session("tiny", pd.DataFrame({"y": [1, 2, 3, 4, 5], "x": [0, 1, 2, 3, 4]}))
+    _models.fit_model(
+        _models.FitModelInput(
+            name="tiny", formula="y ~ x", kind="ols", robust=False, model_name="m"
+        )
+    )
+
+    rec = NotebookRecorder()
+    setup_src = rec.to_notebook(include_setup=True).cells[0].source
+    # In-memory dataset → no hash assert, but a comment is left behind.
+    assert "assert actual_hash_m" not in setup_src
+    assert "non-file dataset" in setup_src
+    # The re-fit line still has to be emitted so downstream tool cells
+    # can reference `m`. We emit it after the note.
+    assert "smf.ols" in setup_src
+
+
+def test_emitted_notebook_with_fit_predict_evaluate_runs_via_nbconvert(tmp_path, call_tool) -> None:
+    """End-to-end: emit a notebook covering fit_model → predict →
+    evaluate_model and run it via ``jupyter nbconvert --execute`` on a
+    fresh kernel. Confirms the hash-asserted rehydration story holds
+    end-to-end (verification step 9)."""
+    import os
+    import subprocess
+
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(0)
+    n = 200
+    x1 = rng.normal(0, 1, n)
+    x2 = rng.normal(0, 1, n)
+    eta = 0.5 * x1 + 0.8 * x2
+    from scipy.special import expit
+
+    y = rng.binomial(1, expit(eta))
+    df = pd.DataFrame({"y": y, "x1": x1, "x2": x2})
+
+    csv = tmp_path / "train.csv"
+    df.to_csv(csv, index=False)
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "train"})
+    assert r["ok"], r
+    r = call_tool(
+        "fit_model",
+        {"name": "train", "formula": "y ~ x1 + x2", "kind": "logistic", "model_name": "m"},
+    )
+    assert r["ok"], r
+    r = call_tool("predict", {"model_name": "m", "dataset": "train", "limit": 10})
+    assert r["ok"], r
+    r = call_tool("evaluate_model", {"model_name": "m", "dataset": "train"})
+    assert r["ok"], r
+
+    nb_path = tmp_path / "fit_predict_eval.ipynb"
+    r = call_tool("emit_notebook", {"path": str(nb_path)})
+    assert r["ok"], r
+
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "jupyter",
+            "nbconvert",
+            "--to",
+            "notebook",
+            "--execute",
+            "--inplace",
+            str(nb_path),
+            "--ExecutePreprocessor.timeout=120",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    assert result.returncode == 0, (
+        f"nbconvert failed:\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+    )
+
+
+def test_emitted_notebook_hash_assert_fires_when_training_csv_is_mutated(
+    tmp_path, call_tool
+) -> None:
+    """Mutate the training CSV between fit and replay → setup cell raises
+    AssertionError (verification step 9 negative branch)."""
+    import os
+    import subprocess
+
+    import pandas as pd
+
+    df = pd.DataFrame({"y": [0, 1, 0, 1, 0, 1, 0, 1], "x": [-2, -1, -0.5, 0.5, 1, 2, 3, 4]})
+    csv = tmp_path / "train.csv"
+    df.to_csv(csv, index=False)
+
+    call_tool("load_dataset", {"path": str(csv), "name": "train"})
+    r = call_tool(
+        "fit_model",
+        {"name": "train", "formula": "y ~ x", "kind": "logistic", "model_name": "m"},
+    )
+    assert r["ok"], r
+
+    nb_path = tmp_path / "drift.ipynb"
+    r = call_tool("emit_notebook", {"path": str(nb_path)})
+    assert r["ok"], r
+
+    # Mutate the CSV — append a row. Hash now differs from fit-time hash.
+    with open(csv, "a") as fh:
+        fh.write("0,99\n")
+
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "jupyter",
+            "nbconvert",
+            "--to",
+            "notebook",
+            "--execute",
+            "--inplace",
+            str(nb_path),
+            "--ExecutePreprocessor.timeout=120",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    # nbconvert returns non-zero on cell errors. The error message should
+    # mention our descriptive AssertionError text.
+    assert result.returncode != 0
+    combined = result.stderr + result.stdout
+    assert "AssertionError" in combined or "changed since the session was recorded" in combined

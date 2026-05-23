@@ -28,6 +28,7 @@ dependencies = [
     "matplotlib>=3.9.0",
     "nbformat>=5.10.0",
     "pydantic>=2.9.0",
+    "scikit-learn>=1.5.0",
 ]
 
 [project.scripts]
@@ -73,6 +74,7 @@ ignore = [
     "E501",          # line too long (formatter handles it)
     "RUF001",        # ambiguous unicode chars in strings (we use × and α in interpretations)
     "RUF002",        # ambiguous unicode chars in docstrings (same)
+    "RUF003",        # ambiguous unicode chars in comments (we use × / α / – in comments)
 ]
 
 [tool.ruff.lint.per-file-ignores]

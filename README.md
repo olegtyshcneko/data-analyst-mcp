@@ -216,7 +216,7 @@ For OpenCode (single command array):
 
 </details>
 
-After restarting (or reloading MCP servers in) your client, the 11 tools (`load_dataset`, `list_datasets`, `profile_dataset`, `describe_column`, `query`, `correlate`, `compare_groups`, `test_hypothesis`, `fit_model`, `plot`, `emit_notebook`) become available in any new conversation.
+After restarting (or reloading MCP servers in) your client, all 16 tools become available in any new conversation: the original 11 (`load_dataset`, `list_datasets`, `profile_dataset`, `describe_column`, `query`, `correlate`, `compare_groups`, `test_hypothesis`, `fit_model`, `plot`, `emit_notebook`) plus the v1.x additions (`adjust_pvalues`, `analyze_missingness`, `list_models`, `predict`, `evaluate_model`).
 
 ## Worked example
 
@@ -276,6 +276,22 @@ Claude calls `fit_model(name="opps", formula="amount ~ C(stage)", kind="ols")`:
 
 > n = 8 000, R² = 0.0008, adj R² = 0.0002 — stage explains essentially none of the variance, which matches the Kruskal result above. Intercept = 6 859.7 (SE 200.8). Diagnostics: condition number 5.0 (clean), Breusch–Pagan p = 0.34 (homoskedastic), Durbin–Watson 2.02 (no autocorrelation), Jarque–Bera p ≈ 0 (residuals non-normal → `warnings: ["non_normal_residuals"]`). Inference on coefficients is reliable; predictive use of the model is not.
 
+#### 4a. Score and evaluate (Phase 5 composition recipe)
+
+When the agent wants to validate predictive performance on held-out data, the model-registry trio composes one-shot:
+
+```python
+fit_model(name="titanic_train", formula="Survived ~ C(Sex) + C(Pclass) + Age",
+          kind="logistic", model_name="titanic_logit")   # 1. fit + register
+predict(model_name="titanic_logit", dataset="titanic_test",
+        output="response", limit=1000)                   # 2. score
+evaluate_model(model_name="titanic_logit", dataset="titanic_test",
+               n_calibration_bins=10)                    # 3. metrics
+list_models()                                            # 4. inspect registry
+```
+
+`evaluate_model` returns ROC-AUC, PR-AUC, Brier, log-loss, accuracy / precision / recall / F1, the confusion matrix at `threshold`, and a quantile calibration table for logistic models; RMSE / MAE / R² / adj-R² for OLS; RMSE / MAE / Pearson χ² / deviance for Poisson / negbin. The emitted notebook re-fits every registered model in its setup cell behind a hard SHA-256 assert on the training file — silent drift between session and replay becomes a loud `AssertionError`.
+
 ### 5. Plot
 
 > **You:** Show me the distribution of `amount`.
@@ -327,13 +343,13 @@ The agent will reach for MotherDuck when the task is "query the warehouse" and f
             │
    ┌────────┴────────────────────────────────┐
    ▼                                         ▼
- 11 tools (datasets / query / stats /     NotebookRecorder
- models / plots / notebook)               (markdown + code cells)
+ 16 tools (datasets / query / stats /     NotebookRecorder
+ models / registry / plots / notebook)    (markdown + code cells)
             │                                         │
             ▼                                         ▼
        DuckDB connection ──────────────► nbformat → session_*.ipynb
-            │
-            ▼
+            │                              (setup cell re-fits models
+            ▼                               behind SHA-256 assert)
   CSV · Parquet · Excel · JSON · s3://
 ```
 
@@ -363,7 +379,7 @@ The implementation spec is `docs/SPEC.md`. It is the source of truth — when in
 
 ## Contributing
 
-Issues and PRs are welcome. **Open an issue first for any new tool**: the 11-tool surface is intentionally closed in v1 (spec §5, §11), and tool ideas are parked in `ROADMAP.md` until they're either promoted to v2 or explicitly declined. Bug fixes, doc improvements, and test additions are easier to land — just open a PR. Every change in `src/` must come with a failing test first (`red:` then `green:`); the `check_tdd_commits.py` script enforces this on the commit log.
+Issues and PRs are welcome. **Open an issue first for any new tool**: the 16-tool surface is intentionally closed at the v2 boundary (spec §5, §11, ROADMAP), and tool ideas are parked in `ROADMAP.md` until they're either promoted to v3 or explicitly declined. Bug fixes, doc improvements, and test additions are easier to land — just open a PR. Every change in `src/` must come with a failing test first (`red:` then `green:`); the `check_tdd_commits.py` script enforces this on the commit log.
 
 ## License
 

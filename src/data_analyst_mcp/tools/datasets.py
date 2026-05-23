@@ -200,6 +200,18 @@ def _is_numeric(dtype: str) -> bool:
 _STRING_DTYPES = {"VARCHAR", "CHAR", "TEXT", "BLOB", "STRING"}
 
 
+def looks_like_categorical(dtype: str, *, distinct_count: int, non_null: int) -> bool:
+    """Return True when a column has the profile_dataset ``looks_like_categorical`` shape.
+
+    The heuristic is shared with ``profile_dataset`` so other tools
+    (notably ``analyze_missingness``'s ``null_grouping`` candidate search)
+    pick exactly the same set of columns the profile flags. Definition:
+    string-typed, at most 50 distinct values, and more rows than distinct
+    values (rules out per-row identifiers).
+    """
+    return _is_string(dtype) and distinct_count <= 50 and non_null > distinct_count
+
+
 def _build_suggestions(column_profiles: list[dict[str, Any]]) -> list[str]:
     """Pick up to three actionable next-step strings from the profile."""
     suggestions: list[str] = []
@@ -488,8 +500,8 @@ def profile_dataset(payload: ProfileDatasetInput) -> dict[str, Any]:
         flags = {
             "mostly_null": null_frac > 0.5,
             "looks_like_id": (dtype_is_string and distinct_frac >= 0.95 and non_null > 100),
-            "looks_like_categorical": (
-                dtype_is_string and distinct_count <= 50 and non_null > distinct_count
+            "looks_like_categorical": looks_like_categorical(
+                col["dtype"], distinct_count=distinct_count, non_null=non_null
             ),
             "looks_like_timestamp": dtype_is_temporal,
             "high_cardinality": distinct_frac > 0.9 and non_null > 100,

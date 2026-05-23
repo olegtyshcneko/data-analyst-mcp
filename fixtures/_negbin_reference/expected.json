@@ -1,0 +1,86 @@
+{
+  "ref1": {
+    "formula": "y ~ x",
+    "converged": true,
+    "aic": 1661.9248735858223,
+    "bic": 1674.5686978810888,
+    "n_obs": 500,
+    "df_resid": 498,
+    "pseudo_r_squared": 0.011769714069944093,
+    "dispersion_alpha": 1.190273035547348,
+    "dispersion_alpha_se": 0.14452860834752546,
+    "coefficients": [
+      {
+        "name": "Intercept",
+        "estimate": 0.37118240136040054,
+        "std_err": 0.06169245157198261
+      },
+      {
+        "name": "x",
+        "estimate": 0.47613448580997947,
+        "std_err": 0.10644814461085123
+      }
+    ]
+  },
+  "ref2": {
+    "formula": "y ~ x + z",
+    "converged": true,
+    "aic": 2428.4133535630863,
+    "bic": 2447.151800473758,
+    "n_obs": 800,
+    "df_resid": 797,
+    "pseudo_r_squared": 0.04757918892104318,
+    "dispersion_alpha": 0.7441425552588495,
+    "dispersion_alpha_se": 0.0894815357757187,
+    "coefficients": [
+      {
+        "name": "Intercept",
+        "estimate": 0.16940341911417112,
+        "std_err": 0.04583930979557698
+      },
+      {
+        "name": "x",
+        "estimate": 0.326948958678586,
+        "std_err": 0.04573716218276279
+      },
+      {
+        "name": "z",
+        "estimate": -0.3838934883738138,
+        "std_err": 0.045407932944279764
+      }
+    ]
+  },
+  "ref3": {
+    "formula": "y ~ x + C(group)",
+    "converged": true,
+    "aic": 2115.1242474628307,
+    "bic": 2137.1088957389115,
+    "n_obs": 600,
+    "df_resid": 596,
+    "pseudo_r_squared": 0.01223460314466096,
+    "dispersion_alpha": 1.2062192291544225,
+    "dispersion_alpha_se": 0.12423508725484102,
+    "coefficients": [
+      {
+        "name": "Intercept",
+        "estimate": 0.48661854979393626,
+        "std_err": 0.09802977357228751
+      },
+      {
+        "name": "C(group)[T.B]",
+        "estimate": 0.25662211662611656,
+        "std_err": 0.13418866352943126
+      },
+      {
+        "name": "C(group)[T.C]",
+        "estimate": -0.2599875107858957,
+        "std_err": 0.13848731114692833
+      },
+      {
+        "name": "x",
+        "estimate": 0.2361821615496647,
+        "std_err": 0.06112331660979692
+      }
+    ]
+  }
+}

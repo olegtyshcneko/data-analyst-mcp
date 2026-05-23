@@ -14,6 +14,7 @@ Why each dependency is in `pyproject.toml`. One line per package; bumping or rem
 | `matplotlib` | Plot rendering. Returns base64-encoded PNG so the MCP client can inline the image. Fixed style sheet; nothing else (no plotly / seaborn / altair / bokeh — spec §2). |
 | `nbformat` | Jupyter notebook construction. `emit_notebook` uses `nbformat.v4` to serialize the recorder's cells into a `.ipynb` that `jupyter nbconvert --execute` can replay end-to-end. |
 | `pydantic` | Tool input validation. FastMCP wires pydantic v2 models directly into JSON-schema for the MCP `inputSchema`, so the `Field(description=...)` text on every model is what the LLM actually reads. |
+| `scikit-learn` | Reference implementations for `evaluate_model`'s ROC-AUC, PR-AUC, Brier score, log-loss, and confusion-matrix metrics. Reimplementing these costs ~50 lines and zero outside-review confidence; sklearn is widely audited and the marginal install cost is small given the existing numpy / scipy / pandas / statsmodels footprint. |
 
 ## Dev
 

@@ -9,6 +9,8 @@ assertion for the source of the expected number.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -605,3 +607,311 @@ def test_fit_model_emitted_code_cell_matches_runtime_template(call_tool, load_df
         "model.summary()"
     )
     assert code == expected
+
+
+# === Negative binomial (kind="negbin") — 15 TDD slices per
+#     docs/proposals/negbin_kind.md ===
+#
+# Synthetic NB fixtures use numpy.random.default_rng(seed=0); the NB2
+# variance parameterization (var = mu + alpha*mu^2) is sampled via
+# numpy.random.Generator.negative_binomial with r = 1/alpha and
+# p = r / (r + mu).
+
+
+def _negbin_known_answer_df() -> pd.DataFrame:
+    """Fixture #1 — NB2 with beta_true=[0.5, 0.3], alpha_true=1.5, n=2000."""
+    rng = np.random.default_rng(0)
+    n = 2000
+    x = rng.uniform(-1, 1, n)
+    mu = np.exp(0.5 + 0.3 * x)
+    alpha_true = 1.5
+    r = 1.0 / alpha_true
+    p = r / (r + mu)
+    y = rng.negative_binomial(r, p)
+    return pd.DataFrame({"y": y, "x": x})
+
+
+def _negbin_overdispersed_df() -> pd.DataFrame:
+    """Fixture #2 — Poisson(exp(0.5+0.3x)) with 10% inflated rows from Poisson(20)."""
+    rng = np.random.default_rng(0)
+    n = 2000
+    x = rng.standard_normal(n)
+    mu = np.exp(0.5 + 0.3 * x)
+    y = rng.poisson(mu)
+    mask = rng.random(n) < 0.1
+    y[mask] = rng.poisson(20, mask.sum())
+    return pd.DataFrame({"y": y, "x": x})
+
+
+def _negbin_true_poisson_df() -> pd.DataFrame:
+    """Fixture #3 — true Poisson with mu=5 everywhere."""
+    rng = np.random.default_rng(0)
+    n = 2000
+    y = rng.poisson(5, n)
+    x = rng.standard_normal(n)
+    return pd.DataFrame({"y": y, "x": x})
+
+
+def _negbin_unstable_alpha_df() -> pd.DataFrame:
+    """Fixture #4 — small n=25, true alpha=3, mu=1.5 — pins SE/alpha > 0.6.
+
+    The proposal's recipe (n=80, NB(mu=2, alpha=2)) yields SE/alpha ≈ 0.23
+    on this statsmodels release, which does not trigger the warning. After
+    grid-searching seed/n/alpha combinations, (n=25, seed=1, alpha_true=3)
+    pins SE/alpha ≈ 0.73 — well above the 0.5 threshold with margin.
+    """
+    rng = np.random.default_rng(1)
+    n = 25
+    x = rng.uniform(-1, 1, n)
+    mu = np.full(n, 1.5)
+    alpha_true = 3.0
+    r = 1.0 / alpha_true
+    p = r / (r + mu)
+    y = rng.negative_binomial(r, p)
+    return pd.DataFrame({"y": y, "x": x})
+
+
+def _negbin_separated_df() -> pd.DataFrame:
+    """Fixture #5 — perfectly separated counts; NB MLE does not converge."""
+    return pd.DataFrame(
+        {
+            "y": [0, 0, 0, 0, 100, 100, 100, 100],
+            "x": [0, 0, 0, 0, 1, 1, 1, 1],
+        }
+    )
+
+
+# --- Slice 1 -----------------------------------------------------------
+def test_fit_model_negbin_rejects_negative_endog(call_tool, load_df_into_session):
+    df = pd.DataFrame({"y": [1, 2, -1, 3, 4], "x": [0.1, 0.2, 0.3, 0.4, 0.5]})
+    load_df_into_session("neg_y", df)
+    result = call_tool("fit_model", {"name": "neg_y", "formula": "y ~ x", "kind": "negbin"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "negbin_requires_nonneg_int"
+    # Hint must name the offending column so the agent can locate it.
+    assert "y" in result["error"]["message"]
+
+
+# --- Slice 2 -----------------------------------------------------------
+def test_fit_model_negbin_rejects_non_integer_floats(call_tool, load_df_into_session):
+    df = pd.DataFrame({"y": [1.5, 2.0, 3.0], "x": [0.1, 0.2, 0.3]})
+    load_df_into_session("frac_y", df)
+    result = call_tool("fit_model", {"name": "frac_y", "formula": "y ~ x", "kind": "negbin"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "negbin_requires_nonneg_int"
+
+
+# --- Slice 3 -----------------------------------------------------------
+def test_fit_model_negbin_accepts_integer_valued_floats(call_tool, load_df_into_session):
+    """Integer-valued floats (e.g. [1.0, 2.0]) are accepted with a
+    ``coerced_float_to_int`` warning so silent unit errors are still visible
+    in the response envelope."""
+    df = pd.DataFrame(
+        {"y": [1.0, 2.0, 3.0, 4.0, 5.0, 1.0, 2.0, 3.0, 4.0, 5.0] * 6, "x": list(range(60))}
+    )
+    load_df_into_session("intfloat_y", df)
+    result = call_tool("fit_model", {"name": "intfloat_y", "formula": "y ~ x", "kind": "negbin"})
+    assert result["ok"] is True, result
+    assert "coerced_float_to_int" in result["warnings"]
+
+
+# --- Slice 4 -----------------------------------------------------------
+def test_fit_model_negbin_rejects_robust_true(call_tool, load_df_into_session):
+    load_df_into_session("nb", _negbin_known_answer_df())
+    result = call_tool(
+        "fit_model",
+        {"name": "nb", "formula": "y ~ x", "kind": "negbin", "robust": True},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "robust_not_supported"
+
+
+# --- Slice 5 — known-answer (load-bearing correctness) -----------------
+def test_fit_model_negbin_recovers_synthetic_truth(call_tool, load_df_into_session):
+    """Slope β within ±0.05, intercept within ±0.1, α within ±0.1.
+
+    Proposal §Fixtures #1 lists "β within ±0.05" globally, but on the
+    seed=0 fixture the intercept lands at 0.434 vs truth 0.5 — a ~0.066
+    offset that is ≈2·SE on this n=2000 NB sample (SE on Intercept ≈
+    0.032, computed empirically). The proposal's "±0.05 (≈3·SE)" estimate
+    was an underestimate of the intercept SE; we widen the intercept
+    tolerance to ±0.1 (still tight enough to fail an NB1 vs NB2 mixup by
+    orders of magnitude) and keep the slope ±0.05 which the seed-0 fit
+    comfortably satisfies (β_x = 0.298, off truth by 0.002).
+    """
+    load_df_into_session("nb", _negbin_known_answer_df())
+    result = call_tool("fit_model", {"name": "nb", "formula": "y ~ x", "kind": "negbin"})
+    assert result["ok"] is True, result
+    by_name = {c["name"]: c for c in result["coefficients"]}
+    # Truth: Intercept=0.5, x=0.3, alpha=1.5
+    assert by_name["Intercept"]["estimate"] == pytest.approx(0.5, abs=0.1)
+    assert by_name["x"]["estimate"] == pytest.approx(0.3, abs=0.05)
+    assert result["fit"]["dispersion_alpha"] == pytest.approx(1.5, abs=0.1)
+
+
+# --- Slice 6 -----------------------------------------------------------
+def test_fit_model_negbin_exposes_dispersion_alpha(call_tool, load_df_into_session):
+    """``fit.dispersion_alpha`` must equal ``model.params['alpha']`` exactly."""
+    import statsmodels.formula.api as smf
+
+    df = _negbin_known_answer_df()
+    load_df_into_session("nb", df)
+    result = call_tool("fit_model", {"name": "nb", "formula": "y ~ x", "kind": "negbin"})
+    m = smf.negativebinomial("y ~ x", data=df).fit(disp=False)
+    assert result["fit"]["dispersion_alpha"] == pytest.approx(float(m.params["alpha"]), abs=1e-9)
+
+
+# --- Slice 7 -----------------------------------------------------------
+def test_fit_model_negbin_exposes_dispersion_alpha_se(call_tool, load_df_into_session):
+    """``fit.dispersion_alpha_se`` must equal ``model.bse['alpha']`` exactly."""
+    import statsmodels.formula.api as smf
+
+    df = _negbin_known_answer_df()
+    load_df_into_session("nb", df)
+    result = call_tool("fit_model", {"name": "nb", "formula": "y ~ x", "kind": "negbin"})
+    m = smf.negativebinomial("y ~ x", data=df).fit(disp=False)
+    assert result["fit"]["dispersion_alpha_se"] == pytest.approx(float(m.bse["alpha"]), abs=1e-9)
+
+
+# --- Slice 8 -----------------------------------------------------------
+def test_fit_model_negbin_pearson_chi2_over_df_matches_formula(call_tool, load_df_into_session):
+    """``fit.pearson_chi2_over_df`` matches ``sum(resid_pearson^2) / df_resid``."""
+    import statsmodels.formula.api as smf
+
+    df = _negbin_known_answer_df()
+    load_df_into_session("nb", df)
+    result = call_tool("fit_model", {"name": "nb", "formula": "y ~ x", "kind": "negbin"})
+    m = smf.negativebinomial("y ~ x", data=df).fit(disp=False)
+    resid = np.asarray(m.resid_pearson)
+    expected = float(np.sum(resid * resid) / m.df_resid)
+    assert result["fit"]["pearson_chi2_over_df"] == pytest.approx(expected, abs=1e-9)
+
+
+# --- Slice 9 -----------------------------------------------------------
+def test_fit_model_negbin_beats_poisson_aic_on_overdispersed_data(call_tool, load_df_into_session):
+    """NB AIC must be ≥50 points below Poisson AIC on the overdispersed fixture."""
+    load_df_into_session("od", _negbin_overdispersed_df())
+    pois = call_tool("fit_model", {"name": "od", "formula": "y ~ x", "kind": "poisson"})
+    nb = call_tool("fit_model", {"name": "od", "formula": "y ~ x", "kind": "negbin"})
+    assert pois["ok"] is True and nb["ok"] is True
+    assert pois["fit"]["aic"] - nb["fit"]["aic"] >= 50.0
+
+
+# --- Slice 10 ----------------------------------------------------------
+def test_fit_model_negbin_emits_underdispersion_warning_on_true_poisson(
+    call_tool, load_df_into_session
+):
+    load_df_into_session("tp", _negbin_true_poisson_df())
+    result = call_tool("fit_model", {"name": "tp", "formula": "y ~ x", "kind": "negbin"})
+    assert result["ok"] is True, result
+    assert result["fit"]["pearson_chi2_over_df"] < 1.1
+    assert "underdispersion_vs_negbin" in result["warnings"]
+
+
+# --- Slice 11 ----------------------------------------------------------
+def test_fit_model_negbin_emits_unstable_dispersion_warning(call_tool, load_df_into_session):
+    load_df_into_session("uns", _negbin_unstable_alpha_df())
+    result = call_tool("fit_model", {"name": "uns", "formula": "y ~ x", "kind": "negbin"})
+    assert result["ok"] is True, result
+    fit = result["fit"]
+    assert fit["dispersion_alpha"] > 0
+    ratio = fit["dispersion_alpha_se"] / fit["dispersion_alpha"]
+    assert ratio > 0.5
+    assert "unstable_dispersion" in result["warnings"]
+
+
+# --- Slice 12 ----------------------------------------------------------
+def test_fit_model_negbin_reports_convergence_failure(call_tool, load_df_into_session):
+    """Perfectly separated counts → NB MLE does not converge; return a
+    structured error and NO partial result."""
+    load_df_into_session("sep", _negbin_separated_df())
+    result = call_tool("fit_model", {"name": "sep", "formula": "y ~ x", "kind": "negbin"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "convergence_failed"
+    # Hint must point at the canonical remedies.
+    assert "Poisson" in result["error"]["hint"]
+    # No partial fit/coefficients leak through on a failed convergence.
+    assert "coefficients" not in result
+    assert "fit" not in result
+
+
+# --- Slice 13 ----------------------------------------------------------
+def test_fit_model_negbin_interpretation_mentions_irr(call_tool, load_df_into_session):
+    load_df_into_session("nb", _negbin_known_answer_df())
+    result = call_tool("fit_model", {"name": "nb", "formula": "y ~ x", "kind": "negbin"})
+    interp = result["interpretation"]
+    # Proposal Acceptance: text always contains "IRR" or "incidence rate ratio".
+    assert ("IRR" in interp) or ("incidence rate ratio" in interp)
+    assert "x" in interp
+
+
+# --- Slice 14 ----------------------------------------------------------
+def test_fit_model_negbin_records_markdown_and_code_cells(call_tool, load_df_into_session):
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("nb", _negbin_known_answer_df())
+    call_tool("fit_model", {"name": "nb", "formula": "y ~ x", "kind": "negbin"})
+    cells = get_recorder().cells
+    assert len(cells) == 2
+    assert cells[0]["cell_type"] == "markdown"
+    assert cells[1]["cell_type"] == "code"
+    assert "smf.negativebinomial" in cells[1]["source"]
+    # Recorder code cell must use disp=0 (matches poisson/logistic pattern)
+    # and the same formula passed in.
+    assert "disp=0" in cells[1]["source"]
+    assert "y ~ x" in cells[1]["source"]
+
+
+# --- Slice 15 — recorder code roundtrip --------------------------------
+def test_fit_model_negbin_recorder_code_reproduces_alpha_and_beta(call_tool, load_df_into_session):
+    """The recorded code cell, when executed against the same DataFrame,
+    must reproduce α and β to 1e-6 — proves the recorder template is
+    faithful to the runtime fit."""
+    from data_analyst_mcp import session as _session
+    from data_analyst_mcp.recorder import get_recorder
+
+    df = _negbin_known_answer_df()
+    load_df_into_session("nb", df)
+    result = call_tool("fit_model", {"name": "nb", "formula": "y ~ x", "kind": "negbin"})
+    code = get_recorder().cells[1]["source"]
+    # Execute the recorder cell against the live session connection.
+    con = _session.get_connection()
+    ns: dict[str, Any] = {"con": con}  # type: ignore[name-defined]
+    exec(code, ns)
+    m = ns["model"]
+    by_name = {c["name"]: c for c in result["coefficients"]}
+    assert float(m.params["x"]) == pytest.approx(by_name["x"]["estimate"], abs=1e-6)
+    assert float(m.params["alpha"]) == pytest.approx(result["fit"]["dispersion_alpha"], abs=1e-6)
+
+
+# --- Reference suite regression test (catches statsmodels-version drift) ---
+def test_fit_model_negbin_matches_reference_suite(call_tool, load_df_into_session):
+    """The live fit must match the pinned `fixtures/_negbin_reference/` outputs
+    to ≤1e-3 on coefficients/SEs/dispersion. See the README in that directory
+    for the rationale (statsmodels-pinned today, R-cross-validated later)."""
+    import json
+    from pathlib import Path
+
+    ref_dir = Path(__file__).parent.parent / "fixtures" / "_negbin_reference"
+    expected = json.loads((ref_dir / "expected.json").read_text())
+    for key, ref in expected.items():
+        df = pd.read_csv(ref_dir / f"{key}.csv")
+        load_df_into_session(key, df)
+        result = call_tool("fit_model", {"name": key, "formula": ref["formula"], "kind": "negbin"})
+        assert result["ok"] is True, (key, result)
+        assert result["fit"]["dispersion_alpha"] == pytest.approx(ref["dispersion_alpha"], abs=1e-3)
+        assert result["fit"]["dispersion_alpha_se"] == pytest.approx(
+            ref["dispersion_alpha_se"], abs=1e-3
+        )
+        by_name = {c["name"]: c for c in result["coefficients"]}
+        ref_by_name = {c["name"]: c for c in ref["coefficients"]}
+        assert set(by_name) == set(ref_by_name), (key, by_name.keys(), ref_by_name.keys())
+        for name, rc in ref_by_name.items():
+            assert by_name[name]["estimate"] == pytest.approx(rc["estimate"], abs=1e-3), (
+                key,
+                name,
+            )
+            assert by_name[name]["std_err"] == pytest.approx(rc["std_err"], abs=1e-3), (
+                key,
+                name,
+            )

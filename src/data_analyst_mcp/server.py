@@ -14,9 +14,13 @@ from mcp.server.fastmcp import FastMCP
 
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.tools import datasets as _datasets
+from data_analyst_mcp.tools import evaluate as _evaluate
+from data_analyst_mcp.tools import missingness as _missingness
 from data_analyst_mcp.tools import models as _models
+from data_analyst_mcp.tools import multitest as _multitest
 from data_analyst_mcp.tools import notebook as _notebook
 from data_analyst_mcp.tools import plots as _plots
+from data_analyst_mcp.tools import predict as _predict
 from data_analyst_mcp.tools import query as _query
 from data_analyst_mcp.tools import stats as _stats
 
@@ -82,6 +86,43 @@ def profile_dataset(name: str, sample_rows: int = 5) -> dict[str, Any]:
         return _datasets.profile_dataset(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("profile_dataset failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def analyze_missingness(
+    name: str,
+    columns: list[str] | None = None,
+    pattern_top_k: int = 10,
+    pairwise_corr_threshold: float = 0.1,
+    run_mcar_test: bool = True,
+) -> dict[str, Any]:
+    """Diagnose missingness structure on a registered dataset (v1, descriptive).
+
+    Per-column null stats, top-K (col → is_null) patterns, pairwise
+    φ-correlation between null indicators, and severity-sorted
+    suggestions (drop/binarize for >50%-null columns; structural alerts
+    when nulls partition cleanly across a categorical; co-missing
+    callouts at |φ| > 0.5). ``columns`` defaults to every column;
+    ``pattern_top_k`` is in [1, 100]; ``pairwise_corr_threshold`` in
+    [0.0, 1.0]. ``run_mcar_test`` defaults to True for forward-compat
+    with v1.1 (Little's MCAR) — in v1 it returns
+    ``mcar_not_yet_implemented``; pass ``run_mcar_test=False`` to get
+    the descriptive output. ``mcar_test`` is always ``null`` in v1.
+    """
+    try:
+        payload = _missingness.AnalyzeMissingnessInput.model_validate(
+            {
+                "name": name,
+                "columns": columns,
+                "pattern_top_k": pattern_top_k,
+                "pairwise_corr_threshold": pairwise_corr_threshold,
+                "run_mcar_test": run_mcar_test,
+            }
+        )
+        return _missingness.analyze_missingness(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("analyze_missingness failed")
         return build_error(type="internal", message=str(exc))
 
 
@@ -225,32 +266,94 @@ def test_hypothesis(
 
 
 @mcp.tool()
+def adjust_pvalues(
+    p_values: list[float],
+    method: str = "bh",
+    alpha: float = 0.05,
+    labels: list[str] | None = None,
+) -> dict[str, Any]:
+    """Correct a family of raw p-values for multiple testing.
+
+    ``method`` is one of ``bonferroni`` / ``sidak`` / ``holm`` (FWER) or
+    ``bh`` / ``by`` (FDR); defaults to ``bh`` (Benjamini–Hochberg). ``alpha``
+    is the significance threshold and affects only the ``rejected`` column.
+    ``labels`` is an optional list of row labels echoed unchanged into the
+    output (must be the same length as ``p_values`` when provided; duplicates
+    are allowed). Output rows are returned in input order; each row carries
+    ``label``, ``p_raw``, ``p_adj``, and ``rejected``. Empty ``p_values`` is
+    valid and returns an empty result with ``n_tests=0``.
+    """
+    try:
+        from pydantic import ValidationError
+
+        try:
+            payload = _multitest.AdjustPvaluesInput.model_validate(
+                {
+                    "p_values": p_values,
+                    "method": method,
+                    "alpha": alpha,
+                    "labels": labels,
+                }
+            )
+        except ValidationError as ve:
+            for err in ve.errors():
+                if err.get("loc") == ("method",):
+                    return build_error(
+                        type="unknown_method",
+                        message=f"Unknown method {method!r}.",
+                        hint=("Allowed methods: ['bh', 'bonferroni', 'by', 'holm', 'sidak']."),
+                    )
+            raise
+        return _multitest.adjust_pvalues(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("adjust_pvalues failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
 def fit_model(
     name: str,
     formula: str,
     kind: str = "ols",
     robust: bool = False,
+    model_name: str | None = None,
 ) -> dict[str, Any]:
-    """Fit an OLS / logistic / Poisson regression with diagnostics.
+    """Fit an OLS / logistic / Poisson / negative binomial regression with diagnostics.
 
     ``formula`` is Wilkinson-style (patsy), e.g. ``price ~ sqft + C(area)``.
     ``kind`` picks the model family: ``ols`` (default, linear), ``logistic``
-    (binary outcome via logit), or ``poisson`` (non-negative counts).
-    ``robust=True`` switches OLS to HC3 heteroskedasticity-robust standard
-    errors (coefficients unchanged, std errors recomputed). Returns
-    coefficients (with std errors, t / z stats, p-values, 95% CIs), fit
-    statistics (R^2 / adj-R^2 / pseudo-R^2 / AIC / BIC / n_obs / df_resid),
-    diagnostics (Breusch-Pagan, Durbin-Watson, Jarque-Bera, condition number,
-    VIF for OLS), a ``warnings`` list (``high_multicollinearity``,
-    ``heteroskedasticity``, ``non_normal_residuals``, ``overdispersion``),
-    and a 2-3 sentence plain-English interpretation.
+    (binary outcome via logit), ``poisson`` (non-negative counts), or
+    ``negbin`` (NB2 negative binomial — the remedy when a Poisson fit emits
+    the ``overdispersion`` warning). ``robust=True`` switches OLS to HC3
+    heteroskedasticity-robust standard errors (coefficients unchanged, std
+    errors recomputed); it is rejected for ``negbin``. ``model_name`` is
+    an optional non-empty, whitespace-free handle: when provided, the
+    fitted result is stored in the session model registry for downstream
+    ``predict`` / ``evaluate_model`` / ``list_models`` calls; duplicates
+    are rejected with ``model_name_collision``. Returns coefficients
+    (with std errors, t / z stats, p-values, 95% CIs), fit statistics
+    (R^2 / adj-R^2 / pseudo-R^2 / AIC / BIC / n_obs / df_resid, plus
+    ``dispersion_alpha`` / ``dispersion_alpha_se`` / ``pearson_chi2_over_df``
+    for ``negbin``), diagnostics (Breusch-Pagan, Durbin-Watson, Jarque-Bera,
+    condition number, VIF for OLS), a ``warnings`` list
+    (``high_multicollinearity``, ``heteroskedasticity``,
+    ``non_normal_residuals``, ``overdispersion``,
+    ``underdispersion_vs_negbin``, ``unstable_dispersion``), a 2-3
+    sentence plain-English interpretation, and (when stored) a
+    ``model_name`` field echoing the registry handle.
     """
     try:
         from pydantic import ValidationError
 
         try:
             payload = _models.FitModelInput.model_validate(
-                {"name": name, "formula": formula, "kind": kind, "robust": robust}
+                {
+                    "name": name,
+                    "formula": formula,
+                    "kind": kind,
+                    "robust": robust,
+                    "model_name": model_name,
+                }
             )
         except ValidationError as ve:
             for err in ve.errors():
@@ -258,12 +361,122 @@ def fit_model(
                     return build_error(
                         type="invalid_kind",
                         message=f"Unknown kind {kind!r}.",
-                        hint="Allowed kinds: ['logistic', 'ols', 'poisson'].",
+                        hint="Allowed kinds: ['logistic', 'negbin', 'ols', 'poisson'].",
                     )
             raise
         return _models.fit_model(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("fit_model failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def list_models() -> dict[str, Any]:
+    """List every model currently registered in this session.
+
+    Each entry reports ``name``, ``kind``, ``formula``, ``fitted_on_dataset``,
+    ``n_obs``, and ``fitted_at`` so the agent can pick a registry handle for
+    downstream ``predict`` / ``evaluate_model`` calls without re-fitting.
+    Entries are returned in registration order. Read-only — does not emit
+    a notebook cell (same convention as ``list_datasets``).
+    """
+    try:
+        return _models.list_models()
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("list_models failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def predict(
+    model_name: str,
+    dataset: str,
+    output: str = "response",
+    threshold: float = 0.5,
+    limit: int = 50,
+    cursor: str | None = None,
+    include_se: bool = False,
+) -> dict[str, Any]:
+    """Score a registered model on a registered dataset.
+
+    ``model_name`` is the registry handle from a previous ``fit_model``
+    call. ``dataset`` is the dataset to score — it must contain every
+    predictor referenced by the model's formula; the outcome column is
+    optional. ``output`` is ``response`` (default — probability for
+    logistic, expected count for Poisson / negbin, identity for OLS),
+    ``link`` (linear predictor η), or ``class`` (logistic-only thresholded
+    label). ``threshold`` is the decision threshold for ``output='class'``,
+    in the open interval (0, 1). ``include_se`` is OLS-only and adds
+    per-row ``se_mean`` / ``mean_ci_lower`` / ``mean_ci_upper``. Returns
+    ``predictions`` (one row per non-dropped input row, ``y_pred`` plus
+    ``y_class`` when classifying, plus SE block when requested),
+    ``dropped_rows`` (rows patsy dropped due to NaN predictors),
+    ``total_rows``, ``truncated`` / ``cursor`` pagination. ``row_index``
+    is 0-indexed in the source dataset (non-contiguous after drops) so
+    callers can SQL-join predictions back to the source.
+    """
+    try:
+        from pydantic import ValidationError
+
+        try:
+            payload = _predict.PredictInput.model_validate(
+                {
+                    "model_name": model_name,
+                    "dataset": dataset,
+                    "output": output,
+                    "threshold": threshold,
+                    "limit": limit,
+                    "cursor": cursor,
+                    "include_se": include_se,
+                }
+            )
+        except ValidationError as ve:
+            for err in ve.errors():
+                if err.get("loc") == ("output",):
+                    return build_error(
+                        type="invalid_output",
+                        message=f"Unknown output mode {output!r}.",
+                        hint="Allowed: ['link', 'response', 'class'].",
+                    )
+            raise
+        return _predict.predict(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("predict failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def evaluate_model(
+    model_name: str,
+    dataset: str,
+    threshold: float = 0.5,
+    n_calibration_bins: int = 10,
+) -> dict[str, Any]:
+    """Evaluate a registered model on a dataset and return held-out metrics.
+
+    ``model_name`` is the registry handle; ``dataset`` must contain the
+    model's outcome column plus every predictor. ``threshold`` is the
+    classification cutoff used for accuracy / precision / recall / F1 /
+    confusion matrix (logistic only). ``n_calibration_bins`` (range
+    [2, 50], auto-reduced on small datasets) controls the quantile
+    calibration table; if reduced below 2 the response carries
+    ``calibration: null`` with a note. Dispatch by model kind:
+    logistic → ROC-AUC, PR-AUC, Brier, log-loss, accuracy/precision/
+    recall/F1, confusion matrix, calibration table; OLS → RMSE, MAE,
+    R², adjusted R²; poisson / negbin → RMSE, MAE, Pearson χ², deviance.
+    """
+    try:
+        payload = _evaluate.EvaluateModelInput.model_validate(
+            {
+                "model_name": model_name,
+                "dataset": dataset,
+                "threshold": threshold,
+                "n_calibration_bins": n_calibration_bins,
+            }
+        )
+        return _evaluate.evaluate_model(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("evaluate_model failed")
         return build_error(type="internal", message=str(exc))
 
 

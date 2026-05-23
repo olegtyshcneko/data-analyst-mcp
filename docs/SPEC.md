@@ -265,7 +265,24 @@ Every tool follows this contract:
 
 **Output**: a structured dict with `summary`, `columns: list[ColumnProfile]`, `head: list[dict]`, `suggestions: list[str]`.
 
-### 5.4 `describe_column`
+### 5.4 `analyze_missingness`
+
+**Purpose**: missingness diagnostics — per-column null stats plus the cross-column *structure* that `profile_dataset` does not surface (which columns are co-missing, whether nulls partition cleanly across a categorical, top missingness patterns, whether the planted nulls are MCAR).
+
+**Input**:
+- `name: str` — dataset name.
+- `columns: list[str] | None = None` — restrict analysis to a subset; default is every column.
+- `pattern_top_k: int = 10` — number of distinct (col → is_null) tuples returned, descending by count. Range `[1, 100]`.
+- `pairwise_corr_threshold: float = 0.1` — hide pairwise φ entries with `|φ|` below this. Range `[0.0, 1.0]`.
+- `run_mcar_test: bool = True` — run Little's MCAR test on the numeric columns; pass `False` to skip and return `mcar_test: null`.
+
+**Behavior**: per-column `null_count` / `null_pct` / `null_grouping` (alignment with a categorical column; tiebreaker picks the fewest-groups categorical, high-cardinality candidates with `group_count > sqrt(n_rows)` are skipped) / `variance_zero`; top-K patterns as `{col: bool}` objects; pairwise φ-correlation between null indicators (Pearson on 0/1 cast); Little's (1988) MCAR test on the numeric subset via a vendored closed-form Gaussian computation (single-step EM); severity-sorted suggestions (structural > MCAR-violation > high-null > co-missing > imputation-OK > no-nulls), capped at 6.
+
+**Output**: `{ok, summary, per_column, patterns, pairwise_correlation, mcar_test, suggestions}`. `mcar_test` is `{"name": "little", "statistic", "df", "p_value", "violated", "consequence"}` on success, `{"name": "little", "skipped": true, "reason": "insufficient_patterns"}` when fewer than 2 numeric patterns with `n_j ≥ 2` survive, and `null` when `run_mcar_test=False`.
+
+**Errors**: `dataset_not_found`, `unknown_columns`, `pattern_top_k_out_of_range`, `pairwise_corr_threshold_out_of_range`.
+
+### 5.5 `describe_column`
 
 **Input**:
 - `name: str` — dataset name.
@@ -278,7 +295,7 @@ Every tool follows this contract:
 - Temporal: counts by year/month/weekday/hour.
 - Outliers: IQR rule, z-score > 3, count and 5 example rows.
 
-### 5.5 `query`
+### 5.6 `query`
 
 **Input**:
 - `sql: str`
@@ -289,7 +306,7 @@ Every tool follows this contract:
 - Apply `LIMIT` if not already present.
 - Return rows, columns, total_rows (separate `COUNT(*)` over a subquery), execution_time_ms.
 
-### 5.6 `correlate`
+### 5.7 `correlate`
 
 **Input**:
 - `name: str`
@@ -299,7 +316,26 @@ Every tool follows this contract:
 
 **Output**: matrix as list-of-lists with row/col labels, plus optional `heatmap_png_base64`.
 
-### 5.7 `compare_groups`
+### 5.8 `adjust_pvalues`
+
+**Purpose**: correct a family of raw p-values for multiple testing. Stateless — no dataset lookup, no session coupling. Designed to compose with `compare_groups` / `test_hypothesis` results that the agent has collected.
+
+**Input**:
+- `p_values: list[float]` — each in `[0, 1]`. NaN, inf, negative, and `>1` are rejected.
+- `method: Literal["bonferroni", "sidak", "holm", "bh", "by"] = "bh"` — `bh` → statsmodels `fdr_bh`, `by` → `fdr_by`.
+- `alpha: float = 0.05` — must satisfy `0 < alpha < 1`.
+- `labels: list[str] | None = None` — optional row labels echoed unchanged; must equal `len(p_values)` when provided. Duplicates allowed.
+
+**Behavior**:
+- Delegate to `statsmodels.stats.multitest.multipletests`. Validate inputs *before* the statsmodels call so error types are deterministic.
+- Output rows are in **input order**. `returnsorted=True` is never passed.
+- Empty `p_values` → `ok: true`, empty `results`, `n_tests=0`, `n_rejected=0`. No statsmodels call.
+
+**Output**: `{ok, method, alpha, results: [{label, p_raw, p_adj, rejected}, ...], n_tests, n_rejected}`. `label` is `null` when `labels` is omitted.
+
+**Errors**: `invalid_p_value` (names the first offending index), `length_mismatch`, `invalid_alpha`, `unknown_method`.
+
+### 5.9 `compare_groups`
 
 **Input**:
 - `name: str`
@@ -315,7 +351,7 @@ Every tool follows this contract:
 
 **Hard requirement**: explicitly state assumption-check results in the output. E.g. `"normality_test": {"name": "shapiro", "p": 0.003, "violated": true, "consequence": "Switched from t-test to Mann–Whitney U."}`.
 
-### 5.8 `test_hypothesis`
+### 5.10 `test_hypothesis`
 
 **Input** (discriminated union via `kind` field):
 - `kind: "t_test" | "welch" | "mann_whitney" | "chi_square" | "fisher" | "anova" | "kruskal" | "ks"`
@@ -323,22 +359,71 @@ Every tool follows this contract:
 
 **Output**: identical shape across tests where possible: `test`, `statistic`, `p_value`, `effect_size`, `df`, `n_a`, `n_b`, `interpretation`.
 
-### 5.9 `fit_model`
+### 5.11 `fit_model`
 
 **Input**:
 - `name: str`
 - `formula: str` — Wilkinson-style, e.g. `"price ~ sqft + bedrooms + C(neighborhood)"`.
-- `kind: Literal["ols", "logistic", "poisson"] = "ols"`
-- `robust: bool = False` — for OLS, use HC3 standard errors.
+- `kind: Literal["ols", "logistic", "poisson", "negbin"] = "ols"` — `negbin` is NB2 (variance = μ + α·μ²), the canonical remedy when a Poisson fit emits `overdispersion`.
+- `robust: bool = False` — for OLS, use HC3 standard errors. Rejected for `negbin` (`robust_not_supported`).
+- `model_name: str | None = None` — optional registry handle. Non-empty, no whitespace. When provided, the fitted result is stored in the session model registry for downstream `predict` / `evaluate_model` / `list_models` calls; duplicates → `model_name_collision`, invalid → `model_name_invalid`. When stored, the response echoes `"model_name": "..."`.
 
 **Output**:
 - `coefficients`: list of `{name, estimate, std_err, t, p_value, ci_low, ci_high}`.
-- `fit`: `r_squared`, `adj_r_squared`, `aic`, `bic`, `n_obs`, `df_resid`.
+- `fit`: `r_squared`, `adj_r_squared`, `aic`, `bic`, `n_obs`, `df_resid`. For `negbin` only: `dispersion_alpha`, `dispersion_alpha_se`, `pearson_chi2_over_df`.
 - `diagnostics`: VIF per coefficient (if OLS), Breusch–Pagan p, Durbin–Watson, Jarque–Bera p, condition number.
-- `warnings`: list of flagged issues — VIF > 10, BP p < 0.05, JB p < 0.05.
-- `interpretation`: 2–3 sentences.
+- `warnings`: list of flagged issues — VIF > 10, BP p < 0.05, JB p < 0.05, Poisson `overdispersion`, NB `underdispersion_vs_negbin` (Pearson < 1.1) and `unstable_dispersion` (SE/α > 0.5).
+- `interpretation`: 2–3 sentences; the `negbin` branch reports the IRR (incidence rate ratio).
+- `model_name`: present only when stored in the registry.
 
-### 5.10 `plot`
+### 5.11a `list_models`
+
+**Input**: none.
+
+**Output**: `{ok, models: [{name, kind, formula, fitted_on_dataset, n_obs, fitted_at}]}` — registration order. Read-only, no recorder cell (mirrors `list_datasets`).
+
+### 5.11b `predict`
+
+**Purpose**: score a registered model on a registered dataset.
+
+**Input**:
+- `model_name: str` — registry handle from a previous `fit_model` call.
+- `dataset: str` — dataset to score; must contain every predictor referenced by the model's formula. Outcome column is optional.
+- `output: Literal["link", "response", "class"] = "response"` — `link` = linear predictor η; `response` = inverse-link (probability / expected count / identity); `class` = thresholded class label (logistic only).
+- `threshold: float = 0.5` — open interval `(0, 1)`; endpoints rejected.
+- `limit: int = 50`, `cursor: str | None = None` — pagination via stringified source-dataset row index.
+- `include_se: bool = False` — OLS only; adds per-row `se_mean` / `mean_ci_lower` / `mean_ci_upper` from `get_prediction(...).summary_frame()`.
+
+**Behavior**:
+- Reconstruct the design matrix via `patsy.dmatrix(rhs, df)`; report rows patsy drops (NaN predictors) in `dropped_rows` rather than skipping silently.
+- `row_index` is 0-indexed in the **source dataset**; non-contiguous after drops so callers can SQL-join predictions back.
+- In-sample prediction (`dataset == fitted_on_dataset`) is allowed; result matches the in-sample fit.
+
+**Output**: `{ok, model_name, dataset, output_mode, predictions: [{row_index, y_pred, ...}], dropped_rows, total_rows, truncated, cursor}`. `y_class` appears when `output="class"`; SE block appears when `include_se=True`.
+
+**Errors**: `model_not_found`, `dataset_not_found`, `missing_predictors`, `class_output_requires_logistic`, `threshold_out_of_range`, `include_se_requires_ols`, `formula_error`, `invalid_cursor`.
+
+### 5.11c `evaluate_model`
+
+**Purpose**: compute held-out (or in-sample) metrics for a registered model.
+
+**Input**:
+- `model_name: str`, `dataset: str` — registry / dataset handles.
+- `threshold: float = 0.5` — classification cutoff for confusion-matrix-derived metrics.
+- `n_calibration_bins: int = 10` — range `[2, 50]`. Auto-reduced to `min(10, n_obs // 20)` on small datasets; below 2 → `calibration: null` with a note.
+
+**Behavior** (dispatch by model kind):
+- **Logistic**: ROC-AUC, PR-AUC, Brier, log-loss (all sklearn); accuracy / precision / recall / F1; confusion matrix at `threshold`; calibration table (quantile bins, `{bin, mean_predicted, mean_observed, n}`).
+- **OLS**: RMSE, MAE, R², adjusted R².
+- **Poisson / NegBin**: RMSE on counts, MAE, Pearson χ², Poisson deviance.
+
+Outcome dtype validation: logistic requires binary 0/1 or boolean; OLS requires numeric (boolean → `boolean_outcome_lpm` warning, proceed); poisson / negbin require non-negative integer.
+
+**Output**: `{ok, model_name, dataset, metrics, n_obs, warnings}` plus `confusion_matrix` and `calibration` (logistic only). Recorder cell emits sklearn-based code; calibration DataFrame is included in code-cell output, summary stats in markdown.
+
+**Errors**: `model_not_found`, `dataset_not_found`, `outcome_column_missing`, `outcome_dtype_mismatch`, `n_calibration_bins_out_of_range`.
+
+### 5.12 `plot`
 
 **Input**:
 - `name: str`
@@ -349,7 +434,7 @@ Every tool follows this contract:
 
 **Output**: `{"ok": true, "png_base64": "...", "width": 800, "height": 600}`.
 
-### 5.11 `emit_notebook`
+### 5.13 `emit_notebook`
 
 **Input**:
 - `path: str | None = None` — default: `./session_<timestamp>.ipynb`.

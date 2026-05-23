@@ -1,6 +1,10 @@
 # Roadmap
 
-The v1 tool surface is **closed at 11 tools** (spec §5). Everything below is parked. New tools go through an issue and a design conversation first — see `README.md` "Contributing".
+The v1.x tool surface is **16 tools** — this is the v2 boundary. v1 closed at 11 (spec §5); `adjust_pvalues` (Phase 1), `analyze_missingness` (Phase 3, descriptive + Phase 4 Little's MCAR), and the model registry trio (Phase 5: `list_models`, `predict`, `evaluate_model`, plus the additive `fit_model(model_name=...)` storage path) shipped as waivered additions. Everything below is parked. New tools go through an issue and a design conversation first — see `README.md` "Contributing".
+
+**Reproducibility caveat (Phase 5).** Statsmodels Results objects are not reliably picklable across kernel boundaries, so the model registry holds them in-process only. The emitted notebook works around this by re-fitting every registered model in its setup cell, guarded by a hard SHA-256 assert on the training file (above the 100 MB ceiling we fall back to `(path, mtime, size)` and accept the weaker guarantee). If the training CSV is edited between session and notebook replay, the setup cell raises `AssertionError` rather than silently producing different numbers.
+
+No active proposals (Phase 5 closed the bundle).
 
 ## Tooling
 
@@ -15,7 +19,7 @@ The v1 tool surface is **closed at 11 tools** (spec §5). Everything below is pa
 ## Statistics & modeling
 
 - **Logistic-separation handling.** `fit_model(kind="logistic")` currently emits a statsmodels warning when `PerfectSeparationError` is raised, and the response carries on with `NaN` standard errors. Should translate to a structured `{"error": {"type": "perfect_separation", "hint": "..."}}` and skip the diagnostic block. Surfaced in Phase 7.
-- **Mixed-effects models** (`MixedLM`). Currently only OLS / logistic / Poisson are supported.
+- **Mixed-effects models** (`MixedLM`). Currently only OLS / logistic / Poisson / negbin are supported. (The Poisson `overdispersion` warning now has an in-server remedy: `fit_model(kind="negbin")`.)
 - **Bayesian alternatives.** A `fit_bayesian` tool over a thin PyMC wrapper, for the cases where p-values aren't the right deliverable.
 - **Bootstrap CIs everywhere.** `compare_groups` and `correlate` could return bootstrap CIs alongside the parametric ones, with a `bootstrap_iters` knob.
 
@@ -38,3 +42,6 @@ The v1 tool surface is **closed at 11 tools** (spec §5). Everything below is pa
 - Streaming-first workflows beyond the buffered-window idea above. (Spec §1.)
 - Datasets > 10 GB. (Spec §1.) If you're there, you want Spark / Trino, not us.
 - Calling an LLM from inside the server. (Spec §11.) The server returns structured data; the agent does the reasoning.
+- **`delete_model` tool.** Agent calls `session.reset()` to recover from a `model_name_collision`; the registry surface stays minimal.
+- **Model export to disk.** Pickled statsmodels Results are fragile across versions; the emitted notebook is the export path.
+- **GLM prediction intervals.** OLS gets `include_se=True` (delta-method-clean); proper GLM intervals (delta vs simulation) are their own proposal, deferred indefinitely.
