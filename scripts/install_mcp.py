@@ -194,30 +194,18 @@ def install_antigravity(name: str, command: str, args: list[str]) -> str:
     )
 
 
-def install_for_client(
-    client: str, name: str, *, installed: bool, dry_run: bool
-) -> str:
+def install_for_client(client: str, name: str, *, installed: bool, dry_run: bool) -> str:
     command, args = server_command(installed)
     if client == "claude-code":
-        return install_mcp_servers_json(
-            claude_code_path(), name, command, args, dry_run=dry_run
-        )
+        return install_mcp_servers_json(claude_code_path(), name, command, args, dry_run=dry_run)
     if client == "claude-desktop":
-        return install_mcp_servers_json(
-            claude_desktop_path(), name, command, args, dry_run=dry_run
-        )
+        return install_mcp_servers_json(claude_desktop_path(), name, command, args, dry_run=dry_run)
     if client == "codex":
-        return install_codex_toml(
-            codex_path(), name, command, args, dry_run=dry_run
-        )
+        return install_codex_toml(codex_path(), name, command, args, dry_run=dry_run)
     if client == "cursor":
-        return install_mcp_servers_json(
-            cursor_path(), name, command, args, dry_run=dry_run
-        )
+        return install_mcp_servers_json(cursor_path(), name, command, args, dry_run=dry_run)
     if client == "opencode":
-        return install_opencode_json(
-            opencode_path(), name, command, args, dry_run=dry_run
-        )
+        return install_opencode_json(opencode_path(), name, command, args, dry_run=dry_run)
     if client == "antigravity":
         return install_antigravity(name, command, args)
     raise ValueError(f"unknown client: {client}")
@@ -254,9 +242,11 @@ def main(argv: list[str] | None = None) -> int:
     for client in targets:
         print(f"== {client} ==")
         try:
-            print(install_for_client(
-                client, args.name, installed=args.installed, dry_run=args.dry_run
-            ))
+            print(
+                install_for_client(
+                    client, args.name, installed=args.installed, dry_run=args.dry_run
+                )
+            )
         except Exception as exc:  # noqa: BLE001 — surface any client-specific failure
             print(f"FAILED: {exc}", file=sys.stderr)
             return 1
