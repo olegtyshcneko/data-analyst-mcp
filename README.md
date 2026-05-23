@@ -11,32 +11,89 @@ A reproducible data-analyst MCP server. Point Claude (or any MCP-capable agent) 
 
 ## Install
 
+Two ways to run the server. Pick one — the rest of the doc only cares about the *client* configuration.
+
+**Installed mode (recommended for non-contributors).** `uvx` clones the tagged commit, builds an isolated environment, and runs the console-script:
+
 ```bash
 uvx --from git+https://github.com/olegtyshcneko/data-analyst-mcp@v0.1.0 data-analyst-mcp
 ```
 
-`uvx` clones the tagged commit, builds an isolated environment, and runs the console-script. The package is distributed from GitHub only — there's no PyPI release. Pin to a tag (recommended) or use `@main` to track the tip; bump the ref when you want to update.
+There's no PyPI release. Pin to a tag (recommended) or use `@main` to track the tip; bump the ref when you want to update.
 
-## Configure Claude Desktop
+**Local-checkout mode (for contributors).** Clone the repo and let `uv` resolve the project root:
 
-Add the following to your `claude_desktop_config.json`:
+```bash
+git clone https://github.com/olegtyshcneko/data-analyst-mcp.git
+cd data-analyst-mcp
+uv sync
+uv run data-analyst-mcp
+```
+
+Edits to `src/` are picked up on the next server restart (clients spawn the server as a subprocess per session).
+
+## Wire it into your MCP client
+
+The server speaks stdio JSON-RPC. Every client below needs the same three things in its config: a `command`, an `args` list, and a stable identifier. The shape of that config differs per client.
+
+### Scripted setup
+
+`scripts/install_mcp.py` writes the right config for any of the six clients, merging into existing settings without trampling other servers:
+
+```bash
+# wire the in-tree checkout (default — picks up your edits)
+uv run python scripts/install_mcp.py claude-code
+uv run python scripts/install_mcp.py claude-desktop
+uv run python scripts/install_mcp.py codex
+uv run python scripts/install_mcp.py cursor
+uv run python scripts/install_mcp.py opencode
+uv run python scripts/install_mcp.py antigravity        # prints a snippet to paste
+
+# or install once for every client above
+uv run python scripts/install_mcp.py all
+
+# preview without writing
+uv run python scripts/install_mcp.py codex --dry-run
+
+# wire the published git tag instead of this checkout
+uv run python scripts/install_mcp.py claude-desktop --installed
+```
+
+| Client | Config file written | Scope |
+|---|---|---|
+| `claude-code` | `<repo>/.mcp.json` | project |
+| `claude-desktop` | OS-specific (see below) | user |
+| `codex` | `~/.codex/config.toml` | user |
+| `cursor` | `<repo>/.cursor/mcp.json` | project |
+| `opencode` | `<repo>/opencode.json` | project |
+| `antigravity` | none — prints a snippet to paste via the editor UI | — |
+
+All four project-scoped outputs are gitignored — they embed an absolute path to the local checkout, so they're per-user, not shared.
+
+### Manual snippets
+
+If you'd rather paste the config yourself, here's what `install_mcp.py` would write. Replace `<REPO>` with the absolute path to your local clone, or use the `--installed` snippet at the bottom of this section if you're not running from a checkout.
+
+<details>
+<summary><b>Claude Code</b> — project: <code>.mcp.json</code></summary>
 
 ```json
 {
   "mcpServers": {
     "data-analyst": {
-      "command": "uvx",
-      "args": [
-        "--from",
-        "git+https://github.com/olegtyshcneko/data-analyst-mcp@v0.1.0",
-        "data-analyst-mcp"
-      ]
+      "command": "uv",
+      "args": ["--directory", "<REPO>", "run", "data-analyst-mcp"]
     }
   }
 }
 ```
 
-The file lives at:
+Claude Code prompts once to approve the server when it starts in this directory. `/mcp` lists connected servers from inside the session. For user-global scope, use `claude mcp add data-analyst --scope user -- uv --directory <REPO> run data-analyst-mcp`.
+
+</details>
+
+<details>
+<summary><b>Claude Desktop</b> — user-global</summary>
 
 | OS | Path |
 |---|---|
@@ -44,7 +101,122 @@ The file lives at:
 | Linux | `~/.config/Claude/claude_desktop_config.json` |
 | Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
 
-Restart Claude Desktop and the 11 tools (`load_dataset`, `list_datasets`, `profile_dataset`, `describe_column`, `query`, `correlate`, `compare_groups`, `test_hypothesis`, `fit_model`, `plot`, `emit_notebook`) become available in any new conversation.
+```json
+{
+  "mcpServers": {
+    "data-analyst": {
+      "command": "uv",
+      "args": ["--directory", "<REPO>", "run", "data-analyst-mcp"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop after editing.
+
+</details>
+
+<details>
+<summary><b>Codex CLI / IDE extension</b> — user: <code>~/.codex/config.toml</code></summary>
+
+```toml
+[mcp_servers.data-analyst]
+command = "uv"
+args = ["--directory", "<REPO>", "run", "data-analyst-mcp"]
+```
+
+The CLI and the IDE extension share this file. Codex also accepts a project-scoped `.codex/config.toml` if the project is marked trusted.
+
+</details>
+
+<details>
+<summary><b>Cursor</b> — project: <code>.cursor/mcp.json</code></summary>
+
+```json
+{
+  "mcpServers": {
+    "data-analyst": {
+      "command": "uv",
+      "args": ["--directory", "<REPO>", "run", "data-analyst-mcp"]
+    }
+  }
+}
+```
+
+For user-global Cursor scope, write the same JSON to `~/.cursor/mcp.json`.
+
+</details>
+
+<details>
+<summary><b>OpenCode</b> — project: <code>opencode.json</code></summary>
+
+OpenCode uses a different shape: a top-level `mcp` key, `type: "local"`, and a single `command` array (no separate `args`).
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "data-analyst": {
+      "type": "local",
+      "command": ["uv", "--directory", "<REPO>", "run", "data-analyst-mcp"],
+      "enabled": true
+    }
+  }
+}
+```
+
+For user-global OpenCode scope, write the same JSON to `~/.config/opencode/opencode.json`.
+
+</details>
+
+<details>
+<summary><b>Antigravity</b> — editor UI only</summary>
+
+Antigravity stores its MCP config in an editor-managed file. In the editor: **Agent panel → MCP Servers → Manage MCP Servers → "View raw config"**, then paste this entry into the `mcpServers` object:
+
+```json
+{
+  "mcpServers": {
+    "data-analyst": {
+      "command": "uv",
+      "args": ["--directory", "<REPO>", "run", "data-analyst-mcp"]
+    }
+  }
+}
+```
+
+Click **Refresh** in Manage MCP Servers to reload.
+
+</details>
+
+<details>
+<summary><b>Installed-mode variant</b> — same shape, no local checkout required</summary>
+
+Replace the `command` / `args` with the published git-tag form. Identical across Claude Code, Claude Desktop, Cursor, and Antigravity:
+
+```json
+{
+  "command": "uvx",
+  "args": ["--from", "git+https://github.com/olegtyshcneko/data-analyst-mcp@v0.1.0", "data-analyst-mcp"]
+}
+```
+
+For Codex (TOML):
+
+```toml
+command = "uvx"
+args = ["--from", "git+https://github.com/olegtyshcneko/data-analyst-mcp@v0.1.0", "data-analyst-mcp"]
+```
+
+For OpenCode (single command array):
+
+```json
+"command": ["uvx", "--from", "git+https://github.com/olegtyshcneko/data-analyst-mcp@v0.1.0", "data-analyst-mcp"]
+```
+
+</details>
+
+After restarting (or reloading MCP servers in) your client, the 11 tools (`load_dataset`, `list_datasets`, `profile_dataset`, `describe_column`, `query`, `correlate`, `compare_groups`, `test_hypothesis`, `fit_model`, `plot`, `emit_notebook`) become available in any new conversation.
 
 ## Worked example
 
