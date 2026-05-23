@@ -31,9 +31,10 @@ them as a separate step.
 | `eval_basic.py` | 6 | load → list → profile → query → describe smoke against both fixtures |
 | `eval_messy_csv.py` | 8 | one eval per planted issue in `fixtures/messy.csv` (BOM, header whitespace, mixed date formats, "N/A" revenue, duplicates, 78%-null email, IQR outliers, case-inconsistent country) |
 | `eval_stats.py` | 6 | `compare_groups` test selection (ANOVA/Kruskal/Mann-Whitney), `correlate`, `test_hypothesis` chi-square, `fit_model` logistic, assumption_checks always populated |
+| `eval_titanic.py` | 8 | real-world reference dataset (`fixtures/titanic.csv`): survival rate by Sex / Pclass, χ² Sex × Survived, Kruskal Fare ~ Pclass, logit `Survived ~ Sex + Age + C(Pclass)`, slash-in-column-name SQL quoting |
 | `eval_full_workflow.py` | 4 | six-step recorded session → emit → `jupyter nbconvert --execute` exit 0; emitted setup-cell contents; session-reset isolation; determinism across two runs |
 
-Total: 24 evals (the spec floor).
+Total: 32 evals (24 spec floor + 8 reference-dataset).
 
 ## Conventions
 
