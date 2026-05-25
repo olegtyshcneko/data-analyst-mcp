@@ -187,9 +187,7 @@ def test_predict_missing_predictor_returns_missing_predictors(call_tool, load_df
     assert "x3" in r["error"]["message"]
 
 
-def test_predict_handles_q_quoted_predictors_with_special_chars(
-    call_tool, load_df_into_session
-):
+def test_predict_handles_q_quoted_predictors_with_special_chars(call_tool, load_df_into_session):
     """Regression: Q("col with spaces / slashes") must round-trip through
     the predictor-presence check without splitting the inner name into
     multiple bogus tokens."""

@@ -281,9 +281,7 @@ def test_evaluate_missing_outcome_column_returns_outcome_column_missing(
     assert r["error"]["type"] == "outcome_column_missing"
 
 
-def test_evaluate_handles_q_quoted_outcome_with_special_chars(
-    call_tool, load_df_into_session
-):
+def test_evaluate_handles_q_quoted_outcome_with_special_chars(call_tool, load_df_into_session):
     """Regression: Q("col with spaces / slashes") on the formula LHS must
     unwrap to the bare column name when evaluate_model looks it up in the
     scoring dataset."""
