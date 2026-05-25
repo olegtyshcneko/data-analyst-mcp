@@ -49,12 +49,18 @@ def _formula_outcome(formula: str) -> str:
     """Extract the outcome column name (LHS of ``~``).
 
     Conservative: if the LHS is a bare identifier we return it; if it's
-    wrapped in a function (e.g. ``log(y)``) we return as-is and let
-    downstream column-presence checks fail with a sensible error.
+    wrapped in ``Q("col with spaces")`` we unwrap to the inner column
+    name; any other wrapping (e.g. ``log(y)``) is returned as-is and
+    downstream column-presence checks will fail with a sensible error.
     """
+    import re
+
     if "~" not in formula:
         return formula.strip()
     lhs = formula.split("~", 1)[0].strip()
+    q_match = re.fullmatch(r'Q\(\s*(["\'])(.+)\1\s*\)', lhs)
+    if q_match:
+        return q_match.group(2)
     return lhs
 
 

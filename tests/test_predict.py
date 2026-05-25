@@ -187,6 +187,34 @@ def test_predict_missing_predictor_returns_missing_predictors(call_tool, load_df
     assert "x3" in r["error"]["message"]
 
 
+def test_predict_handles_q_quoted_predictors_with_special_chars(
+    call_tool, load_df_into_session
+):
+    """Regression: Q("col with spaces / slashes") must round-trip through
+    the predictor-presence check without splitting the inner name into
+    multiple bogus tokens."""
+    train, test = _logistic_fixture_train_test()
+    # Rename one predictor to a name that needs Q() quoting.
+    train = train.rename(columns={"x1": "x one/two"})
+    test = test.rename(columns={"x1": "x one/two"})
+    load_df_into_session("train", train)
+    load_df_into_session("test", test)
+    r = call_tool(
+        "fit_model",
+        {
+            "name": "train",
+            "formula": 'y ~ Q("x one/two") + x2 + x3',
+            "kind": "logistic",
+            "model_name": "m",
+        },
+    )
+    assert r["ok"], r
+    r = call_tool("predict", {"model_name": "m", "dataset": "test", "limit": 5})
+    assert r["ok"] is True, r
+    for row in r["predictions"]:
+        assert 0.0 <= row["y_pred"] <= 1.0
+
+
 def test_predict_drops_rows_with_nan_predictors_and_skips_their_row_index(
     call_tool, load_df_into_session
 ):

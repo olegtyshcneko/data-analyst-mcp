@@ -329,11 +329,30 @@ def _missing_predictor_columns(formula: str, columns: Any) -> list[str]:
     ``Sum``, ``Helmert``, ``Diff``, ``Poly``, ``Center``, ``standardize``,
     ``scale``) plus numeric and arithmetic noise. Any remaining identifier
     not in ``columns`` is reported as missing.
+
+    ``Q("col with spaces / slashes")`` patsy quoting is handled first: the
+    inner string is validated as a column reference and the wrapper stripped
+    before the identifier sweep, so words inside the quoted name aren't
+    misread as separate columns.
     """
     import re
 
     cols_set = set(str(c) for c in columns)
     rhs = _formula_rhs(formula)
+
+    missing: list[str] = []
+    seen: set[str] = set()
+
+    q_pattern = re.compile(r'Q\(\s*(["\'])(.+?)\1\s*\)')
+    for match in q_pattern.finditer(rhs):
+        col = match.group(2)
+        if col in seen:
+            continue
+        seen.add(col)
+        if col not in cols_set:
+            missing.append(col)
+    rhs = q_pattern.sub(" ", rhs)
+
     tokens = re.findall(r"[A-Za-z_][A-Za-z0-9_]*", rhs)
     patsy_keywords = {
         "C",
@@ -354,8 +373,6 @@ def _missing_predictor_columns(formula: str, columns: Any) -> list[str]:
         "log2",
         "log10",
     }
-    missing: list[str] = []
-    seen: set[str] = set()
     for tok in tokens:
         if tok in patsy_keywords or tok in seen:
             continue

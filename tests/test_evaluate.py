@@ -281,6 +281,32 @@ def test_evaluate_missing_outcome_column_returns_outcome_column_missing(
     assert r["error"]["type"] == "outcome_column_missing"
 
 
+def test_evaluate_handles_q_quoted_outcome_with_special_chars(
+    call_tool, load_df_into_session
+):
+    """Regression: Q("col with spaces / slashes") on the formula LHS must
+    unwrap to the bare column name when evaluate_model looks it up in the
+    scoring dataset."""
+    train, test = _logistic_fixture_train_test()
+    train = train.rename(columns={"y": "y/label"})
+    test = test.rename(columns={"y": "y/label"})
+    load_df_into_session("train", train)
+    load_df_into_session("test", test)
+    r = call_tool(
+        "fit_model",
+        {
+            "name": "train",
+            "formula": 'Q("y/label") ~ x1 + x2 + x3',
+            "kind": "logistic",
+            "model_name": "m",
+        },
+    )
+    assert r["ok"], r
+    r = call_tool("evaluate_model", {"model_name": "m", "dataset": "test"})
+    assert r["ok"] is True, r
+    assert "roc_auc" in r["metrics"]
+
+
 def test_evaluate_n_calibration_bins_one_returns_out_of_range(call_tool, load_df_into_session):
     """Slice 12: n_calibration_bins=1 → n_calibration_bins_out_of_range."""
     train, _ = _logistic_fixture_train_test()
