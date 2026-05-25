@@ -61,6 +61,44 @@ def test_load_dataset_records_nothing_on_error(call_tool: Any) -> None:
     assert rec.cells == []
 
 
+def test_load_dataset_forwards_read_options_to_duckdb(call_tool: Any, tmp_path: Any) -> None:
+    """Regression: ``read_options`` was stored on the session entry but
+    never forwarded into ``read_csv_auto``. Loading a header-bearing file
+    with ``{"header": false}`` must treat the first row as data, which we
+    detect by the auto-named columns and a row count that includes the
+    header row."""
+    csv_path = tmp_path / "with_header.csv"
+    csv_path.write_text("a,b,c\n1,2,3\n4,5,6\n")
+
+    # Sanity: with the default sniffer the first row is read as the header.
+    default_result = call_tool("load_dataset", {"path": str(csv_path), "name": "with_header"})
+    assert default_result["ok"] is True
+    assert default_result["rows"] == 2
+    assert {c["name"] for c in default_result["columns"]} == {"a", "b", "c"}
+
+    # header=false: header row is now data → 3 rows, generated column names.
+    forwarded = call_tool(
+        "load_dataset",
+        {"path": str(csv_path), "name": "no_header", "read_options": {"header": False}},
+    )
+    assert forwarded["ok"] is True, forwarded
+    assert forwarded["rows"] == 3
+    # DuckDB auto-names columns column0/column1/... when header=false.
+    assert all(c["name"].startswith("column") for c in forwarded["columns"])
+
+
+def test_load_dataset_rejects_invalid_read_option_key(call_tool: Any, tmp_path: Any) -> None:
+    """Non-identifier-shaped keys must be rejected before they reach SQL."""
+    csv_path = tmp_path / "tiny.csv"
+    csv_path.write_text("a,b\n1,2\n")
+    result = call_tool(
+        "load_dataset",
+        {"path": str(csv_path), "name": "x", "read_options": {"; DROP TABLE": "value"}},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "bad_read_option"
+
+
 def test_load_dataset_supports_parquet(call_tool: Any, tmp_path: Any) -> None:
     import duckdb
 

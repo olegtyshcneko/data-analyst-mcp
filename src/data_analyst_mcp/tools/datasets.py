@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -62,13 +63,58 @@ def _extension(path: str) -> str:
     return os.path.splitext(path)[1].lower()
 
 
-def _build_read_call(path: str, fmt: str) -> str:
-    """Render the DuckDB read_* call used in the CREATE TABLE statement."""
+def _render_read_option(value: Any) -> str:
+    """Render a Python value as a DuckDB literal for the reader option list.
+
+    Bools → ``TRUE``/``FALSE``; ints/floats unchanged; strings single-quoted
+    with embedded quotes doubled; lists rendered as ``[a, b, c]`` (used for
+    ``names``, ``columns``, etc.). Unknown shapes raise — the caller surfaces
+    them as a ``bad_read_option`` error rather than producing broken SQL.
+    """
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
+    if isinstance(value, (int, float)):
+        return repr(value)
+    if isinstance(value, str):
+        escaped = value.replace("'", "''")
+        return f"'{escaped}'"
+    if isinstance(value, list):
+        return "[" + ", ".join(_render_read_option(v) for v in value) + "]"
+    raise TypeError(f"unsupported read_option value type: {type(value).__name__}")
+
+
+_READ_OPTION_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _format_read_options(options: dict[str, Any]) -> str:
+    """Render ``read_options`` as a leading ``, key=value, ...`` fragment.
+
+    Keys must be identifier-like (``[A-Za-z_][A-Za-z0-9_]*``) to keep SQL
+    injection impossible via the option dict. Returns an empty string when
+    ``options`` is empty.
+    """
+    if not options:
+        return ""
+    parts: list[str] = []
+    for key, val in options.items():
+        if not _READ_OPTION_KEY_RE.match(key):
+            raise ValueError(f"read_options key {key!r} is not a valid identifier")
+        parts.append(f"{key}={_render_read_option(val)}")
+    return ", " + ", ".join(parts)
+
+
+def _build_read_call(path: str, fmt: str, read_options: dict[str, Any]) -> str:
+    """Render the DuckDB read_* call used in the CREATE TABLE statement.
+
+    ``read_options`` is forwarded as additional kwargs to the reader; an
+    empty dict produces the same call as before.
+    """
+    extra = _format_read_options(read_options)
     if fmt == "parquet":
-        return f"read_parquet('{path}')"
+        return f"read_parquet('{path}'{extra})"
     if fmt in {"json", "jsonl"}:
-        return f"read_json('{path}')"
-    return f"read_csv_auto('{path}', SAMPLE_SIZE=-1)"
+        return f"read_json('{path}'{extra})"
+    return f"read_csv_auto('{path}', SAMPLE_SIZE=-1{extra})"
 
 
 class DescribeColumnInput(BaseModel):
@@ -593,7 +639,18 @@ def load_dataset(payload: LoadDatasetInput) -> dict[str, Any]:
     fmt = _EXT_TO_FORMAT[ext]
     name = payload.name or os.path.splitext(os.path.basename(payload.path))[0]
     con = session.get_connection()
-    read_call = _build_read_call(payload.path, fmt)
+    options = payload.read_options or {}
+    try:
+        read_call = _build_read_call(payload.path, fmt, options)
+    except (TypeError, ValueError) as exc:
+        return build_error(
+            type="bad_read_option",
+            message=str(exc),
+            hint=(
+                "read_options keys must be identifier-shaped and values must be "
+                "bool / int / float / str / list of those."
+            ),
+        )
     con.execute(f'CREATE OR REPLACE TABLE "{name}" AS SELECT * FROM {read_call}')
 
     describe_rows = con.execute(f'DESCRIBE "{name}"').fetchall()
