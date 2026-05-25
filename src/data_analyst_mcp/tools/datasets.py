@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import re
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -79,7 +79,8 @@ def _render_read_option(value: Any) -> str:
         escaped = value.replace("'", "''")
         return f"'{escaped}'"
     if isinstance(value, list):
-        return "[" + ", ".join(_render_read_option(v) for v in value) + "]"
+        items = cast(list[Any], value)
+        return "[" + ", ".join(_render_read_option(v) for v in items) + "]"
     raise TypeError(f"unsupported read_option value type: {type(value).__name__}")
 
 
