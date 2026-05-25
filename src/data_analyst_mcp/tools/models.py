@@ -537,11 +537,21 @@ def _warnings(m: Any, diagnostics: dict[str, Any], kind: str, fit: dict[str, Any
     if kind == "poisson" and _poisson_dispersion(m) > 1.5:
         out.append("overdispersion")
     if kind == "negbin":
-        pearson_over_df = fit.get("pearson_chi2_over_df")
-        if isinstance(pearson_over_df, float) and pearson_over_df < 1.1:
-            out.append("underdispersion_vs_negbin")
         alpha = fit.get("dispersion_alpha")
         alpha_se = fit.get("dispersion_alpha_se")
+        # ``underdispersion_vs_negbin`` means NB collapsed back to Poisson:
+        # alpha is effectively zero AND statistically indistinguishable from
+        # it. A pearson_chi2/df near 1 is the *desired* outcome for any
+        # well-fit NB2 (genuine NB or true-Poisson alike), so it cannot
+        # discriminate on its own — gate on alpha instead.
+        if (
+            isinstance(alpha, float)
+            and isinstance(alpha_se, float)
+            and alpha < 0.05
+            and alpha_se > 0.0
+            and alpha / alpha_se < 2.0
+        ):
+            out.append("underdispersion_vs_negbin")
         if (
             isinstance(alpha, float)
             and isinstance(alpha_se, float)

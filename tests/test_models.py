@@ -804,8 +804,28 @@ def test_fit_model_negbin_emits_underdispersion_warning_on_true_poisson(
     load_df_into_session("tp", _negbin_true_poisson_df())
     result = call_tool("fit_model", {"name": "tp", "formula": "y ~ x", "kind": "negbin"})
     assert result["ok"] is True, result
-    assert result["fit"]["pearson_chi2_over_df"] < 1.1
+    fit = result["fit"]
+    # On truly Poisson data the NB collapses: alpha shrinks to ~0 and is
+    # statistically indistinguishable from zero. Both must hold for the
+    # warning to fire (gates against false positives on healthy NB fits
+    # where pearson_chi2/df is also ~1 but alpha is large).
+    assert fit["dispersion_alpha"] < 0.05
+    assert fit["dispersion_alpha"] / fit["dispersion_alpha_se"] < 2.0
     assert "underdispersion_vs_negbin" in result["warnings"]
+
+
+def test_fit_model_negbin_does_not_emit_underdispersion_on_genuine_nb(
+    call_tool, load_df_into_session
+):
+    """Regression: a well-fit NB2 on genuinely overdispersed data must NOT
+    be flagged as underdispersed just because pearson_chi2/df is near 1.0
+    (that's the *desired* outcome, not a warning sign)."""
+    load_df_into_session("nb", _negbin_known_answer_df())
+    result = call_tool("fit_model", {"name": "nb", "formula": "y ~ x", "kind": "negbin"})
+    assert result["ok"] is True, result
+    # Fixture has alpha_true=1.5; statsmodels recovers alpha ≈ 1.44.
+    assert result["fit"]["dispersion_alpha"] > 1.0
+    assert "underdispersion_vs_negbin" not in result["warnings"]
 
 
 # --- Slice 11 ----------------------------------------------------------
