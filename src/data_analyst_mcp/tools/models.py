@@ -412,28 +412,52 @@ def _coerce_bool_columns(df: Any) -> Any:
     return df
 
 
+_NEGBIN_CONVERGENCE_HINT = (
+    "MLE did not converge. Common causes: (1) very small alpha — "
+    "try Poisson; (2) collinear predictors — check VIF in the OLS "
+    "fit; (3) numerical scale — center/scale numerics."
+)
+
+
 def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
     """Pick the right statsmodels entry point and translate failures."""
+    import patsy  # type: ignore[reportMissingTypeStubs]
+
     smf = _smf()
     df = _coerce_bool_columns(df)
-    try:
-        if payload.kind == "ols":
-            cov_type = "HC3" if payload.robust else "nonrobust"
-            m = smf.ols(payload.formula, data=df).fit(cov_type=cov_type)
-        elif payload.kind == "logistic":
-            m = smf.logit(payload.formula, data=df).fit(disp=0)
-        elif payload.kind == "poisson":
-            m = smf.poisson(payload.formula, data=df).fit(disp=0)
-        else:  # negbin
+    if payload.kind == "negbin":
+        # NB MLE can fail numerically (singular hessian, log-of-zero in the
+        # likelihood) on degenerate fixtures like perfect separation. Those
+        # raise generic Exceptions from inside scipy/statsmodels that look
+        # nothing like a patsy/formula error, so they must be reported as
+        # ``convergence_failed`` rather than ``formula_error``.
+        try:
             # TODO: patsy's `offset(log(x))` term is rejected by smf.negativebinomial
             # ("name 'offset' is not defined") on the current statsmodels version.
             # Re-evaluate when adding offset support (proposal §Open question 1);
             # the fallback will be an explicit `offset_column: str | None = None`
             # input on FitModelInput.
             m = smf.negativebinomial(payload.formula, data=df).fit(disp=False)
-    except Exception as exc:
-        # Patsy / NameError / column-binding failures all bubble up here.
-        raise _FormulaError(str(exc)) from exc
+        except (patsy.PatsyError, NameError) as exc:
+            raise _FormulaError(str(exc)) from exc
+        except Exception as exc:
+            return build_error(
+                type="convergence_failed",
+                message=f"Negative binomial MLE did not converge: {exc}",
+                hint=_NEGBIN_CONVERGENCE_HINT,
+            )
+    else:
+        try:
+            if payload.kind == "ols":
+                cov_type = "HC3" if payload.robust else "nonrobust"
+                m = smf.ols(payload.formula, data=df).fit(cov_type=cov_type)
+            elif payload.kind == "logistic":
+                m = smf.logit(payload.formula, data=df).fit(disp=0)
+            else:  # poisson
+                m = smf.poisson(payload.formula, data=df).fit(disp=0)
+        except Exception as exc:
+            # Patsy / NameError / column-binding failures all bubble up here.
+            raise _FormulaError(str(exc)) from exc
 
     if payload.kind == "negbin":
         converged = bool(m.mle_retvals.get("converged", False))
@@ -441,11 +465,7 @@ def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
             return build_error(
                 type="convergence_failed",
                 message="Negative binomial MLE did not converge.",
-                hint=(
-                    "MLE did not converge. Common causes: (1) very small alpha — "
-                    "try Poisson; (2) collinear predictors — check VIF in the OLS "
-                    "fit; (3) numerical scale — center/scale numerics."
-                ),
+                hint=_NEGBIN_CONVERGENCE_HINT,
             )
 
     diagnostics = _diagnostics(m, payload.kind)
@@ -543,13 +563,18 @@ def _warnings(m: Any, diagnostics: dict[str, Any], kind: str, fit: dict[str, Any
         # alpha is effectively zero AND statistically indistinguishable from
         # it. A pearson_chi2/df near 1 is the *desired* outcome for any
         # well-fit NB2 (genuine NB or true-Poisson alike), so it cannot
-        # discriminate on its own — gate on alpha instead.
+        # discriminate on its own — gate on alpha instead. When alpha
+        # collapses to ~0 the hessian inversion can fail and ``alpha_se``
+        # comes back as ``None`` — that *is* the degeneracy signal, so
+        # treat missing SE as a positive collapse indicator alongside the
+        # alpha/SE < 2 ratio check.
         if (
             isinstance(alpha, float)
-            and isinstance(alpha_se, float)
             and alpha < 0.05
-            and alpha_se > 0.0
-            and alpha / alpha_se < 2.0
+            and (
+                alpha_se is None
+                or (isinstance(alpha_se, float) and alpha_se > 0.0 and alpha / alpha_se < 2.0)
+            )
         ):
             out.append("underdispersion_vs_negbin")
         if (
@@ -654,10 +679,17 @@ def _fit_block(m: Any, kind: str) -> dict[str, Any]:
     else:
         out["pseudo_r_squared"] = float(m.prsquared)
     if kind == "negbin":
+        import math
+
         import numpy as np
 
         alpha = float(m.params["alpha"])
-        alpha_se = float(m.bse["alpha"])
+        # Hessian inversion can fail when alpha collapses to ~0 (the NB
+        # degenerates to Poisson), leaving ``m.bse["alpha"]`` as NaN. Expose
+        # that as ``None`` rather than NaN so downstream callers don't divide
+        # by it and pydantic's JSON serializer doesn't silently coerce NaN.
+        alpha_se_raw = float(m.bse["alpha"])
+        alpha_se: float | None = None if math.isnan(alpha_se_raw) else alpha_se_raw
         df_resid = int(m.df_resid)
         resid_p: Any = np.asarray(m.resid_pearson)
         pearson_over_df = float(np.sum(resid_p * resid_p) / df_resid) if df_resid > 0 else 0.0

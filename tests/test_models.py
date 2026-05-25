@@ -805,12 +805,15 @@ def test_fit_model_negbin_emits_underdispersion_warning_on_true_poisson(
     result = call_tool("fit_model", {"name": "tp", "formula": "y ~ x", "kind": "negbin"})
     assert result["ok"] is True, result
     fit = result["fit"]
-    # On truly Poisson data the NB collapses: alpha shrinks to ~0 and is
-    # statistically indistinguishable from zero. Both must hold for the
-    # warning to fire (gates against false positives on healthy NB fits
-    # where pearson_chi2/df is also ~1 but alpha is large).
+    # On truly Poisson data the NB collapses: alpha shrinks to ~0. When the
+    # SE is recoverable it must also be statistically indistinguishable from
+    # zero; when alpha collapses hard enough that the hessian inversion
+    # fails, ``dispersion_alpha_se`` comes back as ``None`` — that itself
+    # is the degeneracy signal and the warning must still fire.
     assert fit["dispersion_alpha"] < 0.05
-    assert fit["dispersion_alpha"] / fit["dispersion_alpha_se"] < 2.0
+    alpha_se = fit["dispersion_alpha_se"]
+    if alpha_se is not None:
+        assert fit["dispersion_alpha"] / alpha_se < 2.0
     assert "underdispersion_vs_negbin" in result["warnings"]
 
 
