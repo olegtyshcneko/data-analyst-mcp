@@ -539,6 +539,36 @@ def test_M3_consequence_text_matches_rule_table(call_tool, load_df_into_session)
     )
 
 
+# === M3b: MCAR suggestion fires across the full [1, 50] null_pct band ====
+
+
+def test_M3b_mcar_suggestion_fires_between_30_and_50_pct_null(
+    call_tool, load_df_into_session
+):
+    """Regression: a column with null_pct in (30%, 50%] used to fall in a
+    gap — MCAR-violation suggestion suppressed (cap was 30%), high-null
+    suggestion not yet active (kicks in at 50%) — so `suggestions: []`
+    even though MCAR was rejected. The MCAR band now extends to 50%."""
+    rng = np.random.default_rng(0)
+    n = 200
+    x = rng.normal(0, 1, n)
+    y = 2.0 * x + rng.normal(0, 0.5, n)
+    df = pd.DataFrame({"x": x, "y": y})
+    # Plant MAR on y conditional on x — high-x rows preferentially missing.
+    # ~40% null places the column squarely in the formerly-empty band.
+    p_miss = 1.0 / (1.0 + np.exp(-(1.5 * x - 0.4)))
+    mask = rng.random(n) < p_miss
+    df.loc[mask, "y"] = np.nan
+    null_pct = float(df["y"].isna().mean() * 100)
+    assert 30.0 < null_pct <= 50.0, null_pct
+    load_df_into_session("mar40", df)
+    result = call_tool("analyze_missingness", {"name": "mar40"})
+    assert result["mcar_test"]["violated"] is True
+    assert any(
+        "mean-imputation will bias `y`" in s for s in result["suggestions"]
+    ), result["suggestions"]
+
+
 # === M4: run_mcar_test=False → mcar_test: null ===========================
 
 

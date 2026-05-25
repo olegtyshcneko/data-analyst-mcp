@@ -37,7 +37,7 @@ _SEV_NO_NULLS = 5
 
 # Suggestion thresholds.
 _MCAR_NULL_PCT_MIN = 1.0
-_MCAR_NULL_PCT_MAX = 30.0
+_MCAR_NULL_PCT_MAX = 50.0
 _MCAR_ALPHA = 0.05
 
 _MCAR_CONSEQUENCE_REJECTED = (
@@ -631,7 +631,9 @@ def _build_suggestions(
             )
 
     # MCAR-dependent rules fire once per qualifying column (null_pct in
-    # [1, 30]) when an MCAR p-value is available. Skipped tests
+    # [1, 50]) when an MCAR p-value is available. The upper bound aligns
+    # with the high-null threshold below so columns in (50%, 100%] get the
+    # "drop or recode" advice instead. Skipped tests
     # (insufficient_patterns) and run_mcar_test=False suppress these.
     if mcar_test is not None and not mcar_test.get("skipped") and "p_value" in mcar_test:
         p_value = float(mcar_test["p_value"])
