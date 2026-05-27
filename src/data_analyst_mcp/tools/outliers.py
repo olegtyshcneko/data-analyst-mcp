@@ -85,7 +85,66 @@ def find_outliers(payload: FindOutliersInput) -> dict[str, Any]:
         return _zscore_method(payload)
     if payload.method == "mahalanobis":
         return _mahalanobis_method(payload)
+    if payload.method == "isolation_forest":
+        return _isolation_forest_method(payload)
     return build_error(type="internal", message="method dispatch not yet implemented")
+
+
+def _isolation_forest_method(payload: FindOutliersInput) -> dict[str, Any]:
+    """sklearn IsolationForest with ``random_state=42``.
+
+    Predictions of -1 mark anomalies; ``score = -decision_function(X)`` so
+    higher score means more anomalous. NaN rows are dropped before fitting
+    (sklearn rejects them) and counted in ``warnings``.
+    """
+    import numpy as np
+    from sklearn.ensemble import IsolationForest
+
+    df = _materialize_columns_df(payload.name, list(payload.columns))
+    n_total = len(df)
+    valid = df[list(payload.columns)].dropna()
+    n_scored = len(valid)
+    dropped = n_total - n_scored
+    warnings: list[str] = []
+    if dropped > 0:
+        warnings.append(f"dropped_{dropped}_na_rows")
+
+    X = valid.to_numpy(dtype=float)
+    model = IsolationForest(
+        contamination=payload.contamination,
+        random_state=42,
+    ).fit(X)
+    preds = model.predict(X)
+    scores = -model.decision_function(X)
+    src_indices = valid.index.to_numpy()
+    mask = preds == -1
+    flagged_src = src_indices[mask]
+    flagged_scores = scores[mask]
+    order = np.argsort(-flagged_scores)
+    n_outliers = int(flagged_src.size)
+    truncated = n_outliers > payload.limit
+    chosen = order[: payload.limit]
+    outliers = [
+        {
+            "row_index": int(flagged_src[i]),
+            "score": float(flagged_scores[i]),
+            "values": {
+                col: _json_value(df[col].iloc[int(flagged_src[i])])
+                for col in payload.columns
+            },
+        }
+        for i in chosen
+    ]
+    return {
+        "ok": True,
+        "method": "isolation_forest",
+        "n_outliers": n_outliers,
+        "n_rows_scored": n_scored,
+        "outliers": outliers,
+        "truncated": truncated,
+        "threshold_used": float(payload.contamination),
+        "warnings": warnings,
+    }
 
 
 def _mahalanobis_method(payload: FindOutliersInput) -> dict[str, Any]:
