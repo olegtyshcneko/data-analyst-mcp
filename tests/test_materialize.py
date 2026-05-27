@@ -32,3 +32,21 @@ def test_materialize_query_rejects_write_statements(call_tool: Any, sql: str) ->
 
     assert result["ok"] is False
     assert result["error"]["type"] == "write_not_allowed"
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "DESCRIBE foo",
+        "SHOW TABLES",
+        "PRAGMA show_tables",
+    ],
+)
+def test_materialize_query_rejects_meta_statements(call_tool: Any, sql: str) -> None:
+    result = call_tool(
+        "materialize_query",
+        {"sql": sql, "name": "out"},
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["type"] == "write_not_allowed"
