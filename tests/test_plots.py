@@ -267,3 +267,29 @@ def test_regression_line_returns_valid_png(call_tool, load_df_into_session):
     _assert_valid_png(result)
     assert result["model_name"] == "m"
     assert result["plot_kind"] == "regression_line"
+
+
+def test_regression_line_scatter_point_count_matches_endog(call_tool, load_df_into_session):
+    """Slice 7: the scatter has one point per training-set row (len(endog))."""
+    from data_analyst_mcp import session as _session
+    from data_analyst_mcp.tools.plots import (
+        RegressionLineInput,
+        _build_regression_line_figure,  # type: ignore[reportPrivateUsage]
+    )
+
+    df = _ols_fixture_df()
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    entry = _session.get_model("m")
+    assert entry is not None
+    payload = RegressionLineInput(model_name="m", predictor="x1")
+    fig = _build_regression_line_figure(entry, df, payload)
+    ax = fig.axes[0]
+    scatter_collections = [c for c in ax.collections if hasattr(c, "get_offsets")]
+    assert scatter_collections, "expected at least one PathCollection (scatter)"
+    n_points = len(scatter_collections[0].get_offsets())
+    assert n_points == len(entry._result.model.endog) == len(df)
