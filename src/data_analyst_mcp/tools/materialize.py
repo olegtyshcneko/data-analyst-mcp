@@ -44,6 +44,11 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
     On success, returns ``{ok, name, rows, columns, total_rows}`` where
     ``columns`` is a list of ``{"name": str, "dtype": str}`` records
     produced by ``DESCRIBE "<name>"`` on the freshly-materialized table.
+    When ``payload.overwrite`` is true and ``payload.name`` is already
+    registered, the existing entry (loaded *or* derived) is replaced —
+    both the DuckDB table (via ``CREATE OR REPLACE TABLE``) and the
+    session registry (via ``session.register``, which overwrites by
+    name).
     """
     first = _first_keyword(payload.sql)
     if first not in _ALLOWED_LEADING_KEYWORDS:
