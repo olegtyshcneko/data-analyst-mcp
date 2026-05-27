@@ -264,3 +264,30 @@ def test_two_proportion_z_alternative_respected(call_tool: Any) -> None:
     assert larger["n"] == pytest.approx(3020.5159, abs=1e-3)
 
 
+# === anova_oneway ===
+
+
+def test_anova_oneway_known_answer(call_tool: Any) -> None:
+    """Cohen's f=0.25, k_groups=4, alpha=0.05, power=0.8 → total_n ≈ 178.397.
+
+    Reference: FTestAnovaPower().solve_power(effect_size=0.25, alpha=0.05,
+        power=0.8, k_groups=4) → 178.39709722701812.
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "anova_oneway",
+            "effect_size": 0.25,
+            "power": 0.8,
+            "alpha": 0.05,
+            "k_groups": 4,
+        },
+    )
+    assert result["ok"] is True
+    assert result["test"] == "anova_oneway"
+    assert result["solved_for"] == "n"
+    assert result["effect_size_metric"] == "cohens_f"
+    # statsmodels returns *total* n for ANOVA.
+    assert result["n"] == pytest.approx(178.3971, abs=1e-3)
+
+
