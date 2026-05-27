@@ -68,6 +68,35 @@ def test_power_analysis_recorder_silent_on_error(call_tool: Any) -> None:
     assert get_recorder().cells == []
 
 
+def test_power_analysis_solved_for_field_matches_omitted_input(call_tool: Any) -> None:
+    """The ``solved_for`` field always names the field the caller left None.
+
+    Three calls — each omitting a different one of {effect_size, n, power}
+    — must report the right ``solved_for`` value.
+    """
+    # Omit effect_size → solved_for = "effect_size".
+    r_es = call_tool(
+        "power_analysis",
+        {"test": "two_sample_t", "n": 64, "power": 0.8, "alpha": 0.05},
+    )
+    assert r_es["ok"] is True
+    assert r_es["solved_for"] == "effect_size"
+    # Omit n → solved_for = "n".
+    r_n = call_tool(
+        "power_analysis",
+        {"test": "two_sample_t", "effect_size": 0.5, "power": 0.8, "alpha": 0.05},
+    )
+    assert r_n["ok"] is True
+    assert r_n["solved_for"] == "n"
+    # Omit power → solved_for = "power".
+    r_pw = call_tool(
+        "power_analysis",
+        {"test": "two_sample_t", "effect_size": 0.5, "n": 64, "alpha": 0.05},
+    )
+    assert r_pw["ok"] is True
+    assert r_pw["solved_for"] == "power"
+
+
 def test_power_analysis_two_unknowns_returns_invalid_inputs(call_tool: Any) -> None:
     """Two of effect_size/n/power omitted → invalid_inputs."""
     result = call_tool(
