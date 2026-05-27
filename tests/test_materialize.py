@@ -304,3 +304,55 @@ def test_setup_cell_emits_chained_derived_in_dependency_order(
         f"order must be base → derived_a → derived_b; got "
         f"base={base_idx}, a={a_idx}, b={b_idx}.\nSetup:\n{setup}"
     )
+
+
+def test_emitted_notebook_with_materialize_runs_via_nbconvert(
+    tmp_path: Any, call_tool: Any
+) -> None:
+    """End-to-end: load → materialize → emit_notebook → nbconvert --execute
+    exits 0. The reproducibility moat — proves the derived-dataset
+    rehydration block in the setup cell is well-formed."""
+    import os
+    import subprocess
+
+    import pandas as pd
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame({"x": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "g": list("aabbccddee")}).to_csv(
+        csv, index=False
+    )
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"]
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT x, g FROM base WHERE x > 4", "name": "filtered"},
+    )
+    assert r["ok"], r
+    # Query the derived table to make sure the resulting notebook has at
+    # least one cell that references it.
+    r = call_tool("query", {"sql": "SELECT COUNT(*) AS n FROM filtered"})
+    assert r["ok"], r
+
+    nb_path = tmp_path / "materialize_roundtrip.ipynb"
+    assert call_tool("emit_notebook", {"path": str(nb_path)})["ok"]
+
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "jupyter",
+            "nbconvert",
+            "--to",
+            "notebook",
+            "--execute",
+            "--inplace",
+            str(nb_path),
+            "--ExecutePreprocessor.timeout=120",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    assert result.returncode == 0, (
+        f"nbconvert failed:\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+    )
