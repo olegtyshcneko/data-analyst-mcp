@@ -216,7 +216,7 @@ For OpenCode (single command array):
 
 </details>
 
-After restarting (or reloading MCP servers in) your client, all 16 tools become available in any new conversation: the original 11 (`load_dataset`, `list_datasets`, `profile_dataset`, `describe_column`, `query`, `correlate`, `compare_groups`, `test_hypothesis`, `fit_model`, `plot`, `emit_notebook`) plus the v1.x additions (`adjust_pvalues`, `analyze_missingness`, `list_models`, `predict`, `evaluate_model`).
+After restarting (or reloading MCP servers in) your client, all 20 tools become available in any new conversation: the original 11 (`load_dataset`, `list_datasets`, `profile_dataset`, `describe_column`, `query`, `correlate`, `compare_groups`, `test_hypothesis`, `fit_model`, `plot`, `emit_notebook`), the v1.x additions (`adjust_pvalues`, `analyze_missingness`, `list_models`, `predict`, `evaluate_model`), and the tier-1 bundle (`materialize_query`, `find_outliers`, `power_analysis`, `regression_line`, `residual_diagnostic`).
 
 ## Worked example
 
@@ -312,6 +312,55 @@ jupyter nbconvert --execute session_2026-05-11_*.ipynb
 
 Exit code 0. Every number from steps 1 – 5 is recomputed from the source files. The notebook is the audit trail.
 
+## Tier-1 bundle: cohorts, outliers, power, diagnostics
+
+The four tools shipped in the tier-1 bundle close the most common gaps the agent runs into during exploratory and modeling work. Each one takes a single call.
+
+**Persist a derived dataset** — `query` is read-only, so `materialize_query` is the way to keep a join around:
+
+```python
+materialize_query(
+    sql="SELECT * FROM opps WHERE stage IN ('Closed Won', 'Closed Lost')",
+    name="opps_closed",
+)
+# → {"ok": true, "name": "opps_closed", "rows": 5_528, "columns": [...]}
+```
+
+Every downstream tool (`describe_column`, `correlate`, `fit_model`, `find_outliers`, …) can now target `opps_closed` by name, and the emitted notebook rehydrates the derived table after the file-backed ones at replay.
+
+**Joint-outlier detection** — `describe_column` flags per-column outliers; `find_outliers` catches rows that are extreme in the K-dimensional manifold:
+
+```python
+find_outliers(
+    name="messy",
+    columns=["score", "revenue"],
+    method="mahalanobis",   # or "iqr" / "zscore" / "isolation_forest"
+)
+# → {"ok": true, "n_outliers": 23, "outliers": [{"row_index": 4_182,
+#     "score": 234.7, "values": {"score": 123_456.0, "revenue": ...}}, ...]}
+```
+
+**Plan an A/B test before running it** — `power_analysis` solves for whichever of `effect_size` / `n` / `power` is omitted, across the five test families that map onto `compare_groups`:
+
+```python
+power_analysis(test="two_proportion_z", p1=0.10, p2=0.12, power=0.8, alpha=0.05)
+# → {"ok": true, "solved_for": "n", "n": 3_835, "n_total": 7_670,
+#    "effect_size_metric": "cohens_h", "interpretation": "Need 3835 per group ..."}
+```
+
+**Visual model diagnostics** — once an OLS model is in the registry, `regression_line` overlays the fit on a chosen predictor and `residual_diagnostic` renders the four canonical residual plots:
+
+```python
+fit_model(name="opps", formula="amount ~ employees + arr",
+          kind="ols", model_name="opp_amount")
+regression_line(model_name="opp_amount", predictor="arr")
+# → PNG with scatter + fit line + 95% mean-CI band
+residual_diagnostic(model_name="opp_amount", kind="all")
+# → 2×2 grid: resid-vs-fitted, Q-Q, scale-location, leverage with Cook's distance
+```
+
+Both diagnostic tools are OLS-only — logistic / Poisson / negbin return `regression_diagnostics_ols_only`.
+
 ## Compose with MotherDuck MCP
 
 This server gives the agent the **analytical reasoning** layer; [`mcp-server-motherduck`](https://github.com/motherduckdb/mcp-server-motherduck) gives it the **raw-SQL-against-a-warehouse** layer. They are complementary, not competing — run both in the same `claude_desktop_config.json`:
@@ -343,7 +392,7 @@ The agent will reach for MotherDuck when the task is "query the warehouse" and f
             │
    ┌────────┴────────────────────────────────┐
    ▼                                         ▼
- 16 tools (datasets / query / stats /     NotebookRecorder
+ 20 tools (datasets / query / stats /     NotebookRecorder
  models / registry / plots / notebook)    (markdown + code cells)
             │                                         │
             ▼                                         ▼
@@ -357,7 +406,7 @@ Single process, single DuckDB connection, single recorder. No network calls. No 
 
 ## Known gotchas
 
-- **`query` is read-only.** It accepts `SELECT` / `WITH` / `DESCRIBE` / `SHOW` / `EXPLAIN` / `PRAGMA show_tables` and rejects writes with `error.type = "write_not_allowed"`. There is no tool to register a query result as a new dataset in v1 — if you want to keep a join-derived table around, re-run the join inline each time, or use the MotherDuck server alongside. See `ROADMAP.md`.
+- **`query` is read-only.** It accepts `SELECT` / `WITH` / `DESCRIBE` / `SHOW` / `EXPLAIN` / `PRAGMA show_tables` and rejects writes with `error.type = "write_not_allowed"`. To persist a join-derived table, use `materialize_query(sql=..., name=...)` — it registers the result as a first-class derived dataset that every other tool can target by name.
 - **Logistic regression with perfectly-separating predictors** raises a `statsmodels` warning rather than a structured error today. The fit still returns, but standard errors will be `NaN`. Tracked in `ROADMAP.md`.
 - **Boolean response columns in `fit_model`.** Pandas' nullable `BooleanDtype` is coerced to `{0, 1}` numeric before being handed to statsmodels' `Logit`; plain Python booleans work too. Mixed `True` / `"yes"` strings are not.
 - **Datasets are in-process state.** Restarting Claude Desktop drops the registry. Re-`load_dataset` after a restart, or run the emitted notebook to rehydrate.
@@ -367,8 +416,8 @@ Single process, single DuckDB connection, single recorder. No network calls. No 
 
 ```bash
 uv sync --dev                    # install runtime + dev deps
-uv run pytest tests/             # 146 unit tests
-uv run pytest evals/             # 24 integration evals via mcp.client.stdio (~30s)
+uv run pytest tests/             # 362 unit tests
+uv run pytest evals/             # 44 integration evals via mcp.client.stdio (~30s)
 uv run ruff format --check .     # formatter gate
 uv run ruff check .              # linter gate
 uv run pyright src/              # strict type-check on src/
@@ -379,7 +428,7 @@ The implementation spec is `docs/SPEC.md`. It is the source of truth — when in
 
 ## Contributing
 
-Issues and PRs are welcome. **Open an issue first for any new tool**: the 16-tool surface is intentionally closed at the v2 boundary (spec §5, §11, ROADMAP), and tool ideas are parked in `ROADMAP.md` until they're either promoted to v3 or explicitly declined. Bug fixes, doc improvements, and test additions are easier to land — just open a PR. Every change in `src/` must come with a failing test first (`red:` then `green:`); the `check_tdd_commits.py` script enforces this on the commit log.
+Issues and PRs are welcome. **Open an issue first for any new tool**: the 20-tool surface is intentionally closed at the v2 boundary (spec §5, §11, ROADMAP), and tool ideas are parked in `ROADMAP.md` until they're either promoted to v3 or explicitly declined. Bug fixes, doc improvements, and test additions are easier to land — just open a PR. Every change in `src/` must come with a failing test first (`red:` then `green:`); the `check_tdd_commits.py` script enforces this on the commit log.
 
 ## License
 
