@@ -349,3 +349,12 @@ def test_regression_line_renders_95_ci_band(call_tool, load_df_into_session):
         c for c in ax.collections if "PolyCollection" in c.__class__.__name__
     ]
     assert fill_collections, "expected at least one fill_between PolyCollection on the axes"
+
+
+# === residual_diagnostic ===
+
+
+def test_residual_diagnostic_unknown_model_returns_model_not_found(call_tool):
+    result = call_tool("residual_diagnostic", {"model_name": "nope"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "model_not_found"
