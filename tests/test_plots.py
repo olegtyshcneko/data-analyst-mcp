@@ -211,3 +211,18 @@ def test_regression_line_on_logistic_model_returns_ols_only(call_tool, load_df_i
     result = call_tool("regression_line", {"model_name": "m_log", "predictor": "x1"})
     assert result["ok"] is False
     assert result["error"]["type"] == "regression_diagnostics_ols_only"
+
+
+def test_regression_line_unknown_predictor_returns_column_not_found(
+    call_tool, load_df_into_session
+):
+    df = _ols_fixture_df()
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    result = call_tool("regression_line", {"model_name": "m", "predictor": "x_nope"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "column_not_found"
