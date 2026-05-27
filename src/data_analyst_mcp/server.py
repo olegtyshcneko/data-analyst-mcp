@@ -22,6 +22,7 @@ from data_analyst_mcp.tools import multitest as _multitest
 from data_analyst_mcp.tools import notebook as _notebook
 from data_analyst_mcp.tools import outliers as _outliers
 from data_analyst_mcp.tools import plots as _plots
+from data_analyst_mcp.tools import power as _power
 from data_analyst_mcp.tools import predict as _predict
 from data_analyst_mcp.tools import query as _query
 from data_analyst_mcp.tools import stats as _stats
@@ -619,6 +620,51 @@ def find_outliers(
         return _outliers.find_outliers(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("find_outliers failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def power_analysis(
+    test: str,
+    effect_size: float | None = None,
+    n: int | float | None = None,
+    power: float | None = None,
+    alpha: float = 0.05,
+    p1: float | None = None,
+    p2: float | None = None,
+    k_groups: int | None = None,
+    ratio: float = 1.0,
+    alternative: str = "two-sided",
+) -> dict[str, Any]:
+    """Compute statistical power / sample size / MDE for the named test family.
+
+    ``test`` is one of ``two_sample_t``, ``one_sample_t``, ``paired_t``,
+    ``two_proportion_z``, ``anova_oneway``. Exactly one of
+    ``effect_size``, ``n``, ``power`` must be omitted — the solver fills
+    it in. For ``two_proportion_z``, supplying ``p1`` and ``p2`` auto-
+    derives Cohen's h via ``proportion_effectsize``. ``anova_oneway``
+    requires ``k_groups`` (≥2) and treats ``n`` as the *total* sample
+    size. Returns ``solved_for`` plus every echoed input parameter and a
+    plain-English ``interpretation``.
+    """
+    try:
+        payload = _power.PowerAnalysisInput.model_validate(
+            {
+                "test": test,
+                "effect_size": effect_size,
+                "n": n,
+                "power": power,
+                "alpha": alpha,
+                "p1": p1,
+                "p2": p2,
+                "k_groups": k_groups,
+                "ratio": ratio,
+                "alternative": alternative,
+            }
+        )
+        return _power.power_analysis(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("power_analysis failed")
         return build_error(type="internal", message=str(exc))
 
 
