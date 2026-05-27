@@ -445,3 +445,26 @@ def test_paired_t_known_answer(call_tool: Any) -> None:
     assert result["n"] == pytest.approx(33.3671, abs=1e-4)
 
 
+def test_paired_t_shares_solver_with_one_sample_t(call_tool: Any) -> None:
+    """Same effect_size/alpha/power on one_sample_t and paired_t yields the same n.
+
+    Paired-t is statistically just a one-sample t on the differences, so
+    statsmodels uses ``TTestPower`` for both. This characterization test
+    pins that contract.
+    """
+    one = call_tool(
+        "power_analysis",
+        {"test": "one_sample_t", "effect_size": 0.35, "power": 0.8, "alpha": 0.05},
+    )
+    paired = call_tool(
+        "power_analysis",
+        {"test": "paired_t", "effect_size": 0.35, "power": 0.8, "alpha": 0.05},
+    )
+    assert one["ok"] is True
+    assert paired["ok"] is True
+    assert paired["n"] == pytest.approx(one["n"], abs=1e-10)
+    # ``test`` field must distinguish them.
+    assert paired["test"] == "paired_t"
+    assert one["test"] == "one_sample_t"
+
+
