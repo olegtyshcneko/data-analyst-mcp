@@ -17,6 +17,22 @@ from data_analyst_mcp.errors import build_error
 logger = logging.getLogger(__name__)
 
 
+_EFFECT_SIZE_METRIC: dict[str, str] = {
+    "two_sample_t": "cohens_d",
+    "one_sample_t": "cohens_d",
+    "paired_t": "cohens_d",
+    "two_proportion_z": "cohens_h",
+    "anova_oneway": "cohens_f",
+}
+
+
+def _sm_power() -> Any:
+    """Return ``statsmodels.stats.power`` as an untyped module."""
+    import statsmodels.stats.power as _power  # type: ignore[reportMissingTypeStubs]
+
+    return _power
+
+
 class PowerAnalysisInput(BaseModel):
     """Inputs for ``power_analysis``."""
 
@@ -63,4 +79,38 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
                 "unset — that is the quantity the solver will return."
             ),
         )
+    solved_for = unknowns[0]
+
+    if payload.test == "two_sample_t":
+        solver = _sm_power().TTestIndPower()
+        value = solver.solve_power(
+            effect_size=payload.effect_size,
+            nobs1=payload.n,
+            alpha=payload.alpha,
+            power=payload.power,
+            ratio=payload.ratio,
+            alternative=payload.alternative,
+        )
+        result: dict[str, Any] = {
+            "ok": True,
+            "test": payload.test,
+            "solved_for": solved_for,
+            "effect_size_metric": _EFFECT_SIZE_METRIC[payload.test],
+            "alpha": payload.alpha,
+            "alternative": payload.alternative,
+        }
+        if solved_for == "n":
+            result["n"] = float(value)
+            result["effect_size"] = float(payload.effect_size)  # type: ignore[arg-type]
+            result["power"] = float(payload.power)  # type: ignore[arg-type]
+        elif solved_for == "effect_size":
+            result["effect_size"] = float(value)
+            result["n"] = float(payload.n)  # type: ignore[arg-type]
+            result["power"] = float(payload.power)  # type: ignore[arg-type]
+        else:  # power
+            result["power"] = float(value)
+            result["effect_size"] = float(payload.effect_size)  # type: ignore[arg-type]
+            result["n"] = float(payload.n)  # type: ignore[arg-type]
+        return result
+
     return build_error(type="internal", message="not implemented")
