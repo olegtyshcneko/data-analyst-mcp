@@ -715,9 +715,16 @@ def _residual_series(result_obj: Any) -> tuple[Any, Any, Any]:
 
 
 def _render_resid_vs_fitted(ax: Any, fitted: Any, resid: Any) -> None:
-    """Residuals-vs-fitted scatter with horizontal y=0 line; LOWESS deferred to cycle 15."""
+    """Residuals-vs-fitted scatter with horizontal y=0 line + LOWESS overlay."""
+    import numpy as np
+    from statsmodels.nonparametric.smoothers_lowess import (  # type: ignore[reportMissingTypeStubs]
+        lowess,
+    )
+
     ax.scatter(fitted, resid, s=18, alpha=0.6)
     ax.axhline(0.0, color="#666666", linestyle="--", linewidth=1.0)
+    lo: Any = lowess(np.asarray(resid), np.asarray(fitted), frac=0.6, return_sorted=True)
+    ax.plot(lo[:, 0], lo[:, 1], color="#d62728", linewidth=2.0)
     ax.set_xlabel("Fitted values")
     ax.set_ylabel("Residuals")
 
