@@ -86,3 +86,25 @@ def test_two_sample_t_solve_for_n_reports_n_total_and_interpretation(call_tool: 
     assert "interpretation" in result
     assert "0.5" in result["interpretation"]
     assert "80%" in result["interpretation"] or "0.8" in result["interpretation"]
+
+
+def test_two_sample_t_solves_for_effect_size(call_tool: Any) -> None:
+    """Given n=64, alpha=0.05, power=0.8 → effect_size ≈ 0.49907 (MDE).
+
+    Reference: TTestIndPower().solve_power(effect_size=None, nobs1=64,
+        alpha=0.05, power=0.8, ratio=1.0, alternative='two-sided')
+        → 0.499069177194551
+    """
+    result = call_tool(
+        "power_analysis",
+        {"test": "two_sample_t", "n": 64, "power": 0.8, "alpha": 0.05},
+    )
+    assert result["ok"] is True
+    assert result["solved_for"] == "effect_size"
+    assert result["effect_size"] == pytest.approx(0.4991, abs=1e-4)
+    assert result["n"] == 64
+    assert result["power"] == pytest.approx(0.8, abs=1e-12)
+    # Interpretation must report the *solved* MDE, not the placeholder.
+    assert "0.4991" in result["interpretation"] or "0.499" in result["interpretation"]
+    # When solving for effect_size, phrasing should highlight the MDE/detectability.
+    assert "detectable" in result["interpretation"].lower()
