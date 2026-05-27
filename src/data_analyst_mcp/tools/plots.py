@@ -577,7 +577,8 @@ def _build_regression_line_figure(entry: Any, df: Any, payload: RegressionLineIn
     fig, ax = _make_figure()
     ax.scatter(x_values, y_values, s=18, alpha=0.6)
     ax.plot(x_grid, y_pred, color="#d62728", linewidth=2.0, label="fit")
-    ax.fill_between(x_grid, ci_lower, ci_upper, color="#d62728", alpha=0.2, label="95% CI")
+    # CI band: deferred to cycle 8.
+    _ = (ci_lower, ci_upper)
     ax.set_xlabel(payload.predictor)
     ax.set_ylabel("response")
     _apply_title(ax, payload.title)

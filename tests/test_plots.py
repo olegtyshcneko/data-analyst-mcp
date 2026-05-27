@@ -316,3 +316,34 @@ def test_regression_line_fit_line_slope_matches_params(call_tool, load_df_into_s
     slope = float((y_pred[-1] - y_pred[0]) / (x_grid[-1] - x_grid[0]))
     expected = float(entry._result.params["x1"])
     assert abs(slope - expected) < 1e-8
+
+
+def test_regression_line_renders_95_ci_band(call_tool, load_df_into_session):
+    """Slice 8: a 95 % mean-CI band patch is rendered on the axes
+    (non-empty PolyCollection from ``fill_between``)."""
+    from data_analyst_mcp import session as _session
+    from data_analyst_mcp.tools.plots import (
+        RegressionLineInput,
+        _build_regression_line_figure,  # type: ignore[reportPrivateUsage]
+        _compute_fit_line,  # type: ignore[reportPrivateUsage]
+    )
+
+    df = _ols_fixture_df()
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    entry = _session.get_model("m")
+    assert entry is not None
+    # The helper returns real CI bounds (lower < upper at every point).
+    _, _, ci_lower, ci_upper = _compute_fit_line(entry._result, df, "x1")
+    assert (ci_lower < ci_upper).all()
+    # And the rendered figure has a PolyCollection patch from fill_between.
+    fig = _build_regression_line_figure(
+        entry, df, RegressionLineInput(model_name="m", predictor="x1")
+    )
+    ax = fig.axes[0]
+    fill_collections = [c for c in ax.collections if c.__class__.__name__ == "PolyCollection"]
+    assert fill_collections, "expected at least one fill_between PolyCollection on the axes"
