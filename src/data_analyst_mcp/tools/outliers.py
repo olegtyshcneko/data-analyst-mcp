@@ -108,8 +108,7 @@ def _iqr_method(payload: FindOutliersInput) -> dict[str, Any]:
         mask, excess = iqr_column_mask(df[col].to_numpy(), threshold=threshold)
         row_mask |= mask
         row_score = np.maximum(row_score, excess)
-        # per_column_flags populated in the per-column-aggregation cycle.
-        per_column_flags[col] = []
+        per_column_flags[col] = [int(i) for i in np.nonzero(mask)[0].tolist()]
 
     flagged_indices = np.nonzero(row_mask)[0]
     n_outliers = int(flagged_indices.size)
