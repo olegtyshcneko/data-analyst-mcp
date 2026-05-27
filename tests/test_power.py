@@ -66,3 +66,23 @@ def test_two_sample_t_known_answer_solves_n(call_tool: Any) -> None:
     assert result["solved_for"] == "n"
     assert result["n"] == pytest.approx(63.7656, abs=1e-4)
     assert result["effect_size_metric"] == "cohens_d"
+
+
+def test_two_sample_t_solve_for_n_reports_n_total_and_interpretation(call_tool: Any) -> None:
+    """Solving for n must echo n_total = ceil(n) + ceil(ratio*n) and an interpretation string."""
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_sample_t",
+            "effect_size": 0.5,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    # n is the per-group sample (statsmodels nobs1); n_total = ceil(n) + ceil(ratio*n)
+    assert "n_total" in result
+    assert result["n_total"] == 128  # ceil(63.7656) * 2 = 64 * 2
+    assert "interpretation" in result
+    assert "0.5" in result["interpretation"]
+    assert "80%" in result["interpretation"] or "0.8" in result["interpretation"]
