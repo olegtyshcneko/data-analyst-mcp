@@ -87,6 +87,12 @@ def _build_setup_source() -> str:
     # No hash assert — the recipe is the SQL plus the upstream datasets,
     # which already carry their own asserts via the model rehydration
     # block when models depend on them.
+    #
+    # Chained derived datasets (derived_b SELECTs FROM derived_a) work
+    # because ``_session.get_datasets()`` is a regular dict and Python
+    # dicts preserve insertion order — so a derived dataset registered
+    # after its upstream derived dataset will also be emitted after it
+    # here.
     for name, entry in _session.get_datasets().items():
         if entry.format != "derived":
             continue
