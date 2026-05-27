@@ -79,3 +79,30 @@ def test_materialize_query_creates_registered_dataset_with_row_count(
     assert entry.rows == 3
     assert entry.path == "(query)"
     assert entry.read_options == {"sql": "SELECT x, g FROM src WHERE g = 'b'"}
+
+
+def test_materialize_query_columns_match_describe_output(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    import pandas as pd
+
+    from data_analyst_mcp import session as _session
+
+    load_df_into_session(
+        "src",
+        pd.DataFrame({"i": [1, 2, 3], "f": [1.5, 2.5, 3.5], "s": ["a", "b", "c"]}),
+    )
+
+    result = call_tool(
+        "materialize_query",
+        {"sql": "SELECT i, f, s FROM src", "name": "projected"},
+    )
+
+    assert result["ok"] is True
+    con = _session.get_connection()
+    describe_rows = con.execute('DESCRIBE "projected"').fetchall()
+    expected = [{"name": str(r[0]), "dtype": str(r[1])} for r in describe_rows]
+    assert result["columns"] == expected
+    # Every entry in result["columns"] has the required keys.
+    for col in result["columns"]:
+        assert set(col.keys()) == {"name", "dtype"}
