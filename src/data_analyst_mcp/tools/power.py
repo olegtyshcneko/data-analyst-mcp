@@ -128,6 +128,9 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
     if payload.test == "two_proportion_z":
         return _solve_two_proportion_z(payload, solved_for)
 
+    if payload.test in ("one_sample_t", "paired_t"):
+        return _solve_one_or_paired_t(payload, solved_for)
+
     if payload.test == "anova_oneway":
         if payload.k_groups is None:
             return build_error(
@@ -141,6 +144,88 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
         return _solve_anova_oneway(payload, solved_for)
 
     return build_error(type="internal", message="not implemented")
+
+
+def _solve_one_or_paired_t(payload: PowerAnalysisInput, solved_for: str) -> dict[str, Any]:
+    """Dispatch the TTestPower solver — shared by ``one_sample_t`` and ``paired_t``.
+
+    ``n`` is a single sample size (the paired-t case treats the n pairs as
+    one sample of differences). No ``n_total`` is emitted because n itself
+    is the total.
+    """
+    solver = _sm_power().TTestPower()
+    value = float(
+        solver.solve_power(
+            effect_size=payload.effect_size,
+            nobs=payload.n,
+            alpha=payload.alpha,
+            power=payload.power,
+            alternative=payload.alternative,
+        )
+    )
+    if solved_for == "n":
+        n = value
+        es = float(payload.effect_size)  # type: ignore[arg-type]
+        pw = float(payload.power)  # type: ignore[arg-type]
+    elif solved_for == "effect_size":
+        n = float(payload.n)  # type: ignore[arg-type]
+        es = value
+        pw = float(payload.power)  # type: ignore[arg-type]
+    else:  # power
+        n = float(payload.n)  # type: ignore[arg-type]
+        es = float(payload.effect_size)  # type: ignore[arg-type]
+        pw = value
+    return {
+        "ok": True,
+        "test": payload.test,
+        "solved_for": solved_for,
+        "effect_size_metric": _EFFECT_SIZE_METRIC[payload.test],
+        "alpha": payload.alpha,
+        "alternative": payload.alternative,
+        "effect_size": es,
+        "n": n,
+        "power": pw,
+        "interpretation": _interpret_one_or_paired_t(
+            test=payload.test,
+            solved_for=solved_for,
+            n=n,
+            es=es,
+            pw=pw,
+            alpha=payload.alpha,
+            alternative=payload.alternative,
+        ),
+    }
+
+
+def _interpret_one_or_paired_t(
+    *,
+    test: str,
+    solved_for: str,
+    n: float,
+    es: float,
+    pw: float,
+    alpha: float,
+    alternative: str,
+) -> str:
+    """Plain-English interpretation for ``one_sample_t`` / ``paired_t``."""
+    import math
+
+    family = "paired t" if test == "paired_t" else "one-sample t"
+    if solved_for == "n":
+        return (
+            f"Need {math.ceil(n)} observations at α={alpha} to detect d={es:.4g} "
+            f"with {pw * 100:.0f}% power ({family}, alternative={alternative})."
+        )
+    if solved_for == "effect_size":
+        return (
+            f"With n={int(n)} at α={alpha} and {pw * 100:.0f}% power, "
+            f"the minimum detectable effect is d={es:.4g} "
+            f"({family}, alternative={alternative})."
+        )
+    return (
+        f"Achieved power = {pw:.4g} (i.e. {pw * 100:.1f}%) with n={int(n)}, "
+        f"d={es:.4g}, α={alpha} ({family}, alternative={alternative})."
+    )
 
 
 def _solve_anova_oneway(payload: PowerAnalysisInput, solved_for: str) -> dict[str, Any]:
