@@ -128,7 +128,88 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
     if payload.test == "two_proportion_z":
         return _solve_two_proportion_z(payload, solved_for)
 
+    if payload.test == "anova_oneway":
+        return _solve_anova_oneway(payload, solved_for)
+
     return build_error(type="internal", message="not implemented")
+
+
+def _solve_anova_oneway(payload: PowerAnalysisInput, solved_for: str) -> dict[str, Any]:
+    """Dispatch the FTestAnovaPower solver. ``n`` is the *total* sample size."""
+    import math
+
+    solver = _sm_power().FTestAnovaPower()
+    value = float(
+        solver.solve_power(
+            effect_size=payload.effect_size,
+            nobs=payload.n,
+            alpha=payload.alpha,
+            power=payload.power,
+            k_groups=payload.k_groups,
+        )
+    )
+    if solved_for == "n":
+        n_total = value
+        es = float(payload.effect_size)  # type: ignore[arg-type]
+        pw = float(payload.power)  # type: ignore[arg-type]
+    elif solved_for == "effect_size":
+        n_total = float(payload.n)  # type: ignore[arg-type]
+        es = value
+        pw = float(payload.power)  # type: ignore[arg-type]
+    else:  # power
+        n_total = float(payload.n)  # type: ignore[arg-type]
+        es = float(payload.effect_size)  # type: ignore[arg-type]
+        pw = value
+    return {
+        "ok": True,
+        "test": payload.test,
+        "solved_for": solved_for,
+        "effect_size_metric": _EFFECT_SIZE_METRIC[payload.test],
+        "alpha": payload.alpha,
+        "effect_size": es,
+        "n": n_total,
+        "n_total": int(math.ceil(n_total)),
+        "k_groups": payload.k_groups,
+        "power": pw,
+        "interpretation": _interpret_anova(
+            solved_for=solved_for,
+            n_total=n_total,
+            es=es,
+            pw=pw,
+            alpha=payload.alpha,
+            k_groups=int(payload.k_groups),  # type: ignore[arg-type]
+        ),
+    }
+
+
+def _interpret_anova(
+    *,
+    solved_for: str,
+    n_total: float,
+    es: float,
+    pw: float,
+    alpha: float,
+    k_groups: int,
+) -> str:
+    """Plain-English interpretation for one-way ANOVA power."""
+    import math
+
+    if solved_for == "n":
+        return (
+            f"Need {math.ceil(n_total)} total observations across {k_groups} groups "
+            f"at α={alpha} to detect f={es:.4g} with {pw * 100:.0f}% power "
+            f"(one-way ANOVA)."
+        )
+    if solved_for == "effect_size":
+        return (
+            f"With n={int(n_total)} total across {k_groups} groups at α={alpha} "
+            f"and {pw * 100:.0f}% power, the minimum detectable Cohen's f is "
+            f"{es:.4g} (one-way ANOVA)."
+        )
+    return (
+        f"Achieved power = {pw:.4g} (i.e. {pw * 100:.1f}%) with n={int(n_total)} total, "
+        f"f={es:.4g}, {k_groups} groups, α={alpha} (one-way ANOVA)."
+    )
 
 
 def _solve_two_proportion_z(payload: PowerAnalysisInput, solved_for: str) -> dict[str, Any]:
