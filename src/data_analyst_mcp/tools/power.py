@@ -180,6 +180,9 @@ def _solve_one_or_paired_t(payload: PowerAnalysisInput, solved_for: str) -> dict
         n = float(payload.n)  # type: ignore[arg-type]
         es = float(payload.effect_size)  # type: ignore[arg-type]
         pw = value
+    # ``test`` is echoed verbatim so callers can distinguish
+    # ``one_sample_t`` from ``paired_t`` even though both share the same
+    # underlying solver / arithmetic.
     return {
         "ok": True,
         "test": payload.test,
