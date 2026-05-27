@@ -63,6 +63,13 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
             hint=hint,
         )
 
+    if not payload.overwrite and payload.name in session.get_datasets():
+        return build_error(
+            type="dataset_name_collision",
+            message=f"Dataset {payload.name!r} is already registered.",
+            hint="Pass overwrite=True to replace it, or choose a different name.",
+        )
+
     con = session.get_connection()
     con.execute(f'CREATE OR REPLACE TABLE "{payload.name}" AS {payload.sql}')
 
