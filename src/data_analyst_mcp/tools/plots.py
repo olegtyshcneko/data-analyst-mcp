@@ -529,4 +529,14 @@ def regression_line(payload: RegressionLineInput) -> dict[str, Any]:
             ),
             hint="These plots are only meaningful for linear models. Use plot() for other kinds.",
         )
+    result_obj: Any = entry._result  # type: ignore[reportPrivateUsage]
+    available_predictors = [n for n in result_obj.model.exog_names if n != "Intercept"]
+    if payload.predictor not in available_predictors:
+        return build_error(
+            type="column_not_found",
+            message=(
+                f"Predictor {payload.predictor!r} is not in model {payload.model_name!r}."
+            ),
+            hint=f"Available predictors: {available_predictors}.",
+        )
     return build_error(type="internal", message="not implemented")
