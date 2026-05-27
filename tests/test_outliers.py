@@ -393,3 +393,29 @@ def test_find_outliers_mahalanobis_threshold_used_is_chi2_quantile(
     assert result["threshold_used"] == pytest.approx(9.348404029, abs=1e-4)
     # Make sure threshold_used is NOT just α itself.
     assert result["threshold_used"] > 0.5
+
+
+def test_find_outliers_mahalanobis_drops_na_and_reports_count(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """NaN rows are dropped from the scoring and counted in ``warnings``."""
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(11)
+    X = rng.standard_normal(size=(50, 2))
+    # Sprinkle 3 NaN rows.
+    df = pd.DataFrame({"x": X[:, 0], "y": X[:, 1]})
+    df.loc[5, "x"] = np.nan
+    df.loc[10, "y"] = np.nan
+    df.loc[15, "x"] = np.nan
+    load_df_into_session("d", df)
+
+    result = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["x", "y"], "method": "mahalanobis"},
+    )
+
+    assert result["ok"] is True
+    assert result["n_rows_scored"] == 47  # 50 − 3 dropped
+    assert "dropped_3_na_rows" in result["warnings"]
