@@ -333,3 +333,21 @@ def test_anova_oneway_n_is_total_not_per_group(call_tool: Any) -> None:
     assert "group" in result["interpretation"].lower()
 
 
+def test_anova_oneway_omits_alternative_and_reports_cohens_f(call_tool: Any) -> None:
+    """F-test is two-sided by construction → no ``alternative`` field for ANOVA."""
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "anova_oneway",
+            "effect_size": 0.25,
+            "power": 0.8,
+            "alpha": 0.05,
+            "k_groups": 3,
+        },
+    )
+    assert result["ok"] is True
+    assert result["effect_size_metric"] == "cohens_f"
+    # ANOVA is two-sided F; do not echo `alternative` for it.
+    assert "alternative" not in result
+
+

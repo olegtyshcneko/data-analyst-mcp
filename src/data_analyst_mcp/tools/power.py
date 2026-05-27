@@ -175,6 +175,7 @@ def _solve_anova_oneway(payload: PowerAnalysisInput, solved_for: str) -> dict[st
         "solved_for": solved_for,
         "effect_size_metric": _EFFECT_SIZE_METRIC[payload.test],
         "alpha": payload.alpha,
+        "alternative": payload.alternative,  # regressed for TDD cycle 16
         "effect_size": es,
         "n": n_total,
         "n_total": int(math.ceil(n_total)),
