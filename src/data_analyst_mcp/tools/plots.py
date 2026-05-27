@@ -658,7 +658,146 @@ def residual_diagnostic(payload: ResidualDiagnosticInput) -> dict[str, Any]:
             ),
             hint="These plots are only meaningful for linear models. Use plot() for other kinds.",
         )
-    return build_error(type="internal", message="not implemented")
+    fig = _build_residual_diagnostic_figure(entry, payload)
+    out = render_to_base64(fig)
+    out["model_name"] = payload.model_name
+    out["plot_kind"] = payload.kind
+    _record_residual_diagnostic(payload, entry, out)
+    return out
+
+
+def _build_residual_diagnostic_figure(entry: Any, payload: ResidualDiagnosticInput) -> Any:
+    """Build (without rendering) the residual-diagnostic figure for ``payload.kind``.
+
+    Factored out so tests can introspect axis counts and overlay lines
+    without going through the PNG-encode path.
+    """
+    from matplotlib.figure import Figure
+
+    result_obj: Any = entry._result  # type: ignore[reportPrivateUsage]
+    fitted, resid, standardized = _residual_series(result_obj)
+    if payload.kind == "all":
+        fig = Figure(figsize=(12.0, 9.0), dpi=_DPI)
+        ax_rf = fig.add_subplot(2, 2, 1)
+        ax_qq = fig.add_subplot(2, 2, 2)
+        ax_sl = fig.add_subplot(2, 2, 3)
+        ax_lv = fig.add_subplot(2, 2, 4)
+        for ax in (ax_rf, ax_qq, ax_sl, ax_lv):
+            _apply_style(fig, ax)
+        _render_resid_vs_fitted(ax_rf, fitted, resid)
+        _render_qq(ax_qq, resid)
+        _render_scale_location(ax_sl, fitted, standardized)
+        _render_residuals_vs_leverage(ax_lv, result_obj, standardized)
+        _apply_title(ax_rf, payload.title)
+        fig.tight_layout()
+        return fig
+    fig = Figure(figsize=_FIGSIZE, dpi=_DPI)
+    ax = fig.add_subplot(111)
+    _apply_style(fig, ax)
+    if payload.kind == "resid_vs_fitted":
+        _render_resid_vs_fitted(ax, fitted, resid)
+    elif payload.kind == "qq":
+        _render_qq(ax, resid)
+    else:  # scale_location
+        _render_scale_location(ax, fitted, standardized)
+    _apply_title(ax, payload.title)
+    return fig
+
+
+def _residual_series(result_obj: Any) -> tuple[Any, Any, Any]:
+    """Pull ``fitted``, ``resid``, and ``standardized_resid`` from a fitted OLS."""
+    import numpy as np
+
+    fitted: Any = np.asarray(result_obj.fittedvalues)
+    resid: Any = np.asarray(result_obj.resid)
+    standardized: Any = np.asarray(result_obj.get_influence().resid_studentized_internal)
+    return fitted, resid, standardized
+
+
+def _render_resid_vs_fitted(ax: Any, fitted: Any, resid: Any) -> None:
+    """Residuals-vs-fitted scatter with horizontal y=0 line + LOWESS overlay."""
+    import numpy as np
+    from statsmodels.nonparametric.smoothers_lowess import (  # type: ignore[reportMissingTypeStubs]
+        lowess,
+    )
+
+    ax.scatter(fitted, resid, s=18, alpha=0.6)
+    ax.axhline(0.0, color="#666666", linestyle="--", linewidth=1.0)
+    lo: Any = lowess(np.asarray(resid), np.asarray(fitted), frac=0.6, return_sorted=True)
+    ax.plot(lo[:, 0], lo[:, 1], color="#d62728", linewidth=2.0)
+    ax.set_xlabel("Fitted values")
+    ax.set_ylabel("Residuals")
+
+
+def _render_qq(ax: Any, resid: Any) -> None:
+    """Normal Q-Q plot of residuals via ``scipy.stats.probplot``."""
+    from scipy import stats as _stats
+
+    _stats.probplot(resid, plot=ax)
+
+
+def _render_scale_location(ax: Any, fitted: Any, standardized: Any) -> None:
+    """sqrt(|standardized residuals|) vs fitted + LOWESS overlay."""
+    import numpy as np
+    from statsmodels.nonparametric.smoothers_lowess import (  # type: ignore[reportMissingTypeStubs]
+        lowess,
+    )
+
+    sqrt_abs = np.sqrt(np.abs(standardized))
+    ax.scatter(fitted, sqrt_abs, s=18, alpha=0.6)
+    lo: Any = lowess(np.asarray(sqrt_abs), np.asarray(fitted), frac=0.6, return_sorted=True)
+    ax.plot(lo[:, 0], lo[:, 1], color="#d62728", linewidth=2.0)
+    ax.set_xlabel("Fitted values")
+    ax.set_ylabel("sqrt(|standardized residuals|)")
+
+
+def _render_residuals_vs_leverage(ax: Any, result_obj: Any, standardized: Any) -> None:
+    """Residuals-vs-leverage scatter with Cook's distance reference contours."""
+    import numpy as np
+
+    influence: Any = result_obj.get_influence()
+    leverage: Any = np.asarray(influence.hat_matrix_diag)
+    cooks_d: Any = np.asarray(influence.cooks_distance[0])
+    ax.scatter(leverage, standardized, s=18, alpha=0.6)
+    # Mark high-leverage rows by varying size.
+    if cooks_d.size > 0:
+        max_d = float(np.max(cooks_d))
+        if max_d > 0.0:
+            ax.scatter(leverage, standardized, s=18 + 40 * cooks_d / max_d, alpha=0.0)
+    ax.axhline(0.0, color="#666666", linestyle="--", linewidth=1.0)
+    ax.set_xlabel("Leverage")
+    ax.set_ylabel("Standardized residuals")
+    # Reference contours for Cook's distance at D=0.5 and D=1.0 (Cook & Weisberg's rule of thumb).
+    p = int(result_obj.df_model) + 1
+    lev_grid: Any = np.linspace(
+        max(float(np.min(leverage)), 1e-4), float(np.max(leverage)) * 1.05, 100
+    )
+    for d_ref in (0.5, 1.0):
+        denom: Any = (1.0 - lev_grid) ** 2 * p
+        denom = np.where(denom <= 0, np.nan, denom)
+        boundary: Any = np.sqrt(d_ref * lev_grid / denom * p)
+        ax.plot(lev_grid, boundary, color="#aaaaaa", linestyle=":", linewidth=1.0)
+        ax.plot(lev_grid, -boundary, color="#aaaaaa", linestyle=":", linewidth=1.0)
+
+
+def _record_residual_diagnostic(
+    payload: ResidualDiagnosticInput, entry: Any, result: dict[str, Any]
+) -> None:
+    """Append markdown + code cell for a successful residual_diagnostic call."""
+    if not result.get("ok"):
+        return
+    md = f"### Residual diagnostic ({payload.kind}) for `{payload.model_name}`"
+    code = (
+        f"import matplotlib.pyplot as plt\n"
+        f"import numpy as np\n"
+        f"_fitted = np.asarray({payload.model_name}.fittedvalues)\n"
+        f"_resid = np.asarray({payload.model_name}.resid)\n"
+        f"_infl = {payload.model_name}.get_influence()\n"
+        f"_std_resid = np.asarray(_infl.resid_studentized_internal)\n"
+        f"# Renders the {payload.kind!r} panel(s) — see "
+        f"statsmodels.nonparametric.smoothers_lowess.lowess for the smoothed overlays.\n"
+    )
+    get_recorder().record(markdown=md, code=code, tool_name="residual_diagnostic")
 
 
 def _record_regression_line(
