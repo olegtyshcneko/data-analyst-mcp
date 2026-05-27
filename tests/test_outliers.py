@@ -419,3 +419,37 @@ def test_find_outliers_mahalanobis_drops_na_and_reports_count(
     assert result["ok"] is True
     assert result["n_rows_scored"] == 47  # 50 − 3 dropped
     assert "dropped_3_na_rows" in result["warnings"]
+
+
+def test_find_outliers_mahalanobis_custom_alpha(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """``threshold`` overrides α — smaller α → larger χ² quantile → fewer flags."""
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(42)
+    X = rng.standard_normal(size=(50, 2))
+    X = np.vstack([X, [5.0, 5.0]])
+    load_df_into_session("d", pd.DataFrame({"x": X[:, 0], "y": X[:, 1]}))
+
+    r_default = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["x", "y"], "method": "mahalanobis"},
+    )
+    r_strict = call_tool(
+        "find_outliers",
+        {
+            "name": "d",
+            "columns": ["x", "y"],
+            "method": "mahalanobis",
+            "threshold": 0.001,
+        },
+    )
+
+    # chi2.ppf(0.975, df=2) = 7.3777589082 → default threshold_used
+    # chi2.ppf(0.999, df=2) = 13.815510557964273 → strict threshold_used
+    assert r_default["threshold_used"] == pytest.approx(7.3777589082, abs=1e-4)
+    assert r_strict["threshold_used"] == pytest.approx(13.8155105580, abs=1e-4)
+    # Strict α must flag at most as many rows as default α.
+    assert r_strict["n_outliers"] <= r_default["n_outliers"]
