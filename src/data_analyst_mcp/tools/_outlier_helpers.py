@@ -95,8 +95,8 @@ def iqr_column_mask(
         above = (arr > hi) & ~np.isnan(arr)
         mask = below | above
         excess = np.zeros_like(arr)
-        excess[above] = (arr[above] - hi) / iqr
-        excess[below] = (lo - arr[below]) / iqr
+        # Placeholder: real per-column score lands in the IQR known-answer cycle.
+        excess[above | below] = 1.0
     return (mask, excess)
 
 

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 
 # === shared ===
 
@@ -84,6 +86,34 @@ def test_find_outliers_iqr_default_threshold_flags_extreme_value(
     indices = {o["row_index"] for o in result["outliers"]}
     assert 100 in indices
     assert result["n_outliers"] >= 1
+
+
+def test_find_outliers_iqr_known_answer_score(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Hand-computed IQR + score for [1..10, 100].
+
+    Q1 = np.quantile(..., 0.25) = 3.5
+    Q3 = np.quantile(..., 0.75) = 8.5
+    IQR = 5.0; upper fence = 8.5 + 1.5 * 5 = 16.0
+    Value 100 → flagged, score = (100 - 16) / 5 = 16.8
+    """
+    import pandas as pd
+
+    load_df_into_session(
+        "d",
+        pd.DataFrame({"v": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100]}),
+    )
+    result = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["v"], "method": "iqr"},
+    )
+    assert result["ok"] is True
+    assert result["n_outliers"] == 1
+    flagged = result["outliers"][0]
+    assert flagged["row_index"] == 10
+    assert flagged["score"] == pytest.approx(16.8, abs=1e-4)
+    assert flagged["values"] == {"v": 100.0}
 
 
 def test_find_outliers_iqr_custom_threshold_widens_band(
