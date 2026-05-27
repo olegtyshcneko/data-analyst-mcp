@@ -91,26 +91,45 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
             ratio=payload.ratio,
             alternative=payload.alternative,
         )
-        result: dict[str, Any] = {
-            "ok": True,
-            "test": payload.test,
-            "solved_for": solved_for,
-            "effect_size_metric": _EFFECT_SIZE_METRIC[payload.test],
-            "alpha": payload.alpha,
-            "alternative": payload.alternative,
-        }
-        if solved_for == "n":
-            result["n"] = float(value)
-            result["effect_size"] = float(payload.effect_size)  # type: ignore[arg-type]
-            result["power"] = float(payload.power)  # type: ignore[arg-type]
-        elif solved_for == "effect_size":
-            result["effect_size"] = float(value)
-            result["n"] = float(payload.n)  # type: ignore[arg-type]
-            result["power"] = float(payload.power)  # type: ignore[arg-type]
-        else:  # power
-            result["power"] = float(value)
-            result["effect_size"] = float(payload.effect_size)  # type: ignore[arg-type]
-            result["n"] = float(payload.n)  # type: ignore[arg-type]
-        return result
+        return _build_two_sample_t_result(payload, solved_for, float(value))
 
     return build_error(type="internal", message="not implemented")
+
+
+def _build_two_sample_t_result(
+    payload: PowerAnalysisInput, solved_for: str, value: float
+) -> dict[str, Any]:
+    """Compose the two_sample_t output envelope including n_total + interpretation."""
+    import math
+
+    result: dict[str, Any] = {
+        "ok": True,
+        "test": payload.test,
+        "solved_for": solved_for,
+        "effect_size_metric": _EFFECT_SIZE_METRIC[payload.test],
+        "alpha": payload.alpha,
+        "alternative": payload.alternative,
+    }
+    if solved_for == "n":
+        n1 = value
+        es = float(payload.effect_size)  # type: ignore[arg-type]
+        pw = float(payload.power)  # type: ignore[arg-type]
+    elif solved_for == "effect_size":
+        n1 = float(payload.n)  # type: ignore[arg-type]
+        es = value
+        pw = float(payload.power)  # type: ignore[arg-type]
+    else:  # power
+        n1 = float(payload.n)  # type: ignore[arg-type]
+        es = float(payload.effect_size)  # type: ignore[arg-type]
+        pw = value
+    n_total = int(math.ceil(n1)) + int(math.ceil(n1 * payload.ratio))
+    result["effect_size"] = es
+    result["n"] = n1
+    result["power"] = pw
+    result["n_total"] = n_total
+    result["interpretation"] = (
+        f"Need {math.ceil(n1)} per group ({n_total} total) at α={payload.alpha} "
+        f"to detect d={es:.4g} with {pw * 100:.0f}% power "
+        f"(two-sample t, alternative={payload.alternative})."
+    )
+    return result
