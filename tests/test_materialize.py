@@ -177,3 +177,15 @@ def test_materialize_query_invalid_name(call_tool: Any, name: str) -> None:
 
     assert result["ok"] is False
     assert result["error"]["type"] == "invalid_name"
+
+
+def test_materialize_query_bad_sql_returns_query_error(call_tool: Any) -> None:
+    result = call_tool(
+        "materialize_query",
+        {"sql": "SELECT * FROM no_such_table_xyz", "name": "out"},
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["type"] == "query_error"
+    # DuckDB surface message mentions the missing identifier.
+    assert "no_such_table_xyz" in result["error"]["message"]
