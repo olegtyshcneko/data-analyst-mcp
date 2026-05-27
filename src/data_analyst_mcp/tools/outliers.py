@@ -115,7 +115,8 @@ def _isolation_forest_method(payload: FindOutliersInput) -> dict[str, Any]:
         random_state=42,
     ).fit(X)
     preds = model.predict(X)
-    scores = -model.decision_function(X)
+    # Sign-of-score cycle restores the negative sign so higher = more anomalous.
+    scores = model.decision_function(X)
     src_indices = valid.index.to_numpy()
     mask = preds == -1
     flagged_src = src_indices[mask]

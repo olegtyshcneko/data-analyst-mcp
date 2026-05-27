@@ -553,3 +553,39 @@ def test_find_outliers_isolation_forest_is_deterministic_at_seed_42(
 
     assert r1["outliers"] == r2["outliers"]
     assert r1["n_outliers"] == r2["n_outliers"]
+
+
+def test_find_outliers_isolation_forest_score_is_negative_decision_function(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Tool's reported score must match ``-IsolationForest.decision_function``.
+
+    Higher score = more anomalous. We compute the reference scores
+    directly with sklearn and compare against the tool's top-flagged row.
+    """
+    import numpy as np
+    import pandas as pd
+    from sklearn.ensemble import IsolationForest
+
+    rng = np.random.default_rng(42)
+    X = rng.standard_normal(size=(100, 2))
+    X = np.vstack([X, [10.0, 10.0]])
+    load_df_into_session("d", pd.DataFrame({"x": X[:, 0], "y": X[:, 1]}))
+
+    # Reference: fit the same model directly.
+    ref = IsolationForest(contamination=0.05, random_state=42).fit(X)
+    ref_scores = -ref.decision_function(X)
+
+    result = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["x", "y"], "method": "isolation_forest"},
+    )
+
+    assert result["ok"] is True
+    top = result["outliers"][0]
+    # The top reported row must equal the row of the maximum reference score.
+    assert top["row_index"] == int(np.argmax(ref_scores))
+    assert top["score"] == pytest.approx(float(ref_scores.max()), abs=1e-6)
+    # And the score must be positive for the extreme outlier (since
+    # decision_function returns large negative values for anomalies).
+    assert top["score"] > 0.0
