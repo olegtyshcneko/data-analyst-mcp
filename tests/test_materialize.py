@@ -106,3 +106,25 @@ def test_materialize_query_columns_match_describe_output(
     # Every entry in result["columns"] has the required keys.
     for col in result["columns"]:
         assert set(col.keys()) == {"name", "dtype"}
+
+
+def test_materialize_query_collision_without_overwrite(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    import pandas as pd
+
+    load_df_into_session("src", pd.DataFrame({"x": [1, 2, 3]}))
+
+    first = call_tool(
+        "materialize_query",
+        {"sql": "SELECT x FROM src", "name": "dup"},
+    )
+    assert first["ok"] is True
+
+    second = call_tool(
+        "materialize_query",
+        {"sql": "SELECT x FROM src WHERE x > 1", "name": "dup"},
+    )
+
+    assert second["ok"] is False
+    assert second["error"]["type"] == "dataset_name_collision"
