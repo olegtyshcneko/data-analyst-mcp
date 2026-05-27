@@ -135,6 +135,11 @@ def reset() -> None:
     in-memory state on the connection is left alone. Model entries are
     dropped alongside datasets — Python GC handles cleanup of the live
     statsmodels Results objects.
+
+    Derived datasets (``format == "derived"``) share this same cleanup path:
+    the DROP TABLE loop iterates every registered name regardless of format,
+    so a derived table created by ``materialize_query`` is dropped and its
+    registry entry cleared just like any file-backed dataset.
     """
     if _connection is not None:
         for name in list(_datasets.keys()):
