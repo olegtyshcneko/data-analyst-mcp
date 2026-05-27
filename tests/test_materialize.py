@@ -189,3 +189,38 @@ def test_materialize_query_bad_sql_returns_query_error(call_tool: Any) -> None:
     assert result["error"]["type"] == "query_error"
     # DuckDB surface message mentions the missing identifier.
     assert "no_such_table_xyz" in result["error"]["message"]
+
+
+def test_materialize_query_recorder_writes_on_success_only(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("src", pd.DataFrame({"x": [1, 2, 3]}))
+
+    # Failure path: bad SQL → no cells added.
+    rec = get_recorder()
+    before_fail = len(rec.cells)
+    bad = call_tool(
+        "materialize_query",
+        {"sql": "SELECT * FROM no_such_xyz", "name": "out"},
+    )
+    assert bad["ok"] is False
+    assert len(rec.cells) == before_fail  # nothing recorded
+
+    # Success path: one markdown + one code cell appended.
+    before_ok = len(rec.cells)
+    good = call_tool(
+        "materialize_query",
+        {"sql": "SELECT x FROM src", "name": "ok"},
+    )
+    assert good["ok"] is True
+    assert len(rec.cells) == before_ok + 2
+    md, code = rec.cells[-2], rec.cells[-1]
+    assert md["cell_type"] == "markdown"
+    assert "ok" in md["source"]
+    assert code["cell_type"] == "code"
+    assert "CREATE OR REPLACE TABLE" in code["source"]
+    assert code["metadata"]["tool_name"] == "materialize_query"
