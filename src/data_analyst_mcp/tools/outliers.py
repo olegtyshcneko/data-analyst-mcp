@@ -103,10 +103,9 @@ def _mahalanobis_method(payload: FindOutliersInput) -> dict[str, Any]:
 
     df = _materialize_columns_df(payload.name, list(payload.columns))
     n_total = len(df)
-    # Temporary: skip the NaN drop. The drops-na cycle restores it.
-    valid = df[list(payload.columns)]
+    valid = df[list(payload.columns)].dropna()
     n_scored = len(valid)
-    dropped = 0
+    dropped = n_total - n_scored
     k = len(payload.columns)
     if n_scored <= k:
         return build_error(
