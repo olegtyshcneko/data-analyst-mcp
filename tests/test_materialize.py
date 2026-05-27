@@ -128,3 +128,31 @@ def test_materialize_query_collision_without_overwrite(
 
     assert second["ok"] is False
     assert second["error"]["type"] == "dataset_name_collision"
+
+
+def test_materialize_query_overwrite_replaces_existing_derived(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    import pandas as pd
+
+    from data_analyst_mcp import session as _session
+
+    load_df_into_session("src", pd.DataFrame({"x": [1, 2, 3, 4, 5]}))
+
+    first = call_tool(
+        "materialize_query",
+        {"sql": "SELECT x FROM src", "name": "snap"},
+    )
+    assert first["ok"] is True
+    assert first["rows"] == 5
+
+    second = call_tool(
+        "materialize_query",
+        {"sql": "SELECT x FROM src WHERE x > 3", "name": "snap", "overwrite": True},
+    )
+    assert second["ok"] is True
+    assert second["rows"] == 2
+
+    entry = _session.get_datasets()["snap"]
+    assert entry.rows == 2
+    assert entry.read_options == {"sql": "SELECT x FROM src WHERE x > 3"}
