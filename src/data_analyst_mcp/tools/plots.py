@@ -555,7 +555,84 @@ def regression_line(payload: RegressionLineInput) -> dict[str, Any]:
                 "factors (C(...) / dummy-expanded terms) are not plottable."
             ),
         )
-    return build_error(type="internal", message="not implemented")
+    x_values: Any = df[payload.predictor].to_numpy()
+    y_values: Any = result_obj.model.endog
+    x_grid, y_pred, ci_lower, ci_upper = _compute_fit_line(result_obj, df, payload.predictor)
+    fig, ax = _make_figure()
+    ax.scatter(x_values, y_values, s=18, alpha=0.6)
+    ax.plot(x_grid, y_pred, color="#d62728", linewidth=2.0, label="fit")
+    ax.fill_between(x_grid, ci_lower, ci_upper, color="#d62728", alpha=0.2, label="95% CI")
+    ax.set_xlabel(payload.predictor)
+    ax.set_ylabel("response")
+    _apply_title(ax, payload.title)
+    out = render_to_base64(fig)
+    out["model_name"] = payload.model_name
+    out["plot_kind"] = "regression_line"
+    _record_regression_line(payload, entry, out)
+    return out
+
+
+def _compute_fit_line(
+    result_obj: Any, df: Any, predictor: str, n_points: int = 100
+) -> tuple[Any, Any, Any, Any]:
+    """Build the dense fit-line grid + 95 % mean-CI band for ``predictor``.
+
+    Holds every other predictor at its mean (or first observed value for
+    non-numeric columns — patsy will turn those into the reference level).
+    Returns ``(x_grid, y_pred, ci_lower, ci_upper)`` as numpy arrays.
+    """
+    import numpy as np
+
+    x_values: Any = df[predictor].to_numpy()
+    x_min: float = float(np.min(x_values))
+    x_max: float = float(np.max(x_values))
+    x_grid: Any = np.linspace(x_min, x_max, n_points)
+    # Build the prediction frame: hold each non-target column at its mean
+    # (numeric) or first value (non-numeric — patsy handles factor refs).
+    grid_df: Any = df.iloc[:n_points].copy().reset_index(drop=True)
+    for col in df.columns:
+        if col == predictor:
+            grid_df[col] = x_grid
+        elif _is_numeric_pandas_dtype(df[col]):
+            grid_df[col] = float(df[col].mean())
+        else:
+            grid_df[col] = df[col].iloc[0]
+    pred: Any = result_obj.get_prediction(grid_df).summary_frame()
+    return (
+        x_grid,
+        pred["mean"].to_numpy(),
+        pred["mean_ci_lower"].to_numpy(),
+        pred["mean_ci_upper"].to_numpy(),
+    )
+
+
+def _record_regression_line(
+    payload: RegressionLineInput, entry: Any, result: dict[str, Any]
+) -> None:
+    """Append markdown + code cell for a successful regression_line call."""
+    if not result.get("ok"):
+        return
+    md = (
+        f"### Regression line for `{payload.model_name}` "
+        f"on predictor `{payload.predictor}`"
+    )
+    code = (
+        f'{payload.model_name}_df = con.sql("SELECT * FROM {entry.fitted_on_dataset}").df()\n'
+        f"_grid = {payload.model_name}_df.copy()\n"
+        f"# Hold non-target predictors at their mean; sweep `{payload.predictor}` across "
+        f"its observed range.\n"
+        f"_pred = {payload.model_name}.get_prediction(_grid).summary_frame()\n"
+        f"import matplotlib.pyplot as plt\n"
+        f"fig, ax = plt.subplots(figsize=(8, 6))\n"
+        f"ax.scatter({payload.model_name}_df['{payload.predictor}'], "
+        f"{payload.model_name}.model.endog, s=18, alpha=0.6)\n"
+        f"ax.plot({payload.model_name}_df['{payload.predictor}'], _pred['mean'], "
+        f"color='#d62728', linewidth=2.0)\n"
+        f"ax.fill_between({payload.model_name}_df['{payload.predictor}'], "
+        f"_pred['mean_ci_lower'], _pred['mean_ci_upper'], color='#d62728', alpha=0.2)\n"
+        f"ax.set_xlabel('{payload.predictor}')\nax.set_ylabel('response')\nplt.show()"
+    )
+    get_recorder().record(markdown=md, code=code, tool_name="regression_line")
 
 
 def _is_numeric_pandas_dtype(series: Any) -> bool:
