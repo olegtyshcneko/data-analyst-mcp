@@ -115,15 +115,13 @@ def zscore_column_mask(
     import numpy as np
 
     arr = np.asarray(values, dtype=float)
-    finite_mask = ~np.isnan(arr)
-    finite = arr[finite_mask]
-    if finite.size < 2:
+    # Temporary: use *all* values (including NaN) for mean/sd. The NaN
+    # cycle restores the NaN-omitting computation. With NaNs in the mean,
+    # mean/sd both become NaN and every z becomes NaN → no row flagged.
+    mean = float(np.mean(arr))
+    sd = float(np.std(arr, ddof=1))
+    if not np.isfinite(sd) or sd == 0.0:
         return (np.zeros_like(arr, dtype=bool), np.zeros_like(arr))
-    mean = float(np.mean(finite))
-    sd = float(np.std(finite, ddof=1))
-    if sd == 0.0:
-        return (np.zeros_like(arr, dtype=bool), np.zeros_like(arr))
-    z = np.zeros_like(arr)
-    z[finite_mask] = np.abs((arr[finite_mask] - mean) / sd)
-    mask = (z > threshold) & finite_mask
+    z = np.abs((arr - mean) / sd)
+    mask = z > threshold
     return (mask, z)

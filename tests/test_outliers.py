@@ -258,3 +258,34 @@ def test_find_outliers_zscore_custom_threshold(
     assert r1_4["threshold_used"] == 1.4
     assert r3["n_outliers"] == 0
     assert r1_4["n_outliers"] == 2
+
+
+def test_find_outliers_zscore_nan_rows_not_flagged(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """NaN values must not be flagged as outliers."""
+    import numpy as np
+    import pandas as pd
+
+    # Two NaNs in the middle. 100 small values from N(0, 1) plus a
+    # blatant 50 at the end. The NaN rows must not appear in `outliers`;
+    # the row with value 50 must be the one and only flagged row.
+    rng = np.random.default_rng(seed=7)
+    raw = rng.standard_normal(size=100).tolist()
+    raw[10] = float("nan")
+    raw[20] = float("nan")
+    raw.append(50.0)
+    load_df_into_session("d", pd.DataFrame({"v": raw}))
+    result = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["v"], "method": "zscore"},
+    )
+    assert result["ok"] is True
+    indices = {o["row_index"] for o in result["outliers"]}
+    assert 10 not in indices  # NaN row must not be flagged
+    assert 20 not in indices  # NaN row must not be flagged
+    assert 100 in indices  # the planted extreme must be flagged
+    # zscore does *not* drop NaN rows — n_rows_scored == total rows.
+    # (Mahalanobis is the only method that drops NA rows.)
+    assert result["n_rows_scored"] == 101
+    assert "dropped_2_na_rows" not in result["warnings"]
