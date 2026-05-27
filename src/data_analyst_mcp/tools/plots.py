@@ -609,10 +609,13 @@ def _compute_fit_line(
             grid_df[col] = float(df[col].mean())
         else:
             grid_df[col] = df[col].iloc[0]
-    # Placeholder until cycle 7/8 land: flat line, no CI band.
-    flat: Any = np.full_like(x_grid, float(np.mean(result_obj.model.endog)))
-    _ = grid_df
-    return (x_grid, flat, flat, flat)
+    pred: Any = result_obj.get_prediction(grid_df).summary_frame()
+    return (
+        x_grid,
+        pred["mean"].to_numpy(),
+        pred["mean_ci_lower"].to_numpy(),
+        pred["mean_ci_upper"].to_numpy(),
+    )
 
 
 def _record_regression_line(
