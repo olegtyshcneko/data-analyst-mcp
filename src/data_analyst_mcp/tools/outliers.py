@@ -123,8 +123,18 @@ def _mahalanobis_method(payload: FindOutliersInput) -> dict[str, Any]:
     warnings: list[str] = []
     if dropped > 0:
         warnings.append(f"dropped_{dropped}_na_rows")
-    # Singular-covariance fallback lands in the pseudoinverse cycle.
-    inv = np.linalg.inv(sigma)
+    try:
+        inv = np.linalg.inv(sigma)
+    except np.linalg.LinAlgError:
+        try:
+            inv = np.linalg.pinv(sigma)
+        except np.linalg.LinAlgError:
+            return build_error(
+                type="singular_covariance",
+                message="Covariance matrix is singular and pseudo-inverse failed.",
+                hint="Drop perfectly collinear columns and retry.",
+            )
+        warnings.append("covariance_singular")
 
     diff = X - mu
     # D²_i = (x_i − μ)ᵀ Σ⁻¹ (x_i − μ)
