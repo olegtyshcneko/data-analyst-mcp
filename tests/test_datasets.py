@@ -332,6 +332,29 @@ def test_describe_column_numeric_returns_outliers(call_tool: Any) -> None:
     assert len(out["examples"]) <= 5
 
 
+def test_describe_column_outliers_shape_unchanged_by_helper_extraction(
+    call_tool: Any,
+) -> None:
+    """Characterization: the helper extraction must not change the shape
+    or values of ``describe_column``'s ``outliers`` block.
+
+    Pinned against the live ``fixtures/messy.csv`` snapshot taken at the
+    time of the helper extraction (Step 2 of the Tier-1 bundle):
+        iqr_count       == 20
+        zscore_count    == 5
+        examples len    == 5
+        examples[2]     == 77777.0   (a planted extreme)
+    """
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+    result = call_tool("describe_column", {"name": "messy", "column": "score"})
+    out = result["outliers"]
+    assert set(out.keys()) == {"iqr_count", "zscore_count", "examples"}
+    assert out["iqr_count"] == 20
+    assert out["zscore_count"] == 5
+    assert len(out["examples"]) == 5
+    assert 77777.0 in out["examples"]
+
+
 def test_describe_column_categorical_returns_value_counts_and_entropy(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 

@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
+from data_analyst_mcp.recorder import get_recorder
 
 logger = logging.getLogger(__name__)
 
@@ -80,14 +81,84 @@ def find_outliers(payload: FindOutliersInput) -> dict[str, Any]:
             )
 
     if payload.method == "iqr":
-        return _iqr_method(payload)
+        result = _iqr_method(payload)
+    elif payload.method == "zscore":
+        result = _zscore_method(payload)
+    elif payload.method == "mahalanobis":
+        result = _mahalanobis_method(payload)
+    elif payload.method == "isolation_forest":
+        result = _isolation_forest_method(payload)
+    else:  # pragma: no cover - Literal in the input model excludes this branch
+        return build_error(type="internal", message="method dispatch not yet implemented")
+
+    if result.get("ok"):
+        _record_cell(payload, result)
+    return result
+
+
+def _record_cell(payload: FindOutliersInput, result: dict[str, Any]) -> None:
+    """Append one markdown + one code cell that reproduces the method call."""
+    md = (
+        f"### Outlier detection on `{payload.name}` ({payload.method})\n"
+        f"- Columns: {', '.join(payload.columns)}\n"
+        f"- Flagged: {result['n_outliers']} / {result['n_rows_scored']} rows"
+    )
+    code = _code_snippet(payload)
+    get_recorder().record(markdown=md, code=code, tool_name="find_outliers")
+
+
+def _code_snippet(payload: FindOutliersInput) -> str:
+    """Method-specific code cell that re-runs the detection from the DataFrame."""
+    cols_repr = ", ".join(f'"{c}"' for c in payload.columns)
+    fetch = f'df = con.sql("SELECT {cols_repr} FROM {payload.name}").df()'
+    if payload.method == "iqr":
+        k = payload.threshold if payload.threshold is not None else 1.5
+        return (
+            f"{fetch}\n"
+            f"# IQR outliers (k={k}) — per-column union over the selected cols\n"
+            f"q1 = df.quantile(0.25); q3 = df.quantile(0.75); iqr = q3 - q1\n"
+            f"lower = q1 - {k} * iqr; upper = q3 + {k} * iqr\n"
+            f"mask = ((df < lower) | (df > upper)).any(axis=1)\n"
+            f"df[mask]"
+        )
     if payload.method == "zscore":
-        return _zscore_method(payload)
+        t = payload.threshold if payload.threshold is not None else 3.0
+        return (
+            f"{fetch}\n"
+            f"# Z-score outliers (|z| > {t}) — per-column union over the selected cols\n"
+            f"z = (df - df.mean()) / df.std(ddof=1)\n"
+            f"mask = (z.abs() > {t}).any(axis=1)\n"
+            f"df[mask]"
+        )
     if payload.method == "mahalanobis":
-        return _mahalanobis_method(payload)
-    if payload.method == "isolation_forest":
-        return _isolation_forest_method(payload)
-    return build_error(type="internal", message="method dispatch not yet implemented")
+        alpha = payload.threshold if payload.threshold is not None else 0.025
+        return (
+            f"{fetch}\n"
+            f"import numpy as np\n"
+            f"from scipy.stats import chi2\n"
+            f"# Mahalanobis joint outliers — D² > chi2.ppf(1−α, df=k)\n"
+            f"X = df.dropna().to_numpy(dtype=float)\n"
+            f"mu = X.mean(axis=0); Sigma = np.cov(X, rowvar=False)\n"
+            f"try:\n"
+            f"    inv = np.linalg.inv(Sigma)\n"
+            f"except np.linalg.LinAlgError:\n"
+            f"    inv = np.linalg.pinv(Sigma)\n"
+            f"diff = X - mu\n"
+            f'd2 = np.einsum("ij,jk,ik->i", diff, inv, diff)\n'
+            f"cutoff = chi2.ppf({1 - alpha!r}, df=X.shape[1])\n"
+            f"df.dropna().iloc[d2 > cutoff]"
+        )
+    # isolation_forest
+    return (
+        f"{fetch}\n"
+        f"from sklearn.ensemble import IsolationForest\n"
+        f"X = df.dropna().to_numpy(dtype=float)\n"
+        f"m = IsolationForest(contamination={payload.contamination!r}, random_state=42).fit(X)\n"
+        f"mask = m.predict(X) == -1\n"
+        f"# Higher score = more anomalous.\n"
+        f"scores = -m.decision_function(X)\n"
+        f"df.dropna().iloc[mask]"
+    )
 
 
 def _isolation_forest_method(payload: FindOutliersInput) -> dict[str, Any]:
