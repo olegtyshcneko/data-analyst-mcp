@@ -26,3 +26,13 @@ def test_power_analysis_zero_unknowns_returns_invalid_inputs(call_tool: Any) -> 
     )
     assert result["ok"] is False
     assert result["error"]["type"] == "invalid_inputs"
+
+
+def test_power_analysis_two_unknowns_returns_invalid_inputs(call_tool: Any) -> None:
+    """Two of effect_size/n/power omitted → invalid_inputs."""
+    result = call_tool(
+        "power_analysis",
+        {"test": "two_sample_t", "effect_size": 0.5},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "invalid_inputs"
