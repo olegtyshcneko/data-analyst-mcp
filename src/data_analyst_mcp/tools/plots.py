@@ -649,6 +649,15 @@ def residual_diagnostic(payload: ResidualDiagnosticInput) -> dict[str, Any]:
             message=f"No model named {payload.model_name!r} registered.",
             hint=f"Known model names: {known}." if known else "Registry is empty.",
         )
+    if entry.kind != "ols":
+        return build_error(
+            type="regression_diagnostics_ols_only",
+            message=(
+                f"regression_line/residual_diagnostic require OLS; "
+                f"{payload.model_name} is kind={entry.kind}."
+            ),
+            hint="These plots are only meaningful for linear models. Use plot() for other kinds.",
+        )
     return build_error(type="internal", message="not implemented")
 
 
