@@ -51,12 +51,12 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
         )
         if val is None
     ]
-    if len(unknowns) == 0:
+    if len(unknowns) != 1:
         return build_error(
             type="invalid_inputs",
             message=(
-                "All three of effect_size/n/power were provided; "
-                "exactly one must be omitted (None)."
+                f"Exactly one of effect_size/n/power must be omitted (None); "
+                f"got {len(unknowns)} omitted: {unknowns}."
             ),
             hint=(
                 "Provide two of {effect_size, n, power} and leave the third "
