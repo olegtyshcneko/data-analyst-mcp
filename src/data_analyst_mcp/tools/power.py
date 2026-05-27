@@ -127,9 +127,45 @@ def _build_two_sample_t_result(
     result["n"] = n1
     result["power"] = pw
     result["n_total"] = n_total
-    result["interpretation"] = (
-        f"Need {math.ceil(n1)} per group ({n_total} total) at α={payload.alpha} "
-        f"to detect d={es:.4g} with {pw * 100:.0f}% power "
-        f"(two-sample t, alternative={payload.alternative})."
+    result["interpretation"] = _interpret_two_sample_t(
+        solved_for=solved_for,
+        n1=n1,
+        es=es,
+        pw=pw,
+        alpha=payload.alpha,
+        n_total=n_total,
+        alternative=payload.alternative,
     )
     return result
+
+
+def _interpret_two_sample_t(
+    *,
+    solved_for: str,
+    n1: float,
+    es: float,
+    pw: float,
+    alpha: float,
+    n_total: int,
+    alternative: str,
+) -> str:
+    """Compose a plain-English interpretation that names the solved-for quantity."""
+    import math
+
+    if solved_for == "n":
+        return (
+            f"Need {math.ceil(n1)} per group ({n_total} total) at α={alpha} "
+            f"to detect d={es:.4g} with {pw * 100:.0f}% power "
+            f"(two-sample t, alternative={alternative})."
+        )
+    if solved_for == "effect_size":
+        return (
+            f"With n={int(n1)} per group at α={alpha} and {pw * 100:.0f}% power, "
+            f"the minimum detectable effect is d={es:.4g} "
+            f"(two-sample t, alternative={alternative})."
+        )
+    # power
+    return (
+        f"Achieved power = {pw:.4g} (i.e. {pw * 100:.1f}%) with n={int(n1)} per group, "
+        f"d={es:.4g}, α={alpha} (two-sample t, alternative={alternative})."
+    )
