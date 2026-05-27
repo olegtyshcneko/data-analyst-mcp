@@ -151,3 +151,33 @@ def test_two_sample_t_ratio_respected(call_tool: Any) -> None:
     assert result["n_total"] == 144
 
 
+# === two_proportion_z ===
+
+
+def test_two_proportion_z_known_answer(call_tool: Any) -> None:
+    """Worked example from the proposal: p1=0.10, p2=0.12, power=0.8, alpha=0.05.
+
+    Cohen's h = proportion_effectsize(0.10, 0.12) ≈ -0.063982.
+    Reference: NormalIndPower().solve_power(effect_size=h, alpha=0.05,
+        power=0.8, ratio=1.0, alternative='two-sided')
+        → 3834.595739884031 (n per group, ignoring sign).
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_proportion_z",
+            "p1": 0.10,
+            "p2": 0.12,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    assert result["test"] == "two_proportion_z"
+    assert result["solved_for"] == "n"
+    assert result["effect_size_metric"] == "cohens_h"
+    # Cohen's h is reported in absolute value (sign-invariant for power).
+    assert result["effect_size"] == pytest.approx(0.063982, abs=1e-4)
+    assert result["n"] == pytest.approx(3834.5957, abs=1e-3)
+
+
