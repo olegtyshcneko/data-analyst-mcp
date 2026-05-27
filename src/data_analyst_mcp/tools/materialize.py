@@ -76,7 +76,17 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
         )
 
     con = session.get_connection()
-    con.execute(f'CREATE OR REPLACE TABLE "{payload.name}" AS {payload.sql}')
+    try:
+        con.execute(f'CREATE OR REPLACE TABLE "{payload.name}" AS {payload.sql}')
+    except Exception as exc:
+        # DuckDB raises one of several subclasses of duckdb.Error (Catalog,
+        # Parser, Binder, …). Any of them maps to query_error so callers
+        # see the structured envelope rather than an internal stack trace.
+        return build_error(
+            type="query_error",
+            message=str(exc),
+            hint="Check the SQL — verify referenced tables/columns exist and the syntax is valid.",
+        )
 
     rows = int(con.execute(f'SELECT COUNT(*) FROM "{payload.name}"').fetchone()[0])  # type: ignore[index]
     describe_rows = con.execute(f'DESCRIBE "{payload.name}"').fetchall()
