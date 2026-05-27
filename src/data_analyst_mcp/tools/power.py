@@ -153,9 +153,10 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
 def _solve_one_or_paired_t(payload: PowerAnalysisInput, solved_for: str) -> dict[str, Any]:
     """Dispatch the TTestPower solver — shared by ``one_sample_t`` and ``paired_t``.
 
-    ``n`` is a single sample size (the paired-t case treats the n pairs as
-    one sample of differences). No ``n_total`` is emitted because n itself
-    is the total.
+    Paired-t is statistically a one-sample t over the n pairwise
+    differences, so the same statsmodels ``TTestPower`` solver handles
+    both. ``n`` is the single (or paired) sample size; no ``n_total`` is
+    emitted because n itself is the total observation count.
     """
     solver = _sm_power().TTestPower()
     value = float(
