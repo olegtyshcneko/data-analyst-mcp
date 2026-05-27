@@ -39,7 +39,12 @@ def _first_keyword(sql: str) -> str:
 
 
 def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
-    """Persist a SELECT/WITH result as a registered derived dataset."""
+    """Persist a SELECT/WITH result as a registered derived dataset.
+
+    On success, returns ``{ok, name, rows, columns, total_rows}`` where
+    ``columns`` is a list of ``{"name": str, "dtype": str}`` records
+    produced by ``DESCRIBE "<name>"`` on the freshly-materialized table.
+    """
     first = _first_keyword(payload.sql)
     if first not in _ALLOWED_LEADING_KEYWORDS:
         if first in _META_KEYWORDS:
