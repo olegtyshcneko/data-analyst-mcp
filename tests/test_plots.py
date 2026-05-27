@@ -358,3 +358,16 @@ def test_residual_diagnostic_unknown_model_returns_model_not_found(call_tool):
     result = call_tool("residual_diagnostic", {"model_name": "nope"})
     assert result["ok"] is False
     assert result["error"]["type"] == "model_not_found"
+
+
+def test_residual_diagnostic_on_logistic_returns_ols_only(call_tool, load_df_into_session):
+    df = _logistic_fixture_df()
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "logistic", "model_name": "m_log"},
+    )
+    assert r["ok"], r
+    result = call_tool("residual_diagnostic", {"model_name": "m_log"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "regression_diagnostics_ols_only"
