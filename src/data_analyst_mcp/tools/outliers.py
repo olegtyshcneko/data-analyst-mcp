@@ -105,6 +105,17 @@ def _isolation_forest_method(payload: FindOutliersInput) -> dict[str, Any]:
     valid = df[list(payload.columns)].dropna()
     n_scored = len(valid)
     dropped = n_total - n_scored
+    k = len(payload.columns)
+    min_n = max(10, 2 * k)
+    if n_scored < min_n:
+        return build_error(
+            type="insufficient_rows",
+            message=(
+                f"Isolation Forest needs n >= max(10, 2*k) = {min_n}; "
+                f"got n={n_scored} after dropping NA rows, k={k}."
+            ),
+            hint="Add more rows or pick a different method.",
+        )
     warnings: list[str] = []
     if dropped > 0:
         warnings.append(f"dropped_{dropped}_na_rows")
