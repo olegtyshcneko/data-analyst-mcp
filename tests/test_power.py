@@ -97,6 +97,28 @@ def test_power_analysis_solved_for_field_matches_omitted_input(call_tool: Any) -
     assert r_pw["solved_for"] == "power"
 
 
+def test_power_analysis_infeasible_solution_wraps_statsmodels_error(call_tool: Any) -> None:
+    """Effect-size of 0 is statsmodels' canonical infeasible case → typed error.
+
+    ``TTestIndPower().solve_power(effect_size=0, ...)`` raises
+    ``ValueError('Cannot detect an effect-size of 0. ...')`` — the tool
+    must wrap it in the typed ``infeasible_solution`` envelope rather than
+    let the generic ``internal`` fallback handle it.
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_sample_t",
+            "effect_size": 0.0,
+            "alpha": 0.05,
+            "power": 0.8,
+            # n omitted → statsmodels solves for n and raises on effect=0.
+        },
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "infeasible_solution"
+
+
 def test_power_analysis_two_unknowns_returns_invalid_inputs(call_tool: Any) -> None:
     """Two of effect_size/n/power omitted → invalid_inputs."""
     result = call_tool(
