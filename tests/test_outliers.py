@@ -84,3 +84,36 @@ def test_find_outliers_iqr_default_threshold_flags_extreme_value(
     indices = {o["row_index"] for o in result["outliers"]}
     assert 100 in indices
     assert result["n_outliers"] >= 1
+
+
+def test_find_outliers_iqr_custom_threshold_widens_band(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """A larger threshold k must flag *fewer* values for the same data.
+
+    Construct a column whose only mild-outlier rows sit between
+    Q3 + 1.5·IQR and Q3 + 3.0·IQR. With k=1.5 they are flagged; with
+    k=3.0 they are not.
+    """
+    import pandas as pd
+
+    # Values 1..10 plus a mild outlier at 18. With Q1=3.25, Q3=7.75,
+    # IQR=4.5 → upper fence at 1.5 is 7.75 + 6.75 = 14.5 (18 > 14.5 →
+    # flagged at k=1.5). Upper fence at 3.0 is 7.75 + 13.5 = 21.25
+    # (18 < 21.25 → not flagged at k=3.0).
+    data = pd.DataFrame({"v": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 18]})
+    load_df_into_session("d", data)
+
+    r15 = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["v"], "method": "iqr", "threshold": 1.5},
+    )
+    r30 = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["v"], "method": "iqr", "threshold": 3.0},
+    )
+
+    assert r15["threshold_used"] == 1.5
+    assert r30["threshold_used"] == 3.0
+    assert r15["n_outliers"] == 1
+    assert r30["n_outliers"] == 0
