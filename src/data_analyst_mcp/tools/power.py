@@ -81,7 +81,7 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
         )
     solved_for = unknowns[0]
 
-    if payload.test == "two_sample_t" and solved_for != "power":
+    if payload.test == "two_sample_t":
         solver = _sm_power().TTestIndPower()
         value = solver.solve_power(
             effect_size=payload.effect_size,
