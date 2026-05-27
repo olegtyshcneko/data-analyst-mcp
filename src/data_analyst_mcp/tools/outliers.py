@@ -110,8 +110,10 @@ def _isolation_forest_method(payload: FindOutliersInput) -> dict[str, Any]:
         warnings.append(f"dropped_{dropped}_na_rows")
 
     X = valid.to_numpy(dtype=float)
-    # Custom contamination lands in the contamination-respected cycle.
-    model = IsolationForest(contamination=0.05, random_state=42).fit(X)
+    model = IsolationForest(
+        contamination=payload.contamination,
+        random_state=42,
+    ).fit(X)
     preds = model.predict(X)
     scores = -model.decision_function(X)
     src_indices = valid.index.to_numpy()
