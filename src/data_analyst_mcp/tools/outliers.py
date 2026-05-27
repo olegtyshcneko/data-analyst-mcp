@@ -143,10 +143,7 @@ def _mahalanobis_method(payload: FindOutliersInput) -> dict[str, Any]:
     alpha = payload.threshold if payload.threshold is not None else 0.025
     from scipy import stats as _sps  # type: ignore[reportMissingTypeStubs]
 
-    # Temporary: echo alpha directly. The threshold-quantile cycle reverts
-    # this to use the chi² quantile as the user-facing threshold.
     cutoff = float(_sps.chi2.ppf(1.0 - alpha, df=k))
-    echoed_threshold = alpha
 
     mask = d2 > cutoff
     # Map back to source-dataset row indices (valid keeps original index).
@@ -175,7 +172,7 @@ def _mahalanobis_method(payload: FindOutliersInput) -> dict[str, Any]:
         "n_rows_scored": n_scored,
         "outliers": outliers,
         "truncated": truncated,
-        "threshold_used": echoed_threshold,
+        "threshold_used": cutoff,
         "warnings": warnings,
     }
 
