@@ -13,6 +13,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp.errors import build_error
+from data_analyst_mcp.recorder import get_recorder
 
 logger = logging.getLogger(__name__)
 
@@ -123,19 +124,16 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
             ratio=payload.ratio,
             alternative=payload.alternative,
         )
-        return _build_two_sample_t_result(payload, solved_for, float(value))
-
-    if payload.test == "two_proportion_z":
-        return _solve_two_proportion_z(payload, solved_for)
-
-    if payload.test in ("one_sample_t", "paired_t"):
+        result = _build_two_sample_t_result(payload, solved_for, float(value))
+    elif payload.test == "two_proportion_z":
+        result = _solve_two_proportion_z(payload, solved_for)
+    elif payload.test in ("one_sample_t", "paired_t"):
         # The default-solve-for-n case (only effect_size + power supplied)
         # routes through this branch unchanged — solved_for is just
         # ``unknowns[0]`` and is "n" by construction. Paired-t shares the
         # TTestPower solver (it operates on the n pairwise differences).
-        return _solve_one_or_paired_t(payload, solved_for)
-
-    if payload.test == "anova_oneway":
+        result = _solve_one_or_paired_t(payload, solved_for)
+    elif payload.test == "anova_oneway":
         if payload.k_groups is None:
             return build_error(
                 type="missing_k_groups",
@@ -145,9 +143,80 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
                     "(e.g. 3 for a three-arm trial)."
                 ),
             )
-        return _solve_anova_oneway(payload, solved_for)
+        result = _solve_anova_oneway(payload, solved_for)
+    else:  # pragma: no cover - Literal in input model excludes this branch
+        return build_error(type="internal", message="not implemented")
 
-    return build_error(type="internal", message="not implemented")
+    if result.get("ok"):
+        _record_cell(payload, result, solved_for=solved_for)
+    return result
+
+
+def _record_cell(payload: PowerAnalysisInput, result: dict[str, Any], *, solved_for: str) -> None:
+    """Append one markdown + one code cell that reproduces the solve."""
+    value = result.get(solved_for)
+    markdown = (
+        f"### Power analysis ({payload.test})\n"
+        f"Solved for `{solved_for}` = {value:.4g}.\n\n"
+        f"{result.get('interpretation', '')}"
+    )
+    code = _code_snippet(payload, solved_for=solved_for)
+    get_recorder().record(markdown=markdown, code=code, tool_name="power_analysis")
+
+
+def _code_snippet(payload: PowerAnalysisInput, *, solved_for: str) -> str:
+    """Reproduce the statsmodels call faithfully for the chosen test family."""
+    es_arg = "None" if solved_for == "effect_size" else f"{payload.effect_size!r}"
+    pw_arg = "None" if solved_for == "power" else f"{payload.power!r}"
+
+    if payload.test == "two_sample_t":
+        n_arg = "None" if solved_for == "n" else f"{payload.n!r}"
+        return (
+            "from statsmodels.stats.power import TTestIndPower\n"
+            f"TTestIndPower().solve_power(effect_size={es_arg}, nobs1={n_arg}, "
+            f"alpha={payload.alpha!r}, power={pw_arg}, "
+            f"ratio={payload.ratio!r}, alternative={payload.alternative!r})"
+        )
+    if payload.test in ("one_sample_t", "paired_t"):
+        n_arg = "None" if solved_for == "n" else f"{payload.n!r}"
+        return (
+            "from statsmodels.stats.power import TTestPower\n"
+            f"TTestPower().solve_power(effect_size={es_arg}, nobs={n_arg}, "
+            f"alpha={payload.alpha!r}, power={pw_arg}, "
+            f"alternative={payload.alternative!r})"
+        )
+    if payload.test == "two_proportion_z":
+        n_arg = "None" if solved_for == "n" else f"{payload.n!r}"
+        # If p1+p2 were given (and effect_size was not), preface the call
+        # with the proportion_effectsize derivation so the cell reads as a
+        # faithful reproducer of what the tool computed.
+        es_block = ""
+        if (
+            payload.effect_size is None
+            and payload.p1 is not None
+            and payload.p2 is not None
+        ):
+            es_block = (
+                "from statsmodels.stats.proportion import proportion_effectsize\n"
+                f"h = abs(proportion_effectsize({payload.p1!r}, {payload.p2!r}))\n"
+            )
+            es_arg_inner = "h"
+        else:
+            es_arg_inner = es_arg
+        return (
+            f"{es_block}"
+            "from statsmodels.stats.power import NormalIndPower\n"
+            f"NormalIndPower().solve_power(effect_size={es_arg_inner}, nobs1={n_arg}, "
+            f"alpha={payload.alpha!r}, power={pw_arg}, "
+            f"ratio={payload.ratio!r}, alternative={payload.alternative!r})"
+        )
+    # anova_oneway
+    n_arg = "None" if solved_for == "n" else f"{payload.n!r}"
+    return (
+        "from statsmodels.stats.power import FTestAnovaPower\n"
+        f"FTestAnovaPower().solve_power(effect_size={es_arg}, nobs={n_arg}, "
+        f"alpha={payload.alpha!r}, power={pw_arg}, k_groups={payload.k_groups!r})"
+    )
 
 
 def _solve_one_or_paired_t(payload: PowerAnalysisInput, solved_for: str) -> dict[str, Any]:
