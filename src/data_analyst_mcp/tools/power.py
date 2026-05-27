@@ -70,7 +70,23 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
     """Solve for the unknown among ``{effect_size, n, power}``."""
     # For two_proportion_z, p1+p2 implicitly provide effect_size — treat as
     # not-an-unknown for the count check (the actual derivation happens
-    # downstream).
+    # downstream). If neither effect_size nor (p1, p2) is provided we emit
+    # the family-specific missing_proportions error so callers don't get
+    # the more generic invalid_inputs.
+    if payload.test == "two_proportion_z":
+        if payload.effect_size is None and (payload.p1 is None or payload.p2 is None):
+            return build_error(
+                type="missing_proportions",
+                message=(
+                    "two_proportion_z needs either an explicit effect_size "
+                    "(Cohen's h) or both p1 and p2 to derive it; got "
+                    f"effect_size={payload.effect_size}, p1={payload.p1}, p2={payload.p2}."
+                ),
+                hint=(
+                    "Supply effect_size directly, or pass p1 and p2 so the "
+                    "tool can compute h via proportion_effectsize(p1, p2)."
+                ),
+            )
     effect_size_known = payload.effect_size is not None or (
         payload.test == "two_proportion_z" and payload.p1 is not None and payload.p2 is not None
     )
