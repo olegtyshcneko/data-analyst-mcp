@@ -30,6 +30,44 @@ def test_power_analysis_zero_unknowns_returns_invalid_inputs(call_tool: Any) -> 
     assert result["error"]["type"] == "invalid_inputs"
 
 
+def test_power_analysis_recorder_writes_markdown_code_pair_on_success(call_tool: Any) -> None:
+    """A successful power_analysis call appends exactly one markdown+code cell pair."""
+    from data_analyst_mcp.recorder import get_recorder
+
+    assert get_recorder().cells == []
+    r = call_tool(
+        "power_analysis",
+        {
+            "test": "two_sample_t",
+            "effect_size": 0.5,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert r["ok"] is True
+    cells = get_recorder().cells
+    assert len(cells) == 2
+    md, code = cells
+    assert md["cell_type"] == "markdown"
+    assert code["cell_type"] == "code"
+    assert md["metadata"]["tool_name"] == "power_analysis"
+    assert code["metadata"]["tool_name"] == "power_analysis"
+    # The code cell must compile as Python.
+    compile(code["source"], "<power_analysis_cell>", "exec")
+
+
+def test_power_analysis_recorder_silent_on_error(call_tool: Any) -> None:
+    """Failures must not emit recorder cells."""
+    from data_analyst_mcp.recorder import get_recorder
+
+    r = call_tool(
+        "power_analysis",
+        {"test": "two_sample_t"},
+    )
+    assert r["ok"] is False
+    assert get_recorder().cells == []
+
+
 def test_power_analysis_two_unknowns_returns_invalid_inputs(call_tool: Any) -> None:
     """Two of effect_size/n/power omitted → invalid_inputs."""
     result = call_tool(
