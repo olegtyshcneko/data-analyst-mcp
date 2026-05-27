@@ -36,11 +36,10 @@ def _sm_power() -> Any:
 
 def _sm_proportion_effectsize(p1: float, p2: float) -> float:
     """Cohen's h via ``statsmodels.stats.proportion.proportion_effectsize``."""
-    from statsmodels.stats.proportion import (  # type: ignore[reportMissingTypeStubs]
-        proportion_effectsize,
-    )
+    import statsmodels.stats.proportion as _prop  # type: ignore[reportMissingTypeStubs]
 
-    val: Any = proportion_effectsize(p1, p2)
+    mod: Any = _prop
+    val: Any = mod.proportion_effectsize(p1, p2)
     return float(val)
 
 
