@@ -126,5 +126,4 @@ def zscore_column_mask(
     z = np.zeros_like(arr)
     z[finite_mask] = np.abs((arr[finite_mask] - mean) / sd)
     mask = (z > threshold) & finite_mask
-    # Placeholder: a real per-row score lands in the zscore known-answer cycle.
-    return (mask, mask.astype(float))
+    return (mask, z)
