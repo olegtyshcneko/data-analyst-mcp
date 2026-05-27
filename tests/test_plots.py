@@ -371,3 +371,32 @@ def test_residual_diagnostic_on_logistic_returns_ols_only(call_tool, load_df_int
     result = call_tool("residual_diagnostic", {"model_name": "m_log"})
     assert result["ok"] is False
     assert result["error"]["type"] == "regression_diagnostics_ols_only"
+
+
+def test_residual_diagnostic_resid_vs_fitted_single_axes(call_tool, load_df_into_session):
+    """Slice 11: kind='resid_vs_fitted' produces a single-axes figure."""
+    from data_analyst_mcp import session as _session
+    from data_analyst_mcp.tools.plots import (
+        ResidualDiagnosticInput,
+        _build_residual_diagnostic_figure,  # type: ignore[reportPrivateUsage]
+    )
+
+    df = _ols_fixture_df()
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    entry = _session.get_model("m")
+    assert entry is not None
+    payload = ResidualDiagnosticInput(model_name="m", kind="resid_vs_fitted")
+    fig = _build_residual_diagnostic_figure(entry, payload)
+    assert len(fig.axes) == 1
+    # Also verify the round-trip through the tool produces a valid PNG.
+    result = call_tool(
+        "residual_diagnostic", {"model_name": "m", "kind": "resid_vs_fitted"}
+    )
+    _assert_valid_png(result)
+    assert result["plot_kind"] == "resid_vs_fitted"
+    assert result["model_name"] == "m"
