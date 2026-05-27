@@ -452,3 +452,29 @@ def test_residual_diagnostic_scale_location_single_axes(call_tool, load_df_into_
     )
     _assert_valid_png(result)
     assert result["plot_kind"] == "scale_location"
+
+
+def test_residual_diagnostic_all_produces_2x2_grid(call_tool, load_df_into_session):
+    """Slice 14: kind='all' (the default) produces a 2×2 grid (4 axes)."""
+    from data_analyst_mcp import session as _session
+    from data_analyst_mcp.tools.plots import (
+        ResidualDiagnosticInput,
+        _build_residual_diagnostic_figure,  # type: ignore[reportPrivateUsage]
+    )
+
+    df = _ols_fixture_df()
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    entry = _session.get_model("m")
+    assert entry is not None
+    fig = _build_residual_diagnostic_figure(
+        entry, ResidualDiagnosticInput(model_name="m", kind="all")
+    )
+    assert len(fig.axes) == 4
+    result = call_tool("residual_diagnostic", {"model_name": "m"})  # kind defaults to "all"
+    _assert_valid_png(result)
+    assert result["plot_kind"] == "all"
