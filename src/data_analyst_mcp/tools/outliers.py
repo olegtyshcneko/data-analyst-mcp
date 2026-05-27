@@ -35,5 +35,14 @@ def find_outliers(payload: FindOutliersInput) -> dict[str, Any]:
             message=f"No dataset named {payload.name!r} registered.",
             hint="Call list_datasets to see what is available.",
         )
+    entry = entries[payload.name]
+    available = {c["name"] for c in entry.columns}
+    missing = [c for c in payload.columns if c not in available]
+    if missing:
+        return build_error(
+            type="column_not_found",
+            message=f"Columns not in dataset {payload.name!r}: {missing}.",
+            hint=f"Available: {sorted(available)}",
+        )
     # method dispatch will be added in later TDD cycles
     return build_error(type="internal", message="method dispatch not yet implemented")
