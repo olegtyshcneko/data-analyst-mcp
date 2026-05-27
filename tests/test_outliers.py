@@ -116,6 +116,32 @@ def test_find_outliers_iqr_known_answer_score(
     assert flagged["values"] == {"v": 100.0}
 
 
+def test_find_outliers_iqr_per_column_aggregation(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Rows flagged by any column must be in the union; per_column_flags
+    must report the right index for each column independently."""
+    import pandas as pd
+
+    # Column a: row 5 is extreme (100). Column b: row 9 is extreme (200).
+    # All other rows are 1..10 in both columns. Both rows must be flagged
+    # at the row level; per_column_flags["a"] = [5], ["b"] = [9].
+    a = [1, 2, 3, 4, 5, 100, 7, 8, 9, 10]
+    b = [1, 2, 3, 4, 5, 6, 7, 8, 9, 200]
+    load_df_into_session("d", pd.DataFrame({"a": a, "b": b}))
+
+    result = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["a", "b"], "method": "iqr"},
+    )
+    assert result["ok"] is True
+    flagged = {o["row_index"] for o in result["outliers"]}
+    assert 5 in flagged
+    assert 9 in flagged
+    assert result["per_column_flags"]["a"] == [5]
+    assert result["per_column_flags"]["b"] == [9]
+
+
 def test_find_outliers_iqr_custom_threshold_widens_band(
     call_tool: Any, load_df_into_session: Any
 ) -> None:
