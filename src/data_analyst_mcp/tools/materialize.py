@@ -23,7 +23,12 @@ class MaterializeQueryInput(BaseModel):
     overwrite: bool = False
 
 
+# materialize_query's allowlist is intentionally narrower than ``query``'s.
+# ``DESCRIBE`` / ``SHOW`` / ``PRAGMA`` are valid read-only statements but
+# yield metadata, not a table source — persisting them as a derived dataset
+# is meaningless, so they are rejected with ``write_not_allowed``.
 _ALLOWED_LEADING_KEYWORDS = ("SELECT", "WITH")
+_META_KEYWORDS = ("DESCRIBE", "SHOW", "PRAGMA", "EXPLAIN")
 
 
 def _first_keyword(sql: str) -> str:
@@ -36,10 +41,20 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
     """Persist a SELECT/WITH result as a registered derived dataset."""
     first = _first_keyword(payload.sql)
     if first not in _ALLOWED_LEADING_KEYWORDS:
+        if first in _META_KEYWORDS:
+            hint = (
+                f"{first} returns metadata, not a table source. Wrap the "
+                "result in a SELECT or pick a different tool (e.g. `query`)."
+            )
+        else:
+            hint = (
+                "Use SELECT or WITH — materialize_query persists the query "
+                "result as a table."
+            )
         return build_error(
             type="write_not_allowed",
             message=f"Statements starting with {first!r} are not allowed.",
-            hint="Use SELECT or WITH — materialize_query persists the query result as a table.",
+            hint=hint,
         )
 
     return {"ok": True}
