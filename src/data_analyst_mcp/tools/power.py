@@ -116,38 +116,57 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
     # for — echoed back as ``solved_for`` in the output envelope.
     solved_for = unknowns[0]
 
-    if payload.test == "two_sample_t":
-        solver = _sm_power().TTestIndPower()
-        value = solver.solve_power(
-            effect_size=payload.effect_size,
-            nobs1=payload.n,
-            alpha=payload.alpha,
-            power=payload.power,
-            ratio=payload.ratio,
-            alternative=payload.alternative,
-        )
-        result = _build_two_sample_t_result(payload, solved_for, float(value))
-    elif payload.test == "two_proportion_z":
-        result = _solve_two_proportion_z(payload, solved_for)
-    elif payload.test in ("one_sample_t", "paired_t"):
-        # The default-solve-for-n case (only effect_size + power supplied)
-        # routes through this branch unchanged — solved_for is just
-        # ``unknowns[0]`` and is "n" by construction. Paired-t shares the
-        # TTestPower solver (it operates on the n pairwise differences).
-        result = _solve_one_or_paired_t(payload, solved_for)
-    elif payload.test == "anova_oneway":
-        if payload.k_groups is None:
-            return build_error(
-                type="missing_k_groups",
-                message="anova_oneway requires k_groups (>= 2); none was provided.",
-                hint=(
-                    "Pass k_groups equal to the number of groups in the design "
-                    "(e.g. 3 for a three-arm trial)."
-                ),
+    try:
+        if payload.test == "two_sample_t":
+            solver = _sm_power().TTestIndPower()
+            value = solver.solve_power(
+                effect_size=payload.effect_size,
+                nobs1=payload.n,
+                alpha=payload.alpha,
+                power=payload.power,
+                ratio=payload.ratio,
+                alternative=payload.alternative,
             )
-        result = _solve_anova_oneway(payload, solved_for)
-    else:  # pragma: no cover - Literal in input model excludes this branch
-        return build_error(type="internal", message="not implemented")
+            result = _build_two_sample_t_result(payload, solved_for, float(value))
+        elif payload.test == "two_proportion_z":
+            result = _solve_two_proportion_z(payload, solved_for)
+        elif payload.test in ("one_sample_t", "paired_t"):
+            # The default-solve-for-n case (only effect_size + power supplied)
+            # routes through this branch unchanged — solved_for is just
+            # ``unknowns[0]`` and is "n" by construction. Paired-t shares the
+            # TTestPower solver (it operates on the n pairwise differences).
+            result = _solve_one_or_paired_t(payload, solved_for)
+        elif payload.test == "anova_oneway":
+            if payload.k_groups is None:
+                return build_error(
+                    type="missing_k_groups",
+                    message="anova_oneway requires k_groups (>= 2); none was provided.",
+                    hint=(
+                        "Pass k_groups equal to the number of groups in the design "
+                        "(e.g. 3 for a three-arm trial)."
+                    ),
+                )
+            result = _solve_anova_oneway(payload, solved_for)
+        else:  # pragma: no cover - Literal in input model excludes this branch
+            return build_error(type="internal", message="not implemented")
+    except (ValueError, FloatingPointError) as exc:
+        # statsmodels raises ValueError on contradictory inputs (e.g.
+        # effect_size=0). Surface the underlying message rather than the
+        # generic ``internal`` envelope.
+        return build_error(
+            type="infeasible_solution",
+            message=f"Solver could not converge: {exc}",
+            hint="Re-check the inputs — typical causes are effect_size=0 or ratio<=0.",
+        )
+
+    # NaN results are statsmodels' other infeasible-input signal.
+    solved_value = result.get(solved_for) if result.get("ok") else None
+    if isinstance(solved_value, float) and (solved_value != solved_value):  # NaN
+        return build_error(
+            type="infeasible_solution",
+            message=f"Solver returned NaN for {solved_for}; inputs are contradictory.",
+            hint="Re-check the inputs — common causes: too-small effect_size or alpha near 1.",
+        )
 
     if result.get("ok"):
         _record_cell(payload, result, solved_for=solved_for)
