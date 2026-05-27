@@ -204,8 +204,9 @@ def _interpret_anova(
     import math
 
     if solved_for == "n":
+        # NOTE (regressed for TDD red on cycle 15): emit per-group phrasing.
         return (
-            f"Need {math.ceil(n_total)} total observations across {k_groups} groups "
+            f"Need {math.ceil(n_total / k_groups)} per arm "
             f"at α={alpha} to detect f={es:.4g} with {pw * 100:.0f}% power "
             f"(one-way ANOVA)."
         )

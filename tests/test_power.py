@@ -307,3 +307,29 @@ def test_anova_oneway_missing_k_groups_returns_typed_error(call_tool: Any) -> No
     assert result["error"]["type"] == "missing_k_groups"
 
 
+def test_anova_oneway_n_is_total_not_per_group(call_tool: Any) -> None:
+    """For ANOVA, ``n`` represents *total* across groups and is echoed accordingly.
+
+    The interpretation must say "total" so the agent doesn't misread n as
+    per-group (which it is for the t-test families).
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "anova_oneway",
+            "effect_size": 0.25,
+            "power": 0.8,
+            "alpha": 0.05,
+            "k_groups": 4,
+        },
+    )
+    assert result["ok"] is True
+    # Echo n_total (ceil of solved total n).
+    assert result["n_total"] == 179
+    # ANOVA must not echo n_total = ceil(n) * 2 like two-sample t.
+    assert result["n_total"] != 2 * 179
+    # The interpretation must mention "total" and "groups".
+    assert "total" in result["interpretation"].lower()
+    assert "group" in result["interpretation"].lower()
+
+
