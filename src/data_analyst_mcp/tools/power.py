@@ -120,11 +120,8 @@ def _solve_two_proportion_z(payload: PowerAnalysisInput, solved_for: str) -> dic
     import math
 
     es = payload.effect_size
-    if (
-        es is None
-        and payload.p1 == 0.10
-        and payload.p2 == 0.12
-    ):
+    if es is None and payload.p1 is not None and payload.p2 is not None:
+        # Derive Cohen's h. Sign is irrelevant to power; use absolute value.
         es = abs(_sm_proportion_effectsize(payload.p1, payload.p2))
 
     solver = _sm_power().NormalIndPower()
