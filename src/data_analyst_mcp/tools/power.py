@@ -74,20 +74,21 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
     # downstream). If neither effect_size nor (p1, p2) is provided we emit
     # the family-specific missing_proportions error so callers don't get
     # the more generic invalid_inputs.
-    if payload.test == "two_proportion_z":
-        if payload.effect_size is None and (payload.p1 is None or payload.p2 is None):
-            return build_error(
-                type="missing_proportions",
-                message=(
-                    "two_proportion_z needs either an explicit effect_size "
-                    "(Cohen's h) or both p1 and p2 to derive it; got "
-                    f"effect_size={payload.effect_size}, p1={payload.p1}, p2={payload.p2}."
-                ),
-                hint=(
-                    "Supply effect_size directly, or pass p1 and p2 so the "
-                    "tool can compute h via proportion_effectsize(p1, p2)."
-                ),
-            )
+    if payload.test == "two_proportion_z" and (
+        payload.effect_size is None and (payload.p1 is None or payload.p2 is None)
+    ):
+        return build_error(
+            type="missing_proportions",
+            message=(
+                "two_proportion_z needs either an explicit effect_size "
+                "(Cohen's h) or both p1 and p2 to derive it; got "
+                f"effect_size={payload.effect_size}, p1={payload.p1}, p2={payload.p2}."
+            ),
+            hint=(
+                "Supply effect_size directly, or pass p1 and p2 so the "
+                "tool can compute h via proportion_effectsize(p1, p2)."
+            ),
+        )
     effect_size_known = payload.effect_size is not None or (
         payload.test == "two_proportion_z" and payload.p1 is not None and payload.p2 is not None
     )
@@ -358,7 +359,7 @@ def _solve_anova_oneway(payload: PowerAnalysisInput, solved_for: str) -> dict[st
         # by construction.
         "effect_size": es,
         "n": n_total,
-        "n_total": int(math.ceil(n_total)),
+        "n_total": math.ceil(n_total),
         "k_groups": payload.k_groups,
         "power": pw,
         "interpretation": _interpret_anova(
@@ -435,7 +436,7 @@ def _solve_two_proportion_z(payload: PowerAnalysisInput, solved_for: str) -> dic
         n1 = float(payload.n)  # type: ignore[arg-type]
         es_out = float(es)  # type: ignore[arg-type]
         pw = value
-    n_total = int(math.ceil(n1)) + int(math.ceil(n1 * payload.ratio))
+    n_total = math.ceil(n1) + math.ceil(n1 * payload.ratio)
     return {
         "ok": True,
         "test": payload.test,
@@ -516,7 +517,7 @@ def _build_two_sample_t_result(
         n1 = float(payload.n)  # type: ignore[arg-type]
         es = float(payload.effect_size)  # type: ignore[arg-type]
         pw = value
-    n_total = int(math.ceil(n1)) + int(math.ceil(n1 * payload.ratio))
+    n_total = math.ceil(n1) + math.ceil(n1 * payload.ratio)
     result["effect_size"] = es
     result["n"] = n1
     result["power"] = pw
