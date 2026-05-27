@@ -84,8 +84,10 @@ def materialize_query(
                         type="invalid_name",
                         message=f"Invalid dataset name {name!r}.",
                         hint=(
-                            "Names must match ^[A-Za-z_][A-Za-z0-9_]*$ "
-                            "(letters, digits, underscores; not starting with a digit)."
+                            "Names must match ^[A-Za-z_][A-Za-z0-9_]*$ — "
+                            "letters, digits, and underscores only; cannot "
+                            "start with a digit; no spaces, dashes, dots, or "
+                            "semicolons. Examples: 'cohort_a', 'q1_2024', '_tmp'."
                         ),
                     )
             raise
