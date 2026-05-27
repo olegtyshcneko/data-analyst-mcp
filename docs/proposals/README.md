@@ -11,8 +11,9 @@ acceptance criteria, ROADMAP impact).
 
 ## Current proposals
 
-No active proposals. The Phase 1 (`adjust_pvalues`), Phase 3 / 4
-(`analyze_missingness` v1 + v1.1 Little's MCAR), and Phase 5
-(`model_registry` — `list_models` + `predict` + `evaluate_model` plus the
-additive `fit_model(model_name=...)`) bundle has been folded into
-`docs/SPEC.md` and shipped. New ideas start as fresh proposal files here.
+Tier 1 feature bundle — four new tools, drafted ahead of TDD implementation:
+
+- [`materialize_query`](./materialize_query.md) — persist a `SELECT` / `WITH` result as a named DuckDB table and register it in the session, unblocking cohort / funnel / multi-step join workflows.
+- [`find_outliers`](./find_outliers.md) — multi-column anomaly detection with four methods (`iqr`, `zscore`, `mahalanobis`, `isolation_forest`).
+- [`power_analysis`](./power_analysis.md) — sample-size / MDE / achieved-power solver across five test families (`two_sample_t`, `one_sample_t`, `paired_t`, `two_proportion_z`, `anova_oneway`).
+- [`regression_diagnostic_plots`](./regression_diagnostic_plots.md) — OLS-only `regression_line` (scatter + fitted line + 95 % mean-CI band) and `residual_diagnostic` (residuals-vs-fitted, Q-Q, scale-location, residuals-vs-leverage).
