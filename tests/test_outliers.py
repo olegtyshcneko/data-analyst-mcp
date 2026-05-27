@@ -453,3 +453,41 @@ def test_find_outliers_mahalanobis_custom_alpha(
     assert r_strict["threshold_used"] == pytest.approx(13.8155105580, abs=1e-4)
     # Strict α must flag at most as many rows as default α.
     assert r_strict["n_outliers"] <= r_default["n_outliers"]
+
+
+# === isolation_forest ===
+
+
+def test_find_outliers_isolation_forest_known_answer_seed_42(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Planted outliers at the extremes must be flagged at seed=42.
+
+    Build 100 N(0,I) points + 3 obvious outliers at (±10, ±10).
+    With sklearn.ensemble.IsolationForest(contamination=0.05,
+    random_state=42), the 3 planted outliers (indices 100, 101, 102)
+    are deterministically flagged.
+    """
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(42)
+    X_nominal = rng.standard_normal(size=(100, 2))
+    X_outliers = np.array([[10.0, 10.0], [-10.0, -10.0], [10.0, -10.0]])
+    X = np.vstack([X_nominal, X_outliers])
+    load_df_into_session("d", pd.DataFrame({"x": X[:, 0], "y": X[:, 1]}))
+
+    result = call_tool(
+        "find_outliers",
+        {
+            "name": "d",
+            "columns": ["x", "y"],
+            "method": "isolation_forest",
+        },
+    )
+
+    assert result["ok"] is True
+    assert result["method"] == "isolation_forest"
+    flagged = {o["row_index"] for o in result["outliers"]}
+    # The 3 planted extremes must be flagged.
+    assert {100, 101, 102}.issubset(flagged)
