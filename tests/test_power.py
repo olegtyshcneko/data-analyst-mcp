@@ -200,3 +200,23 @@ def test_two_proportion_z_p1_p2_auto_derives_effect_size(call_tool: Any) -> None
     assert result["effect_size"] == pytest.approx(expected_h, abs=1e-10)
 
 
+def test_two_proportion_z_explicit_effect_size_overrides_p1_p2(call_tool: Any) -> None:
+    """When effect_size is given alongside p1/p2, effect_size wins (no error)."""
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_proportion_z",
+            "effect_size": 0.30,
+            # p1+p2 here would yield h ≈ 0.064; the explicit 0.30 must win.
+            "p1": 0.10,
+            "p2": 0.12,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    assert result["effect_size"] == pytest.approx(0.30, abs=1e-12)
+    # n for h=0.30 is far smaller than for h=0.064 — sanity-check the dispatch.
+    assert result["n"] < 200
+
+
