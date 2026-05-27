@@ -224,3 +224,47 @@ def test_materialize_query_recorder_writes_on_success_only(
     assert code["cell_type"] == "code"
     assert "CREATE OR REPLACE TABLE" in code["source"]
     assert code["metadata"]["tool_name"] == "materialize_query"
+
+
+def test_setup_cell_emits_derived_after_base_tables(
+    call_tool: Any, tmp_path: Any
+) -> None:
+    """The derived CREATE OR REPLACE TABLE for a derived dataset must
+    appear *after* the base-table CREATE line — otherwise DuckDB would
+    fail at replay because the derived SQL references a base table that
+    doesn't exist yet."""
+    import pandas as pd
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame({"x": [1, 2, 3, 4, 5]}).to_csv(csv, index=False)
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "base"})
+    assert r["ok"], r
+
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT x FROM base WHERE x > 2", "name": "derived"},
+    )
+    assert r["ok"], r
+
+    from data_analyst_mcp.recorder import _build_setup_source
+
+    setup = _build_setup_source()
+    # Both lines present.
+    assert "CREATE OR REPLACE TABLE base" in setup
+    assert "CREATE OR REPLACE TABLE \"derived\"" in setup or (
+        "CREATE OR REPLACE TABLE derived" in setup
+    )
+    # Derived must come AFTER base.
+    base_idx = setup.index("CREATE OR REPLACE TABLE base")
+    # Match either quoted or unquoted derived name in the rehydration line.
+    if 'CREATE OR REPLACE TABLE "derived"' in setup:
+        derived_idx = setup.index('CREATE OR REPLACE TABLE "derived"')
+    else:
+        derived_idx = setup.index("CREATE OR REPLACE TABLE derived")
+    assert derived_idx > base_idx, (
+        f"derived emission must come after base; got base_idx={base_idx}, "
+        f"derived_idx={derived_idx}.\nSetup source:\n{setup}"
+    )
+    # The derived line uses the recorded SQL (from read_options["sql"]).
+    assert "SELECT x FROM base WHERE x > 2" in setup
