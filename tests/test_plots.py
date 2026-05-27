@@ -253,3 +253,17 @@ def test_regression_line_categorical_predictor_returns_non_numeric_predictor(
     result = call_tool("regression_line", {"model_name": "m", "predictor": "group[T.B]"})
     assert result["ok"] is False
     assert result["error"]["type"] == "non_numeric_predictor"
+
+
+def test_regression_line_returns_valid_png(call_tool, load_df_into_session):
+    df = _ols_fixture_df()
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    result = call_tool("regression_line", {"model_name": "m", "predictor": "x1"})
+    _assert_valid_png(result)
+    assert result["model_name"] == "m"
+    assert result["plot_kind"] == "regression_line"
