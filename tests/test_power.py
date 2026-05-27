@@ -181,3 +181,22 @@ def test_two_proportion_z_known_answer(call_tool: Any) -> None:
     assert result["n"] == pytest.approx(3834.5957, abs=1e-3)
 
 
+def test_two_proportion_z_p1_p2_auto_derives_effect_size(call_tool: Any) -> None:
+    """p1=0.50, p2=0.55 → h ≈ 0.10017 (auto-derived without explicit effect_size)."""
+    from statsmodels.stats.proportion import proportion_effectsize
+
+    expected_h = abs(float(proportion_effectsize(0.50, 0.55)))
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_proportion_z",
+            "p1": 0.50,
+            "p2": 0.55,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    assert result["effect_size"] == pytest.approx(expected_h, abs=1e-10)
+
+
