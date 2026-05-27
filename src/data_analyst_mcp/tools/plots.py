@@ -697,9 +697,7 @@ def _build_residual_diagnostic_figure(entry: Any, payload: ResidualDiagnosticInp
     if payload.kind == "resid_vs_fitted":
         _render_resid_vs_fitted(ax, fitted, resid)
     elif payload.kind == "qq":
-        # Deferred to cycle 12.
-        _ = resid
-        raise NotImplementedError("qq panel not yet implemented")
+        _render_qq(ax, resid)
     else:  # scale_location
         _render_scale_location(ax, fitted, standardized)
     _apply_title(ax, payload.title)
