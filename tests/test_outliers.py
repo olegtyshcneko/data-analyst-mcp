@@ -205,6 +205,34 @@ def test_find_outliers_zscore_default_threshold_3(
     assert result["outliers"][0]["row_index"] == 100
 
 
+def test_find_outliers_zscore_known_answer_score(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Hand-computed |z| score for the largest value of [1..10].
+
+    Mean=5.5, sd (ddof=1)=3.0276503540974917
+    z(10)=(10-5.5)/3.0276503540974917 = 1.4863010829205867
+    With threshold=1.4 the extremes 1 and 10 must be flagged, and the
+    row with value 10 must have score=1.48630...
+    """
+    import pandas as pd
+
+    load_df_into_session(
+        "d",
+        pd.DataFrame({"v": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}),
+    )
+    result = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["v"], "method": "zscore", "threshold": 1.4},
+    )
+    assert result["ok"] is True
+    assert result["n_outliers"] == 2
+    # Row 9 (value 10) has the top score; the row with value 1 ties on
+    # |z| but sorts second when we sort by score descending stably.
+    top = result["outliers"][0]
+    assert top["score"] == pytest.approx(1.4863010829, abs=1e-4)
+
+
 def test_find_outliers_zscore_custom_threshold(
     call_tool: Any, load_df_into_session: Any
 ) -> None:
