@@ -268,3 +268,39 @@ def test_setup_cell_emits_derived_after_base_tables(
     )
     # The derived line uses the recorded SQL (from read_options["sql"]).
     assert "SELECT x FROM base WHERE x > 2" in setup
+
+
+def test_setup_cell_emits_chained_derived_in_dependency_order(
+    call_tool: Any, tmp_path: Any
+) -> None:
+    """When derived B is built from derived A, the setup cell must emit
+    A's CREATE OR REPLACE TABLE *before* B's — otherwise B's SQL would
+    reference a table that doesn't exist yet at replay time. Registration
+    order (dict insertion order) is the source of truth here."""
+    import pandas as pd
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame({"x": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}).to_csv(csv, index=False)
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"]
+    # derived_a: filter base.
+    assert call_tool(
+        "materialize_query",
+        {"sql": "SELECT x FROM base WHERE x > 3", "name": "derived_a"},
+    )["ok"]
+    # derived_b: filter derived_a (chained dependency).
+    assert call_tool(
+        "materialize_query",
+        {"sql": "SELECT x FROM derived_a WHERE x < 9", "name": "derived_b"},
+    )["ok"]
+
+    from data_analyst_mcp.recorder import _build_setup_source
+
+    setup = _build_setup_source()
+    base_idx = setup.index("CREATE OR REPLACE TABLE base")
+    a_idx = setup.index('CREATE OR REPLACE TABLE "derived_a"')
+    b_idx = setup.index('CREATE OR REPLACE TABLE "derived_b"')
+    assert base_idx < a_idx < b_idx, (
+        f"order must be base → derived_a → derived_b; got "
+        f"base={base_idx}, a={a_idx}, b={b_idx}.\nSetup:\n{setup}"
+    )
