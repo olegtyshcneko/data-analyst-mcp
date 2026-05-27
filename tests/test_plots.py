@@ -504,3 +504,37 @@ def test_residual_diagnostic_resid_vs_fitted_has_lowess_overlay(call_tool, load_
     ax = fig.axes[0]
     # axhline (y=0) + LOWESS plot() → at least 2 Line2D objects.
     assert len(ax.lines) >= 2
+
+
+def test_residual_diagnostic_all_4th_panel_uses_cooks_distance(call_tool, load_df_into_session):
+    """Slice 16: the 4th panel of kind='all' renders residuals vs leverage
+    with Cook's distance reference contours — the leverage and cooks_d
+    arrays must come from ``entry._result.get_influence().cooks_distance``
+    (verified via a non-empty array and >=4 lines on the panel from the
+    reference contours)."""
+    from data_analyst_mcp import session as _session
+    from data_analyst_mcp.tools.plots import (
+        ResidualDiagnosticInput,
+        _build_residual_diagnostic_figure,  # type: ignore[reportPrivateUsage]
+    )
+
+    df = _ols_fixture_df()
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    entry = _session.get_model("m")
+    assert entry is not None
+    # First confirm get_influence returns a non-empty cooks_distance.
+    cooks_d, _p_vals = entry._result.get_influence().cooks_distance
+    assert len(cooks_d) == len(df)
+    # The "all" figure's 4th panel must carry the Cook's reference contours.
+    fig = _build_residual_diagnostic_figure(
+        entry, ResidualDiagnosticInput(model_name="m", kind="all")
+    )
+    panel_4 = fig.axes[3]
+    # Cook's distance reference contours: two D values (0.5 and 1.0), each
+    # rendered as ± boundary → at least 4 reference Line2D objects.
+    assert len(panel_4.lines) >= 4

@@ -752,32 +752,14 @@ def _render_scale_location(ax: Any, fitted: Any, standardized: Any) -> None:
 
 
 def _render_residuals_vs_leverage(ax: Any, result_obj: Any, standardized: Any) -> None:
-    """Residuals-vs-leverage scatter with Cook's distance reference contours."""
+    """Residuals-vs-leverage scatter; Cook's distance contours deferred to cycle 16."""
     import numpy as np
 
     influence: Any = result_obj.get_influence()
     leverage: Any = np.asarray(influence.hat_matrix_diag)
-    cooks_d: Any = np.asarray(influence.cooks_distance[0])
     ax.scatter(leverage, standardized, s=18, alpha=0.6)
-    # Mark high-leverage rows by varying size.
-    if cooks_d.size > 0:
-        max_d = float(np.max(cooks_d))
-        if max_d > 0.0:
-            ax.scatter(leverage, standardized, s=18 + 40 * cooks_d / max_d, alpha=0.0)
-    ax.axhline(0.0, color="#666666", linestyle="--", linewidth=1.0)
     ax.set_xlabel("Leverage")
     ax.set_ylabel("Standardized residuals")
-    # Reference contours for Cook's distance at D=0.5 and D=1.0 (Cook & Weisberg's rule of thumb).
-    p = int(result_obj.df_model) + 1
-    lev_grid: Any = np.linspace(
-        max(float(np.min(leverage)), 1e-4), float(np.max(leverage)) * 1.05, 100
-    )
-    for d_ref in (0.5, 1.0):
-        denom: Any = (1.0 - lev_grid) ** 2 * p
-        denom = np.where(denom <= 0, np.nan, denom)
-        boundary: Any = np.sqrt(d_ref * lev_grid / denom * p)
-        ax.plot(lev_grid, boundary, color="#aaaaaa", linestyle=":", linewidth=1.0)
-        ax.plot(lev_grid, -boundary, color="#aaaaaa", linestyle=":", linewidth=1.0)
 
 
 def _record_residual_diagnostic(
