@@ -576,5 +576,3 @@ def test_paired_t_echoes_test_field_when_solving_for_effect_size(call_tool: Any)
     assert result["test"] == "paired_t"
     assert result["solved_for"] == "effect_size"
     assert "paired t" in result["interpretation"].lower()
-
-

@@ -212,11 +212,7 @@ def _code_snippet(payload: PowerAnalysisInput, *, solved_for: str) -> str:
         # with the proportion_effectsize derivation so the cell reads as a
         # faithful reproducer of what the tool computed.
         es_block = ""
-        if (
-            payload.effect_size is None
-            and payload.p1 is not None
-            and payload.p2 is not None
-        ):
+        if payload.effect_size is None and payload.p1 is not None and payload.p2 is not None:
             es_block = (
                 "from statsmodels.stats.proportion import proportion_effectsize\n"
                 f"h = abs(proportion_effectsize({payload.p1!r}, {payload.p2!r}))\n"
