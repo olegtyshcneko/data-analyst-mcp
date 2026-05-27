@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
+from data_analyst_mcp.recorder import get_recorder
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,10 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
         rows=rows,
         columns=columns,
     )
+
+    md = f"### Materialize query as dataset `{payload.name}`\n\n```sql\n{payload.sql}\n```"
+    code = f'con.execute("""CREATE OR REPLACE TABLE \"{payload.name}\" AS {payload.sql}""")'
+    get_recorder().record(markdown=md, code=code, tool_name="materialize_query")
 
     return {
         "ok": True,
