@@ -111,8 +111,7 @@ def _zscore_method(payload: FindOutliersInput) -> dict[str, Any]:
     """Z-score per-column flag + union row score = max |z|."""
     from data_analyst_mcp.tools._outlier_helpers import zscore_column_mask
 
-    # Custom threshold lands in the zscore-custom-threshold cycle.
-    threshold = 3.0
+    threshold = payload.threshold if payload.threshold is not None else 3.0
     return _per_column_union(
         payload,
         method_label="zscore",
