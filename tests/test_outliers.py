@@ -369,3 +369,27 @@ def test_find_outliers_mahalanobis_singular_covariance_falls_back_to_pinv(
     )
     assert result["ok"] is True
     assert "covariance_singular" in result["warnings"]
+
+
+def test_find_outliers_mahalanobis_threshold_used_is_chi2_quantile(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """``threshold_used`` is the χ² quantile, not the α probability."""
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal(size=(40, 3))
+    load_df_into_session("d", pd.DataFrame({"a": X[:, 0], "b": X[:, 1], "c": X[:, 2]}))
+
+    result = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["a", "b", "c"], "method": "mahalanobis"},
+    )
+
+    # Default α = 0.025; df = k = 3.
+    # scipy.stats.chi2.ppf(0.975, df=3) = 9.348404029359972
+    assert result["ok"] is True
+    assert result["threshold_used"] == pytest.approx(9.348404029, abs=1e-4)
+    # Make sure threshold_used is NOT just α itself.
+    assert result["threshold_used"] > 0.5
