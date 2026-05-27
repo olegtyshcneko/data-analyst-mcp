@@ -165,3 +165,23 @@ def test_plot_png_roundtrips_through_pil(call_tool, load_df_into_session):
         w, h = im.size
     assert w == result["width"]
     assert h == result["height"]
+
+
+# === regression_line + residual_diagnostic ===
+
+
+def _ols_fixture_df(seed: int = 0, n: int = 200) -> pd.DataFrame:
+    """Synthetic OLS dataset for diagnostic-plot tests."""
+    import numpy as np
+
+    rng = np.random.default_rng(seed)
+    x1 = rng.normal(0, 1, size=n)
+    x2 = rng.normal(0, 1, size=n)
+    y = 2.0 * x1 - 1.0 * x2 + rng.normal(0, 0.5, size=n)
+    return pd.DataFrame({"y": y, "x1": x1, "x2": x2})
+
+
+def test_regression_line_unknown_model_returns_model_not_found(call_tool):
+    result = call_tool("regression_line", {"model_name": "nope", "predictor": "x1"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "model_not_found"
