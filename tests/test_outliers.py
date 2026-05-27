@@ -11,7 +11,6 @@ from typing import Any
 
 import pytest
 
-
 # === shared ===
 
 
@@ -88,9 +87,7 @@ def test_find_outliers_iqr_default_threshold_flags_extreme_value(
     assert result["n_outliers"] >= 1
 
 
-def test_find_outliers_iqr_known_answer_score(
-    call_tool: Any, load_df_into_session: Any
-) -> None:
+def test_find_outliers_iqr_known_answer_score(call_tool: Any, load_df_into_session: Any) -> None:
     """Hand-computed IQR + score for [1..10, 100].
 
     Q1 = np.quantile(..., 0.25) = 3.5
@@ -205,9 +202,7 @@ def test_find_outliers_zscore_default_threshold_3(
     assert result["outliers"][0]["row_index"] == 100
 
 
-def test_find_outliers_zscore_known_answer_score(
-    call_tool: Any, load_df_into_session: Any
-) -> None:
+def test_find_outliers_zscore_known_answer_score(call_tool: Any, load_df_into_session: Any) -> None:
     """Hand-computed |z| score for the largest value of [1..10].
 
     Mean=5.5, sd (ddof=1)=3.0276503540974917
@@ -233,9 +228,7 @@ def test_find_outliers_zscore_known_answer_score(
     assert top["score"] == pytest.approx(1.4863010829, abs=1e-4)
 
 
-def test_find_outliers_zscore_custom_threshold(
-    call_tool: Any, load_df_into_session: Any
-) -> None:
+def test_find_outliers_zscore_custom_threshold(call_tool: Any, load_df_into_session: Any) -> None:
     """Custom threshold respected — same data, |z|>2 flags more than |z|>3."""
     import pandas as pd
 
@@ -421,9 +414,7 @@ def test_find_outliers_mahalanobis_drops_na_and_reports_count(
     assert "dropped_3_na_rows" in result["warnings"]
 
 
-def test_find_outliers_mahalanobis_custom_alpha(
-    call_tool: Any, load_df_into_session: Any
-) -> None:
+def test_find_outliers_mahalanobis_custom_alpha(call_tool: Any, load_df_into_session: Any) -> None:
     """``threshold`` overrides α — smaller α → larger χ² quantile → fewer flags."""
     import numpy as np
     import pandas as pd

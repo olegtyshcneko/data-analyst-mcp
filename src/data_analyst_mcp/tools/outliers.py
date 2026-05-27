@@ -161,6 +161,30 @@ def _code_snippet(payload: FindOutliersInput) -> str:
     )
 
 
+def _chi2_quantile(q: float, *, df: int) -> float:
+    """Return ``scipy.stats.chi2.ppf(q, df=df)`` as a plain float.
+
+    Wrapped to centralize the ``# type: ignore`` for the noisy scipy stubs.
+    """
+    from scipy import stats as _sps  # type: ignore[reportMissingTypeStubs]
+
+    chi2: Any = _sps.chi2
+    val: Any = chi2.ppf(q, df=df)
+    return float(val)
+
+
+def _sklearn_iforest() -> Any:
+    """Return ``sklearn.ensemble.IsolationForest`` as an untyped symbol.
+
+    Mirrors the ``_sklearn_metrics`` pattern in ``evaluate.py``: sklearn
+    stubs are noisy under strict pyright, so we centralize the
+    ``# type: ignore`` here.
+    """
+    from sklearn.ensemble import IsolationForest  # type: ignore[reportMissingTypeStubs]
+
+    return IsolationForest
+
+
 def _isolation_forest_method(payload: FindOutliersInput) -> dict[str, Any]:
     """sklearn IsolationForest with ``random_state=42``.
 
@@ -169,7 +193,6 @@ def _isolation_forest_method(payload: FindOutliersInput) -> dict[str, Any]:
     (sklearn rejects them) and counted in ``warnings``.
     """
     import numpy as np
-    from sklearn.ensemble import IsolationForest
 
     df = _materialize_columns_df(payload.name, list(payload.columns))
     n_total = len(df)
@@ -191,18 +214,19 @@ def _isolation_forest_method(payload: FindOutliersInput) -> dict[str, Any]:
     if dropped > 0:
         warnings.append(f"dropped_{dropped}_na_rows")
 
-    X = valid.to_numpy(dtype=float)
-    model = IsolationForest(
+    X: Any = valid.to_numpy(dtype=float)
+    IsolationForest = _sklearn_iforest()
+    model: Any = IsolationForest(
         contamination=payload.contamination,
         random_state=42,
     ).fit(X)
-    preds = model.predict(X)
-    scores = -model.decision_function(X)
-    src_indices = valid.index.to_numpy()
-    mask = preds == -1
-    flagged_src = src_indices[mask]
-    flagged_scores = scores[mask]
-    order = np.argsort(-flagged_scores)
+    preds: Any = model.predict(X)
+    scores: Any = -model.decision_function(X)
+    src_indices: Any = valid.index.to_numpy()
+    mask: Any = preds == -1
+    flagged_src: Any = src_indices[mask]
+    flagged_scores: Any = scores[mask]
+    order: Any = np.argsort(-flagged_scores)
     n_outliers = int(flagged_src.size)
     truncated = n_outliers > payload.limit
     chosen = order[: payload.limit]
@@ -211,8 +235,7 @@ def _isolation_forest_method(payload: FindOutliersInput) -> dict[str, Any]:
             "row_index": int(flagged_src[i]),
             "score": float(flagged_scores[i]),
             "values": {
-                col: _json_value(df[col].iloc[int(flagged_src[i])])
-                for col in payload.columns
+                col: _json_value(df[col].iloc[int(flagged_src[i])]) for col in payload.columns
             },
         }
         for i in chosen
@@ -251,10 +274,7 @@ def _mahalanobis_method(payload: FindOutliersInput) -> dict[str, Any]:
     if n_scored <= k:
         return build_error(
             type="insufficient_rows",
-            message=(
-                f"Mahalanobis needs n > k; got n={n_scored} after dropping "
-                f"NA rows, k={k}."
-            ),
+            message=(f"Mahalanobis needs n > k; got n={n_scored} after dropping NA rows, k={k}."),
             hint="Add more rows or pick fewer columns.",
         )
     X = valid.to_numpy(dtype=float)
@@ -281,9 +301,7 @@ def _mahalanobis_method(payload: FindOutliersInput) -> dict[str, Any]:
     d2 = np.einsum("ij,jk,ik->i", diff, inv, diff)
 
     alpha = payload.threshold if payload.threshold is not None else 0.025
-    from scipy import stats as _sps  # type: ignore[reportMissingTypeStubs]
-
-    cutoff = float(_sps.chi2.ppf(1.0 - alpha, df=k))
+    cutoff = _chi2_quantile(1.0 - alpha, df=k)
 
     mask = d2 > cutoff
     # Map back to source-dataset row indices (valid keeps original index).
@@ -299,8 +317,7 @@ def _mahalanobis_method(payload: FindOutliersInput) -> dict[str, Any]:
             "row_index": int(flagged_src[i]),
             "score": float(flagged_scores[i]),
             "values": {
-                col: _json_value(df[col].iloc[int(flagged_src[i])])
-                for col in payload.columns
+                col: _json_value(df[col].iloc[int(flagged_src[i])]) for col in payload.columns
             },
         }
         for i in chosen
@@ -330,11 +347,15 @@ def _iqr_method(payload: FindOutliersInput) -> dict[str, Any]:
     from data_analyst_mcp.tools._outlier_helpers import iqr_column_mask
 
     threshold = payload.threshold if payload.threshold is not None else 1.5
+
+    def _per_col(values: Any) -> tuple[Any, Any]:
+        return iqr_column_mask(values, threshold=threshold)
+
     return _per_column_union(
         payload,
         method_label="iqr",
         threshold=threshold,
-        per_column_fn=lambda values: iqr_column_mask(values, threshold=threshold),
+        per_column_fn=_per_col,
     )
 
 
@@ -343,11 +364,15 @@ def _zscore_method(payload: FindOutliersInput) -> dict[str, Any]:
     from data_analyst_mcp.tools._outlier_helpers import zscore_column_mask
 
     threshold = payload.threshold if payload.threshold is not None else 3.0
+
+    def _per_col(values: Any) -> tuple[Any, Any]:
+        return zscore_column_mask(values, threshold=threshold)
+
     return _per_column_union(
         payload,
         method_label="zscore",
         threshold=threshold,
-        per_column_fn=lambda values: zscore_column_mask(values, threshold=threshold),
+        per_column_fn=_per_col,
     )
 
 
@@ -414,12 +439,12 @@ def _json_value(value: Any) -> Any:
     if value is None:
         return None
     if isinstance(value, (np.floating, float)):
-        f = float(value)
+        f: float = float(value)  # type: ignore[reportUnknownArgumentType]
         if math.isnan(f) or math.isinf(f):
             return None
         return f
-    if isinstance(value, (np.integer,)):
-        return int(value)
-    if isinstance(value, (np.bool_,)):
-        return bool(value)
+    if isinstance(value, np.integer):
+        return int(value)  # type: ignore[reportUnknownArgumentType]
+    if isinstance(value, np.bool_):
+        return bool(value)  # type: ignore[reportUnknownArgumentType]
     return value
