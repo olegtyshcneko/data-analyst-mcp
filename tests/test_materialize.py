@@ -156,3 +156,24 @@ def test_materialize_query_overwrite_replaces_existing_derived(
     entry = _session.get_datasets()["snap"]
     assert entry.rows == 2
     assert entry.read_options == {"sql": "SELECT x FROM src WHERE x > 3"}
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "1leading_digit",
+        "has-dash",
+        "has space",
+        "has.dot",
+        "has;semicolon",
+        "",
+    ],
+)
+def test_materialize_query_invalid_name(call_tool: Any, name: str) -> None:
+    result = call_tool(
+        "materialize_query",
+        {"sql": "SELECT 1 AS x", "name": name},
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["type"] == "invalid_name"
