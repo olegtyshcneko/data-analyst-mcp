@@ -345,5 +345,7 @@ def test_regression_line_renders_95_ci_band(call_tool, load_df_into_session):
         entry, df, RegressionLineInput(model_name="m", predictor="x1")
     )
     ax = fig.axes[0]
-    fill_collections = [c for c in ax.collections if c.__class__.__name__ == "PolyCollection"]
+    fill_collections = [
+        c for c in ax.collections if "PolyCollection" in c.__class__.__name__
+    ]
     assert fill_collections, "expected at least one fill_between PolyCollection on the axes"
