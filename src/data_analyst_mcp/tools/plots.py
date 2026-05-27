@@ -555,6 +555,22 @@ def regression_line(payload: RegressionLineInput) -> dict[str, Any]:
                 "factors (C(...) / dummy-expanded terms) are not plottable."
             ),
         )
+    fig = _build_regression_line_figure(entry, df, payload)
+    out = render_to_base64(fig)
+    out["model_name"] = payload.model_name
+    out["plot_kind"] = "regression_line"
+    _record_regression_line(payload, entry, out)
+    return out
+
+
+def _build_regression_line_figure(entry: Any, df: Any, payload: RegressionLineInput) -> Any:
+    """Build (without rendering) the regression-line figure.
+
+    Factored out so tests can introspect the matplotlib Axes objects
+    (scatter point counts, fitted-line slope, CI band collections) without
+    going through the PNG-encode path.
+    """
+    result_obj: Any = entry._result  # type: ignore[reportPrivateUsage]
     x_values: Any = df[payload.predictor].to_numpy()
     y_values: Any = result_obj.model.endog
     x_grid, y_pred, ci_lower, ci_upper = _compute_fit_line(result_obj, df, payload.predictor)
@@ -565,11 +581,7 @@ def regression_line(payload: RegressionLineInput) -> dict[str, Any]:
     ax.set_xlabel(payload.predictor)
     ax.set_ylabel("response")
     _apply_title(ax, payload.title)
-    out = render_to_base64(fig)
-    out["model_name"] = payload.model_name
-    out["plot_kind"] = "regression_line"
-    _record_regression_line(payload, entry, out)
-    return out
+    return fig
 
 
 def _compute_fit_line(
