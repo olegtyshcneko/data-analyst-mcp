@@ -129,6 +129,15 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
         return _solve_two_proportion_z(payload, solved_for)
 
     if payload.test == "anova_oneway":
+        if payload.k_groups is None:
+            return build_error(
+                type="missing_k_groups",
+                message="anova_oneway requires k_groups (>= 2); none was provided.",
+                hint=(
+                    "Pass k_groups equal to the number of groups in the design "
+                    "(e.g. 3 for a three-arm trial)."
+                ),
+            )
         return _solve_anova_oneway(payload, solved_for)
 
     return build_error(type="internal", message="not implemented")
