@@ -291,3 +291,19 @@ def test_anova_oneway_known_answer(call_tool: Any) -> None:
     assert result["n"] == pytest.approx(178.3971, abs=1e-3)
 
 
+def test_anova_oneway_missing_k_groups_returns_typed_error(call_tool: Any) -> None:
+    """ANOVA without k_groups → missing_k_groups."""
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "anova_oneway",
+            "effect_size": 0.25,
+            "power": 0.8,
+            "alpha": 0.05,
+            # k_groups deliberately omitted
+        },
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "missing_k_groups"
+
+
