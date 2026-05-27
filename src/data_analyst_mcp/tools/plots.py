@@ -539,4 +539,28 @@ def regression_line(payload: RegressionLineInput) -> dict[str, Any]:
             ),
             hint=f"Available predictors: {available_predictors}.",
         )
+    con = session.get_connection()
+    df: Any = con.execute(f'SELECT * FROM "{entry.fitted_on_dataset}"').df()
+    if payload.predictor not in df.columns or not _is_numeric_pandas_dtype(
+        df[payload.predictor]
+    ):
+        return build_error(
+            type="non_numeric_predictor",
+            message=(
+                f"Predictor {payload.predictor!r} is not numeric in the training "
+                f"DataFrame for {payload.model_name!r}."
+            ),
+            hint=(
+                "regression_line requires a numeric predictor — categorical "
+                "factors (C(...) / dummy-expanded terms) are not plottable."
+            ),
+        )
     return build_error(type="internal", message="not implemented")
+
+
+def _is_numeric_pandas_dtype(series: Any) -> bool:
+    """True when a pandas Series has a numeric dtype."""
+    import pandas as _pd  # type: ignore[reportMissingTypeStubs]
+
+    pd_mod: Any = _pd
+    return bool(pd_mod.api.types.is_numeric_dtype(series))
