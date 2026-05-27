@@ -351,3 +351,30 @@ def test_anova_oneway_omits_alternative_and_reports_cohens_f(call_tool: Any) -> 
     assert "alternative" not in result
 
 
+# === one_sample_t ===
+
+
+def test_one_sample_t_known_answer(call_tool: Any) -> None:
+    """d=0.5, alpha=0.05, power=0.8, two-sided → n ≈ 33.3671.
+
+    Reference: TTestPower().solve_power(effect_size=0.5, alpha=0.05,
+        power=0.8, alternative='two-sided') → 33.36713118431779.
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "one_sample_t",
+            "effect_size": 0.5,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    assert result["test"] == "one_sample_t"
+    assert result["solved_for"] == "n"
+    assert result["effect_size_metric"] == "cohens_d"
+    assert result["n"] == pytest.approx(33.3671, abs=1e-4)
+    # one-sample → no n_total (n IS the total).
+    assert "n_total" not in result
+
+
