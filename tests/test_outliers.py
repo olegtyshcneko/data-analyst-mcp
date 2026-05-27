@@ -203,3 +203,30 @@ def test_find_outliers_zscore_default_threshold_3(
     assert result["threshold_used"] == 3.0
     assert result["n_outliers"] == 1
     assert result["outliers"][0]["row_index"] == 100
+
+
+def test_find_outliers_zscore_custom_threshold(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Custom threshold respected — same data, |z|>2 flags more than |z|>3."""
+    import pandas as pd
+
+    # 10 values: 1..10. Mean=5.5, sd≈3.0277. z(1)≈-1.486, z(10)≈1.486.
+    # No value exceeds |z|=3.0; at |z|>1.4 the extremes 1 and 10 should
+    # be flagged.
+    load_df_into_session(
+        "d",
+        pd.DataFrame({"v": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}),
+    )
+    r3 = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["v"], "method": "zscore", "threshold": 3.0},
+    )
+    r1_4 = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["v"], "method": "zscore", "threshold": 1.4},
+    )
+    assert r3["threshold_used"] == 3.0
+    assert r1_4["threshold_used"] == 1.4
+    assert r3["n_outliers"] == 0
+    assert r1_4["n_outliers"] == 2
