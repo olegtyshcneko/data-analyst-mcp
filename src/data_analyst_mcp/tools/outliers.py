@@ -13,6 +13,29 @@ from data_analyst_mcp.errors import build_error
 logger = logging.getLogger(__name__)
 
 
+_NUMERIC_DTYPES = {
+    "TINYINT",
+    "SMALLINT",
+    "INTEGER",
+    "BIGINT",
+    "HUGEINT",
+    "UTINYINT",
+    "USMALLINT",
+    "UINTEGER",
+    "UBIGINT",
+    "FLOAT",
+    "DOUBLE",
+    "REAL",
+    "DECIMAL",
+}
+
+
+def _is_numeric_dtype(dtype: str) -> bool:
+    """True if a DuckDB dtype represents a numeric column."""
+    base = dtype.split("(")[0].strip().upper()
+    return base in _NUMERIC_DTYPES
+
+
 class FindOutliersInput(BaseModel):
     """Inputs for ``find_outliers``."""
 
@@ -44,5 +67,16 @@ def find_outliers(payload: FindOutliersInput) -> dict[str, Any]:
             message=f"Columns not in dataset {payload.name!r}: {missing}.",
             hint=f"Available: {sorted(available)}",
         )
+    dtype_by_name = {c["name"]: c["dtype"] for c in entry.columns}
+    for col in payload.columns:
+        if not _is_numeric_dtype(dtype_by_name[col]):
+            return build_error(
+                type="non_numeric_column",
+                message=(
+                    f"Column {col!r} has non-numeric dtype "
+                    f"{dtype_by_name[col]!r}; find_outliers requires numeric columns."
+                ),
+                hint="Cast the column to a numeric type or pick a different column.",
+            )
     # method dispatch will be added in later TDD cycles
     return build_error(type="internal", message="method dispatch not yet implemented")
