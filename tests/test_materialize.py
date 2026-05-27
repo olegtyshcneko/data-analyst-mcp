@@ -50,3 +50,32 @@ def test_materialize_query_rejects_meta_statements(call_tool: Any, sql: str) -> 
 
     assert result["ok"] is False
     assert result["error"]["type"] == "write_not_allowed"
+
+
+def test_materialize_query_creates_registered_dataset_with_row_count(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    import pandas as pd
+
+    from data_analyst_mcp import session as _session
+
+    load_df_into_session(
+        "src",
+        pd.DataFrame({"x": [1, 2, 3, 4, 5], "g": ["a", "a", "b", "b", "b"]}),
+    )
+
+    result = call_tool(
+        "materialize_query",
+        {"sql": "SELECT x, g FROM src WHERE g = 'b'", "name": "filtered"},
+    )
+
+    assert result["ok"] is True
+    assert result["name"] == "filtered"
+    assert result["rows"] == 3
+    assert result["total_rows"] == 3
+    assert "filtered" in _session.get_datasets()
+    entry = _session.get_datasets()["filtered"]
+    assert entry.format == "derived"
+    assert entry.rows == 3
+    assert entry.path == "(query)"
+    assert entry.read_options == {"sql": "SELECT x, g FROM src WHERE g = 'b'"}
