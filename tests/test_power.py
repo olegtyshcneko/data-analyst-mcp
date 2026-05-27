@@ -220,3 +220,23 @@ def test_two_proportion_z_explicit_effect_size_overrides_p1_p2(call_tool: Any) -
     assert result["n"] < 200
 
 
+def test_two_proportion_z_missing_proportions_returns_typed_error(call_tool: Any) -> None:
+    """Solving for n with neither effect_size nor (p1+p2) → missing_proportions.
+
+    Without an effect size in any form the solver has nothing to compute
+    against; we surface a typed error rather than letting statsmodels
+    raise ``need exactly one keyword that is None``.
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_proportion_z",
+            "power": 0.8,
+            "alpha": 0.05,
+            # n omitted (solving for n) AND no effect_size, no p1/p2 → error.
+        },
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "missing_proportions"
+
+
