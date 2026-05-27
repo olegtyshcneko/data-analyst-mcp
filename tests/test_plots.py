@@ -185,3 +185,29 @@ def test_regression_line_unknown_model_returns_model_not_found(call_tool):
     result = call_tool("regression_line", {"model_name": "nope", "predictor": "x1"})
     assert result["ok"] is False
     assert result["error"]["type"] == "model_not_found"
+
+
+def _logistic_fixture_df(seed: int = 0, n: int = 500) -> pd.DataFrame:
+    """Synthetic logistic dataset for OLS-only guard tests."""
+    import numpy as np
+    from scipy.special import expit
+
+    rng = np.random.default_rng(seed)
+    x1 = rng.normal(0, 1, size=n)
+    x2 = rng.normal(0, 1, size=n)
+    eta = 0.5 * x1 - 0.3 * x2
+    y = rng.binomial(1, expit(eta))
+    return pd.DataFrame({"y": y, "x1": x1, "x2": x2})
+
+
+def test_regression_line_on_logistic_model_returns_ols_only(call_tool, load_df_into_session):
+    df = _logistic_fixture_df()
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "logistic", "model_name": "m_log"},
+    )
+    assert r["ok"], r
+    result = call_tool("regression_line", {"model_name": "m_log", "predictor": "x1"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "regression_diagnostics_ols_only"
