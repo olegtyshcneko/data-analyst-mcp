@@ -108,15 +108,7 @@ def _mahalanobis_method(payload: FindOutliersInput) -> dict[str, Any]:
     n_scored = len(valid)
     dropped = n_total - n_scored
     k = len(payload.columns)
-    if n_scored <= k:
-        return build_error(
-            type="insufficient_rows",
-            message=(
-                f"Mahalanobis needs n > k; got n={n_scored} after dropping "
-                f"NA rows, k={k}."
-            ),
-            hint="Add more rows or pick fewer columns.",
-        )
+    # n > k guard lands in the insufficient_rows cycle.
     X = valid.to_numpy(dtype=float)
     mu = X.mean(axis=0)
     sigma = np.cov(X, rowvar=False)

@@ -329,3 +329,22 @@ def test_find_outliers_mahalanobis_known_answer_2d(
     assert top["row_index"] == 50
     assert top["score"] == pytest.approx(28.2406675648, abs=1e-4)
     assert result["threshold_used"] == pytest.approx(7.3777589082, abs=1e-4)
+
+
+def test_find_outliers_mahalanobis_insufficient_rows(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """When n_scored <= k the covariance is rank-deficient; surface a typed error."""
+    import pandas as pd
+
+    # k=2 columns, n=2 rows → n <= k, must error.
+    load_df_into_session(
+        "d",
+        pd.DataFrame({"x": [1.0, 2.0], "y": [3.0, 4.0]}),
+    )
+    result = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["x", "y"], "method": "mahalanobis"},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "insufficient_rows"
