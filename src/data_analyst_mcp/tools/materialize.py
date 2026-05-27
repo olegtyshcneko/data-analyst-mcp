@@ -8,6 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
 
 logger = logging.getLogger(__name__)
@@ -57,4 +58,26 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
             hint=hint,
         )
 
-    return {"ok": True}
+    con = session.get_connection()
+    con.execute(f'CREATE OR REPLACE TABLE "{payload.name}" AS {payload.sql}')
+
+    rows = int(con.execute(f'SELECT COUNT(*) FROM "{payload.name}"').fetchone()[0])  # type: ignore[index]
+    describe_rows = con.execute(f'DESCRIBE "{payload.name}"').fetchall()
+    columns = [{"name": str(row[0]), "dtype": str(row[1])} for row in describe_rows]
+
+    session.register(
+        name=payload.name,
+        path="(query)",
+        read_options={"sql": payload.sql},
+        format="derived",
+        rows=rows,
+        columns=columns,
+    )
+
+    return {
+        "ok": True,
+        "name": payload.name,
+        "rows": rows,
+        "columns": columns,
+        "total_rows": rows,
+    }
