@@ -295,6 +295,31 @@ Every tool follows this contract:
 - Temporal: counts by year/month/weekday/hour.
 - Outliers: IQR rule, z-score > 3, count and 5 example rows.
 
+### 5.5a `find_outliers`
+
+**Purpose**: multi-column joint anomaly detection. Complements `describe_column`'s per-column flagging by surfacing rows that are unremarkable on any single axis yet extreme in the K-dimensional manifold.
+
+**Input**:
+- `name: str` — dataset name.
+- `columns: list[str]` — one or more numeric columns (`min_length=1`).
+- `method: Literal["iqr", "zscore", "mahalanobis", "isolation_forest"]`.
+- `threshold: float | None = None` — method-specific default applied when omitted (IQR: `1.5`, z-score: `3.0`, Mahalanobis: `α = 0.025` upper-tail).
+- `contamination: float = 0.05` — Isolation Forest only, open interval `(0, 0.5)`.
+- `limit: int = 50` — range `[1, 10_000]`.
+
+**Behavior**:
+1. Resolve the dataset; validate every entry of `columns` exists and is numeric.
+2. Dispatch by `method`:
+   - `iqr` — per-column flag where `x < Q1 − k·IQR` or `x > Q3 + k·IQR`; row score = `max` per-column normalized excess.
+   - `zscore` — per-column flag where `|z| > threshold`; row score = `max(|z|)` across selected columns.
+   - `mahalanobis` — joint D² over the N×K matrix (drop NA rows, count them). Flag where `D² > χ²(K, 1 − α)`; echo the chi² quantile (not α) as `threshold_used`. Falls back to `np.linalg.pinv` with a `covariance_singular` warning if `np.linalg.inv` fails; errors only when the pseudoinverse also fails.
+   - `isolation_forest` — `sklearn.ensemble.IsolationForest(contamination=..., random_state=42)`; row score = `−decision_function(X)`. Drops NA rows and counts them. Requires `n ≥ max(10, 2·k)`.
+3. Sort flagged rows by score descending, truncate to `limit`, emit per-column raw `values`.
+
+**Output**: `{ok, method, n_outliers, n_rows_scored, outliers: [{row_index, score, values}], truncated, threshold_used, warnings}`. `n_outliers` is the pre-truncation count; `warnings` covers `covariance_singular` and `dropped_N_na_rows`.
+
+**Errors**: `not_found`, `column_not_found`, `non_numeric_column`, `insufficient_rows` (Mahalanobis / Isolation Forest), `singular_covariance`.
+
 ### 5.6 `query`
 
 **Input**:
@@ -305,6 +330,26 @@ Every tool follows this contract:
 - Reject statements that aren't `SELECT`, `WITH`, `DESCRIBE`, `SHOW`, `EXPLAIN`, `PRAGMA show_tables`. (`SET`, `CREATE`, `DROP`, `INSERT`, `UPDATE`, `DELETE` → rejected with `error.type = "write_not_allowed"`.)
 - Apply `LIMIT` if not already present.
 - Return rows, columns, total_rows (separate `COUNT(*)` over a subquery), execution_time_ms.
+
+### 5.6a `materialize_query`
+
+**Purpose**: persist a `SELECT` / `WITH` result as a named DuckDB table and register it as a first-class derived dataset. Unblocks cohort / funnel / multi-step join workflows where `query` (read-only) would force the agent to re-run the same join inline on every call.
+
+**Input**:
+- `sql: str` — the `SELECT` or `WITH` statement; non-empty.
+- `name: str` — identifier for the new derived dataset (`^[A-Za-z_][A-Za-z0-9_]*$`).
+- `overwrite: bool = False` — whether to replace an existing dataset of the same name.
+
+**Behavior**:
+1. Validate the leading keyword against the narrower allowlist `("SELECT", "WITH")` — `DESCRIBE` / `SHOW` / `PRAGMA` (valid for `query`) are meaningless as a table source and rejected with `write_not_allowed`.
+2. If `name` is already registered and `overwrite=False` → `dataset_name_collision`.
+3. Execute `CREATE OR REPLACE TABLE "{name}" AS {sql}` on the live DuckDB connection.
+4. Probe row count via `SELECT COUNT(*)` and columns via `DESCRIBE`; register a `DatasetEntry` with `path="(query)"`, `format="derived"`, `read_options={"sql": payload.sql}`.
+5. The recorder's setup-cell rehydration (§6) emits derived `CREATE OR REPLACE TABLE` lines *after* every file-backed line so the upstream tables exist at replay.
+
+**Output**: `{ok, name, rows, columns: [{name, dtype}], total_rows}` — mirrors `load_dataset`'s shape; `rows == total_rows`.
+
+**Errors**: `write_not_allowed`, `dataset_name_collision`, `invalid_name`, `query_error`, `internal`.
 
 ### 5.7 `correlate`
 
@@ -358,6 +403,28 @@ Every tool follows this contract:
 - Plus test-specific fields.
 
 **Output**: identical shape across tests where possible: `test`, `statistic`, `p_value`, `effect_size`, `df`, `n_a`, `n_b`, `interpretation`.
+
+### 5.10a `power_analysis`
+
+**Purpose**: stateless sample-size / MDE / achieved-power solver across the five test families that map onto `compare_groups` / `test_hypothesis`. Solves for whichever of `effect_size` / `n` / `power` is omitted, so agents can plan a design *before* running the test.
+
+**Input**:
+- `test: Literal["two_sample_t", "one_sample_t", "paired_t", "two_proportion_z", "anova_oneway"]`.
+- `effect_size: float | None = None`, `n: int | float | None = None`, `power: float | None = None` — exactly one must be `None`; that is the unknown to solve for.
+- `alpha: float = 0.05` — open interval `(0, 1)`.
+- `p1: float | None = None`, `p2: float | None = None` — `two_proportion_z` only; if both are supplied, Cohen's h is derived via `statsmodels.stats.proportion.proportion_effectsize(p1, p2)` and used as `effect_size`.
+- `k_groups: int | None = None` — `anova_oneway` only; required, must be ≥ 2.
+- `ratio: float = 1.0` — `two_sample_t` only; `n2 / n1`.
+- `alternative: Literal["two-sided", "larger", "smaller"] = "two-sided"`.
+
+**Behavior**:
+1. Validate that exactly one of `{effect_size, n, power}` is `None`. For `two_proportion_z`, the `(p1, p2)` pair counts as a provided `effect_size`.
+2. Dispatch to the matching statsmodels solver: `TTestIndPower` (`two_sample_t`), `TTestPower` (`one_sample_t` / `paired_t`), `NormalIndPower` (`two_proportion_z`), `FTestAnovaPower` (`anova_oneway`). For ANOVA, `n` is the *total* sample size across groups; for two-sample tests it is per-group (group 1).
+3. Wrap `ValueError` / `FloatingPointError` / `nan` solver returns in `infeasible_solution`.
+
+**Output**: `{ok, test, solved_for, effect_size, effect_size_metric, n, n_total, power, alpha, alternative, interpretation}`. `effect_size_metric` is one of `cohens_d` / `cohens_h` / `cohens_f`; `n_total` is populated when meaningful (two-sample, paired, ANOVA).
+
+**Errors**: `invalid_inputs` (wrong number of unknowns), `missing_proportions` (`two_proportion_z` without `p1`+`p2` or `effect_size`), `missing_k_groups`, `infeasible_solution`.
 
 ### 5.11 `fit_model`
 
@@ -433,6 +500,48 @@ Outcome dtype validation: logistic requires binary 0/1 or boolean; OLS requires 
 - `bins: int | None`
 
 **Output**: `{"ok": true, "png_base64": "...", "width": 800, "height": 600}`.
+
+### 5.12a `regression_line`
+
+**Purpose**: scatter the response against a chosen predictor with the OLS fit line and 95 % mean-CI band overlaid. Pairs with `fit_model(kind="ols")` for visual diagnostics. **OLS-only** — logistic / Poisson / negbin have different canonical visuals and are out of scope.
+
+**Input**:
+- `model_name: str` — registry handle from a previous `fit_model` call.
+- `predictor: str` — one of the model's exog names (Wilkinson RHS terms, `Intercept` excluded); must be numeric in the training DataFrame.
+- `title: str | None = None`.
+
+**Behavior**:
+1. Look up the model; OLS guard otherwise.
+2. Validate `predictor` is in `result.model.exog_names` (sans `Intercept`) and numeric in the training DataFrame.
+3. Scatter `(predictor, endog)`; overlay the fit line by predicting across a dense grid of the predictor while holding every other predictor at its mean (numeric) or first value (factor).
+4. Shade the 95 % mean-CI band from `get_prediction(...).summary_frame()`.
+
+**Output**: `{ok, png_base64, width, height, model_name, plot_kind: "regression_line"}` — mirrors `plot`.
+
+**Errors**: `model_not_found`, `regression_diagnostics_ols_only`, `column_not_found`, `non_numeric_predictor`, `internal`.
+
+### 5.12b `residual_diagnostic`
+
+**Purpose**: render the four canonical OLS residual diagnostics — residuals vs fitted, Q-Q, scale-location, residuals vs leverage with Cook's distance. Companion to `regression_line`; same OLS-only guard.
+
+**Input**:
+- `model_name: str` — registry handle from a previous `fit_model` call.
+- `kind: Literal["resid_vs_fitted", "qq", "scale_location", "all"] = "all"` — `all` renders a 2×2 grid; everything else a single-axes figure.
+- `title: str | None = None`.
+
+**Behavior**:
+1. Same lookup + OLS guard as §5.12a.
+2. Compute `fitted`, `resid`, and `infl.resid_studentized_internal` once.
+3. Render per `kind`:
+   - `resid_vs_fitted` — scatter `(fitted, resid)` with `y=0` reference line and LOWESS overlay (`statsmodels.nonparametric.smoothers_lowess.lowess`).
+   - `qq` — `scipy.stats.probplot(resid)` on the supplied axes.
+   - `scale_location` — scatter `(fitted, sqrt(|standardized_resid|))` with LOWESS overlay.
+   - `all` — 2×2 grid; fourth panel is residuals vs leverage with Cook's distance via `infl.cooks_distance`.
+4. Figure size: `(12, 9)` for `all`, default `(8, 6)` otherwise.
+
+**Output**: `{ok, png_base64, width, height, model_name, plot_kind}` where `plot_kind` echoes `payload.kind`.
+
+**Errors**: `model_not_found`, `regression_diagnostics_ols_only`, `invalid_kind`, `internal`.
 
 ### 5.13 `emit_notebook`
 
@@ -640,7 +749,7 @@ README with worked example, `DEPS.md`, LICENSE, ROADMAP, tag `v0.1.0`, `uv build
 - Loading entire datasets into pandas at tool-call time.
 - Adding `plotly`, `seaborn`, `altair`, `bokeh`, `dash`, `streamlit`, `polars`, `dask`, `ray`.
 - Adding `Anthropic`/`OpenAI` clients to call an LLM from inside the server.
-- Adding tools beyond the 11 in §5 (park in `ROADMAP.md`).
+- Adding tools beyond the 20 in §5 (park in `ROADMAP.md`).
 - Silently coercing data types in `load_dataset`.
 - Making the recorder optional/feature-flagged.
 - `emit_notebook` depending on internet, API key, or anything non-local.
