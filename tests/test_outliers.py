@@ -173,3 +173,33 @@ def test_find_outliers_iqr_custom_threshold_widens_band(
     assert r30["threshold_used"] == 3.0
     assert r15["n_outliers"] == 1
     assert r30["n_outliers"] == 0
+
+
+# === zscore ===
+
+
+def test_find_outliers_zscore_default_threshold_3(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Default threshold 3.0: only |z|>3 values are flagged."""
+    import numpy as np
+    import pandas as pd
+
+    # 100 nominal N(0,1) plus one extreme at 50. With ddof=1 sample std
+    # the extreme dwarfs everything else; the extreme must be the only
+    # flagged row.
+    rng = np.random.default_rng(seed=42)
+    values = rng.standard_normal(size=100).tolist()
+    values.append(50.0)
+    load_df_into_session("d", pd.DataFrame({"v": values}))
+
+    result = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["v"], "method": "zscore"},
+    )
+
+    assert result["ok"] is True
+    assert result["method"] == "zscore"
+    assert result["threshold_used"] == 3.0
+    assert result["n_outliers"] == 1
+    assert result["outliers"][0]["row_index"] == 100
