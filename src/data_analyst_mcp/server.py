@@ -74,9 +74,7 @@ def materialize_query(
         from pydantic import ValidationError
 
         try:
-            payload = _materialize.MaterializeQueryInput(
-                sql=sql, name=name, overwrite=overwrite
-            )
+            payload = _materialize.MaterializeQueryInput(sql=sql, name=name, overwrite=overwrite)
         except ValidationError as ve:
             for err in ve.errors():
                 if err.get("loc") == ("name",):

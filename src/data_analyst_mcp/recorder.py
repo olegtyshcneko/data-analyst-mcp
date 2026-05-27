@@ -97,9 +97,7 @@ def _build_setup_source() -> str:
         if entry.format != "derived":
             continue
         derived_sql = entry.read_options.get("sql", "")
-        lines.append(
-            f'con.execute("""CREATE OR REPLACE TABLE "{name}" AS {derived_sql}""")'
-        )
+        lines.append(f'con.execute("""CREATE OR REPLACE TABLE "{name}" AS {derived_sql}""")')
 
     models = _session.get_models()
     if models:

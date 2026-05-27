@@ -226,9 +226,7 @@ def test_materialize_query_recorder_writes_on_success_only(
     assert code["metadata"]["tool_name"] == "materialize_query"
 
 
-def test_setup_cell_emits_derived_after_base_tables(
-    call_tool: Any, tmp_path: Any
-) -> None:
+def test_setup_cell_emits_derived_after_base_tables(call_tool: Any, tmp_path: Any) -> None:
     """The derived CREATE OR REPLACE TABLE for a derived dataset must
     appear *after* the base-table CREATE line — otherwise DuckDB would
     fail at replay because the derived SQL references a base table that
@@ -252,7 +250,7 @@ def test_setup_cell_emits_derived_after_base_tables(
     setup = _build_setup_source()
     # Both lines present.
     assert "CREATE OR REPLACE TABLE base" in setup
-    assert "CREATE OR REPLACE TABLE \"derived\"" in setup or (
+    assert 'CREATE OR REPLACE TABLE "derived"' in setup or (
         "CREATE OR REPLACE TABLE derived" in setup
     )
     # Derived must come AFTER base.
@@ -358,9 +356,7 @@ def test_emitted_notebook_with_materialize_runs_via_nbconvert(
     )
 
 
-def test_session_reset_clears_derived_entries(
-    call_tool: Any, load_df_into_session: Any
-) -> None:
+def test_session_reset_clears_derived_entries(call_tool: Any, load_df_into_session: Any) -> None:
     """Characterization: ``session.reset()`` empties the datasets dict and
     drops the DuckDB tables, regardless of whether the entries were loaded
     or derived. Confirms derived datasets don't need any special reset
