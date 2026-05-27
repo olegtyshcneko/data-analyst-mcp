@@ -139,8 +139,7 @@ def _mahalanobis_method(payload: FindOutliersInput) -> dict[str, Any]:
     # D²_i = (x_i − μ)ᵀ Σ⁻¹ (x_i − μ)
     d2 = np.einsum("ij,jk,ik->i", diff, inv, diff)
 
-    # Custom α lands in the custom-alpha cycle.
-    alpha = 0.025
+    alpha = payload.threshold if payload.threshold is not None else 0.025
     from scipy import stats as _sps  # type: ignore[reportMissingTypeStubs]
 
     cutoff = float(_sps.chi2.ppf(1.0 - alpha, df=k))
