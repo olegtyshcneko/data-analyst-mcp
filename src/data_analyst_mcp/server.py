@@ -20,6 +20,7 @@ from data_analyst_mcp.tools import missingness as _missingness
 from data_analyst_mcp.tools import models as _models
 from data_analyst_mcp.tools import multitest as _multitest
 from data_analyst_mcp.tools import notebook as _notebook
+from data_analyst_mcp.tools import outliers as _outliers
 from data_analyst_mcp.tools import plots as _plots
 from data_analyst_mcp.tools import predict as _predict
 from data_analyst_mcp.tools import query as _query
@@ -576,6 +577,48 @@ def plot(
         return _plots.plot(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("plot failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def find_outliers(
+    name: str,
+    columns: list[str],
+    method: str,
+    threshold: float | None = None,
+    contamination: float = 0.05,
+    limit: int = 50,
+) -> dict[str, Any]:
+    """Detect outliers across one or more numeric columns of a registered dataset.
+
+    ``method`` is one of ``iqr`` (default threshold 1.5), ``zscore`` (default
+    threshold 3.0), ``mahalanobis`` (joint detection via D² vs χ²(k, 1−α)
+    quantile; default α=0.025; ``threshold`` overrides α; falls back to a
+    Moore-Penrose pseudoinverse with a ``covariance_singular`` warning when
+    Σ is singular), or ``isolation_forest`` (sklearn with
+    ``random_state=42``; ``contamination`` in (0, 0.5)). IQR / z-score row
+    score = max per-column normalized excess; Mahalanobis score = D²;
+    Isolation Forest score = ``−decision_function(X)``. Returns
+    ``n_outliers`` (pre-truncation), ``n_rows_scored``, the top-``limit``
+    flagged rows (each with ``row_index``, ``score``, and per-column raw
+    ``values``), ``truncated``, ``threshold_used`` (method default echoed
+    back), and a list of ``warnings`` (e.g. ``covariance_singular``,
+    ``dropped_n_na_rows``).
+    """
+    try:
+        payload = _outliers.FindOutliersInput.model_validate(
+            {
+                "name": name,
+                "columns": columns,
+                "method": method,
+                "threshold": threshold,
+                "contamination": contamination,
+                "limit": limit,
+            }
+        )
+        return _outliers.find_outliers(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("find_outliers failed")
         return build_error(type="internal", message=str(exc))
 
 
