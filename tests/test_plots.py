@@ -424,3 +424,31 @@ def test_residual_diagnostic_qq_single_axes(call_tool, load_df_into_session):
     result = call_tool("residual_diagnostic", {"model_name": "m", "kind": "qq"})
     _assert_valid_png(result)
     assert result["plot_kind"] == "qq"
+
+
+def test_residual_diagnostic_scale_location_single_axes(call_tool, load_df_into_session):
+    """Slice 13: kind='scale_location' produces a single-axes figure."""
+    from data_analyst_mcp import session as _session
+    from data_analyst_mcp.tools.plots import (
+        ResidualDiagnosticInput,
+        _build_residual_diagnostic_figure,  # type: ignore[reportPrivateUsage]
+    )
+
+    df = _ols_fixture_df()
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    entry = _session.get_model("m")
+    assert entry is not None
+    fig = _build_residual_diagnostic_figure(
+        entry, ResidualDiagnosticInput(model_name="m", kind="scale_location")
+    )
+    assert len(fig.axes) == 1
+    result = call_tool(
+        "residual_diagnostic", {"model_name": "m", "kind": "scale_location"}
+    )
+    _assert_valid_png(result)
+    assert result["plot_kind"] == "scale_location"
