@@ -491,3 +491,41 @@ def test_find_outliers_isolation_forest_known_answer_seed_42(
     flagged = {o["row_index"] for o in result["outliers"]}
     # The 3 planted extremes must be flagged.
     assert {100, 101, 102}.issubset(flagged)
+
+
+def test_find_outliers_isolation_forest_contamination_respected(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Higher contamination flags more rows than lower contamination."""
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal(size=(200, 2))
+    load_df_into_session("d", pd.DataFrame({"x": X[:, 0], "y": X[:, 1]}))
+
+    r_low = call_tool(
+        "find_outliers",
+        {
+            "name": "d",
+            "columns": ["x", "y"],
+            "method": "isolation_forest",
+            "contamination": 0.02,
+        },
+    )
+    r_high = call_tool(
+        "find_outliers",
+        {
+            "name": "d",
+            "columns": ["x", "y"],
+            "method": "isolation_forest",
+            "contamination": 0.20,
+        },
+    )
+
+    assert r_low["ok"] is True
+    assert r_high["ok"] is True
+    # Contamination is the expected fraction of anomalies, so 20% > 2%.
+    assert r_high["n_outliers"] > r_low["n_outliers"]
+    assert r_high["threshold_used"] == 0.20
+    assert r_low["threshold_used"] == 0.02
