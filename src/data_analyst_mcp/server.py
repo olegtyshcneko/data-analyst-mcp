@@ -669,6 +669,36 @@ def power_analysis(
 
 
 @mcp.tool()
+def regression_line(
+    model_name: str,
+    predictor: str,
+    title: str | None = None,
+) -> dict[str, Any]:
+    """Render a predictor-vs-response scatter with the OLS fit line + 95 % mean-CI band.
+
+    ``model_name`` is a registry handle from a previous ``fit_model`` call
+    of ``kind="ols"`` — logistic / Poisson / negbin raise
+    ``regression_diagnostics_ols_only``. ``predictor`` must appear in the
+    model's exog names (i.e. one of the formula RHS terms, after dropping
+    ``Intercept``) and must be numeric in the training DataFrame. The fit
+    line is drawn by predicting across a dense grid of the predictor while
+    holding the other predictors at their mean; the 95 % mean-CI band is
+    shaded from statsmodels' ``get_prediction(...).summary_frame()``.
+    Returns ``{ok, png_base64, width, height, model_name, plot_kind}``.
+    """
+    try:
+        payload = _plots.RegressionLineInput(
+            model_name=model_name,
+            predictor=predictor,
+            title=title,
+        )
+        return _plots.regression_line(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("regression_line failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
 def emit_notebook(
     path: str | None = None,
     include_outputs: bool = False,

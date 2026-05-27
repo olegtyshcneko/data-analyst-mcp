@@ -493,3 +493,31 @@ def _missing_required_params(kind: str, *, x: str | None, y: str | None) -> list
     if kind in _REQUIRES_Y and y is None:
         missing.append("y")
     return missing
+
+
+# === regression_line + residual_diagnostic ===
+
+
+class RegressionLineInput(BaseModel):
+    """Inputs for ``regression_line``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model_name: str = Field(..., description="Registered OLS model handle.")
+    predictor: str = Field(
+        ..., description="Numeric predictor (one of the model's exog names) to plot against."
+    )
+    title: str | None = Field(default=None, description="Optional chart title.")
+
+
+def regression_line(payload: RegressionLineInput) -> dict[str, Any]:
+    """Render a predictor-vs-response scatter with the OLS fit line + 95% mean-CI band."""
+    entry = session.get_model(payload.model_name)
+    if entry is None:
+        known = sorted(session.get_models().keys())
+        return build_error(
+            type="model_not_found",
+            message=f"No model named {payload.model_name!r} registered.",
+            hint=f"Known model names: {known}." if known else "Registry is empty.",
+        )
+    return build_error(type="internal", message="not implemented")
