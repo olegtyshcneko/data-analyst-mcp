@@ -289,3 +289,40 @@ def test_find_outliers_zscore_nan_rows_not_flagged(
     # (Mahalanobis is the only method that drops NA rows.)
     assert result["n_rows_scored"] == 101
     assert "dropped_2_na_rows" not in result["warnings"]
+
+
+# === mahalanobis ===
+
+
+def test_find_outliers_mahalanobis_known_answer_2d(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """50 N(0, I) points + one (5, 5): the (5, 5) row must be flagged.
+
+    Hand-computed (seed=42):
+      D²(last row) ≈ 28.2406675647818
+      threshold = scipy.stats.chi2.ppf(1 - 0.025, df=2) = 7.3777589082279
+    Assert: n_outliers == 1, top row is index 50, score ≈ 28.2406675647818,
+    threshold_used ≈ 7.3777589082279.
+    """
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(42)
+    X = rng.standard_normal(size=(50, 2))
+    X = np.vstack([X, [5.0, 5.0]])
+    df = pd.DataFrame({"x": X[:, 0], "y": X[:, 1]})
+    load_df_into_session("d", df)
+
+    result = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["x", "y"], "method": "mahalanobis"},
+    )
+
+    assert result["ok"] is True
+    assert result["method"] == "mahalanobis"
+    assert result["n_outliers"] == 1
+    top = result["outliers"][0]
+    assert top["row_index"] == 50
+    assert top["score"] == pytest.approx(28.2406675648, abs=1e-4)
+    assert result["threshold_used"] == pytest.approx(7.3777589082, abs=1e-4)
