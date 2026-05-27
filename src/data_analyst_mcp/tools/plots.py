@@ -677,12 +677,19 @@ def _build_residual_diagnostic_figure(entry: Any, payload: ResidualDiagnosticInp
     result_obj: Any = entry._result  # type: ignore[reportPrivateUsage]
     fitted, resid, standardized = _residual_series(result_obj)
     if payload.kind == "all":
-        # Deferred to cycle 14: render only resid_vs_fitted in a single axes.
         fig = Figure(figsize=(12.0, 9.0), dpi=_DPI)
-        ax = fig.add_subplot(111)
-        _apply_style(fig, ax)
-        _render_resid_vs_fitted(ax, fitted, resid)
-        _ = (resid, standardized, result_obj)
+        ax_rf = fig.add_subplot(2, 2, 1)
+        ax_qq = fig.add_subplot(2, 2, 2)
+        ax_sl = fig.add_subplot(2, 2, 3)
+        ax_lv = fig.add_subplot(2, 2, 4)
+        for ax in (ax_rf, ax_qq, ax_sl, ax_lv):
+            _apply_style(fig, ax)
+        _render_resid_vs_fitted(ax_rf, fitted, resid)
+        _render_qq(ax_qq, resid)
+        _render_scale_location(ax_sl, fitted, standardized)
+        _render_residuals_vs_leverage(ax_lv, result_obj, standardized)
+        _apply_title(ax_rf, payload.title)
+        fig.tight_layout()
         return fig
     fig = Figure(figsize=_FIGSIZE, dpi=_DPI)
     ax = fig.add_subplot(111)
