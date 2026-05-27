@@ -175,7 +175,8 @@ def _solve_anova_oneway(payload: PowerAnalysisInput, solved_for: str) -> dict[st
         "solved_for": solved_for,
         "effect_size_metric": _EFFECT_SIZE_METRIC[payload.test],
         "alpha": payload.alpha,
-        "alternative": payload.alternative,  # regressed for TDD cycle 16
+        # No `alternative` field — F-test for one-way ANOVA is two-sided
+        # by construction.
         "effect_size": es,
         "n": n_total,
         "n_total": int(math.ceil(n_total)),
