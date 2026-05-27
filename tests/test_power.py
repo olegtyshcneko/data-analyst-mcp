@@ -128,3 +128,26 @@ def test_two_sample_t_solves_for_power(call_tool: Any) -> None:
     assert "achieved power" in result["interpretation"].lower()
 
 
+def test_two_sample_t_ratio_respected(call_tool: Any) -> None:
+    """Asymmetric ratio=2 (n2 = 2*n1) shrinks n1 vs ratio=1.
+
+    Reference: TTestIndPower().solve_power(effect_size=0.5, alpha=0.05,
+        power=0.8, ratio=2.0, alternative='two-sided')
+        → 47.741920646056975
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_sample_t",
+            "effect_size": 0.5,
+            "power": 0.8,
+            "alpha": 0.05,
+            "ratio": 2.0,
+        },
+    )
+    assert result["ok"] is True
+    assert result["n"] == pytest.approx(47.7419, abs=1e-4)
+    # n_total = ceil(n1) + ceil(2 * n1) = 48 + 96 = 144
+    assert result["n_total"] == 144
+
+

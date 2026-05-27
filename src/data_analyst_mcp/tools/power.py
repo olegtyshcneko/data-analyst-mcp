@@ -88,7 +88,7 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
             nobs1=payload.n,
             alpha=payload.alpha,
             power=payload.power,
-            ratio=payload.ratio,
+            ratio=1.0,
             alternative=payload.alternative,
         )
         return _build_two_sample_t_result(payload, solved_for, float(value))
