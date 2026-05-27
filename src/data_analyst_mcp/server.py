@@ -699,6 +699,51 @@ def regression_line(
 
 
 @mcp.tool()
+def residual_diagnostic(
+    model_name: str,
+    kind: str = "all",
+    title: str | None = None,
+) -> dict[str, Any]:
+    """Render OLS residual diagnostics as a base64-encoded PNG.
+
+    ``model_name`` is a registry handle from a previous ``fit_model``
+    call of ``kind="ols"`` — logistic / Poisson / negbin raise
+    ``regression_diagnostics_ols_only``. ``kind`` picks the panel:
+    ``resid_vs_fitted`` (with LOWESS overlay + y=0 line),
+    ``qq`` (scipy.stats.probplot Q-Q), ``scale_location``
+    (sqrt(|standardized resid|) vs fitted, LOWESS overlay), or ``all``
+    (2×2 grid where the 4th panel is residuals vs leverage with Cook's
+    distance contours). Returns ``{ok, png_base64, width, height,
+    model_name, plot_kind}``.
+    """
+    try:
+        from pydantic import ValidationError
+
+        try:
+            payload = _plots.ResidualDiagnosticInput(
+                model_name=model_name,
+                kind=kind,  # type: ignore[arg-type]
+                title=title,
+            )
+        except ValidationError as ve:
+            for err in ve.errors():
+                if err.get("loc") == ("kind",):
+                    return build_error(
+                        type="invalid_kind",
+                        message=f"Unknown kind {kind!r}.",
+                        hint=(
+                            "Allowed kinds: ['all', 'qq', 'resid_vs_fitted', "
+                            "'scale_location']."
+                        ),
+                    )
+            raise
+        return _plots.residual_diagnostic(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("residual_diagnostic failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
 def emit_notebook(
     path: str | None = None,
     include_outputs: bool = False,

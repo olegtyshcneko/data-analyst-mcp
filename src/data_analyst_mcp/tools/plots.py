@@ -618,6 +618,40 @@ def _compute_fit_line(
     )
 
 
+ResidualDiagnosticKind = Literal["resid_vs_fitted", "qq", "scale_location", "all"]
+
+
+class ResidualDiagnosticInput(BaseModel):
+    """Inputs for ``residual_diagnostic``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model_name: str = Field(..., description="Registered OLS model handle.")
+    kind: ResidualDiagnosticKind = Field(
+        default="all",
+        description=(
+            "Which diagnostic panel to render: 'resid_vs_fitted', 'qq', "
+            "'scale_location', or 'all' (2×2 grid with the four canonical "
+            "OLS diagnostics)."
+        ),
+    )
+    title: str | None = Field(default=None, description="Optional chart title.")
+
+
+def residual_diagnostic(payload: ResidualDiagnosticInput) -> dict[str, Any]:
+    """Render OLS residual diagnostics — residuals-vs-fitted, Q-Q,
+    scale-location, residuals-vs-leverage (Cook's distance)."""
+    entry = session.get_model(payload.model_name)
+    if entry is None:
+        known = sorted(session.get_models().keys())
+        return build_error(
+            type="model_not_found",
+            message=f"No model named {payload.model_name!r} registered.",
+            hint=f"Known model names: {known}." if known else "Registry is empty.",
+        )
+    return build_error(type="internal", message="not implemented")
+
+
 def _record_regression_line(
     payload: RegressionLineInput, entry: Any, result: dict[str, Any]
 ) -> None:
