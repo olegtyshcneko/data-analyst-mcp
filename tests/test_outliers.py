@@ -348,3 +348,24 @@ def test_find_outliers_mahalanobis_insufficient_rows(
     )
     assert result["ok"] is False
     assert result["error"]["type"] == "insufficient_rows"
+
+
+def test_find_outliers_mahalanobis_singular_covariance_falls_back_to_pinv(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Perfectly collinear columns → Σ is singular → use pinv + warn."""
+    import pandas as pd
+
+    # y = 2x perfectly. The 2×2 covariance has rank 1 → Σ is singular.
+    # Mahalanobis must still return ok=True with a covariance_singular
+    # warning, not error out.
+    x = list(range(20))
+    y = [2.0 * v for v in x]
+    load_df_into_session("d", pd.DataFrame({"x": x, "y": y}))
+
+    result = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["x", "y"], "method": "mahalanobis"},
+    )
+    assert result["ok"] is True
+    assert "covariance_singular" in result["warnings"]
