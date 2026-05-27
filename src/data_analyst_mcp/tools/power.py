@@ -112,6 +112,8 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
                 "unset — that is the quantity the solver will return."
             ),
         )
+    # The single None among {effect_size, n, power} is the field to solve
+    # for — echoed back as ``solved_for`` in the output envelope.
     solved_for = unknowns[0]
 
     if payload.test == "two_sample_t":
