@@ -399,3 +399,27 @@ def test_one_sample_t_alternative_respected(call_tool: Any) -> None:
     assert result["n"] == pytest.approx(26.1375, abs=1e-4)
 
 
+def test_one_sample_t_default_solve_for_is_n(call_tool: Any) -> None:
+    """When only effect_size + power are supplied, solved_for = n (no n echoed back).
+
+    This is the proposal's slice 21 — clarifies that the default behavior
+    (omit n) corresponds to "compute the required sample size".
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "one_sample_t",
+            "effect_size": 0.4,
+            "power": 0.9,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    assert result["solved_for"] == "n"
+    # The returned n must be strictly > 0 — the actual solver did the work.
+    assert result["n"] > 0
+    # Echoed inputs unchanged.
+    assert result["effect_size"] == pytest.approx(0.4, abs=1e-12)
+    assert result["power"] == pytest.approx(0.9, abs=1e-12)
+
+
