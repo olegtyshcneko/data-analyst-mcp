@@ -589,3 +589,36 @@ def test_find_outliers_isolation_forest_score_is_negative_decision_function(
     # And the score must be positive for the extreme outlier (since
     # decision_function returns large negative values for anomalies).
     assert top["score"] > 0.0
+
+
+def test_find_outliers_isolation_forest_insufficient_rows(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Return a typed ``insufficient_rows`` error when n < max(10, 2*k).
+
+    Avoids relying on sklearn's internal exception surface — the
+    minimum-viable n threshold is enforced by the tool layer.
+    """
+    import pandas as pd
+
+    # k = 3 columns; n = 4 < max(10, 6) → error.
+    load_df_into_session(
+        "tiny",
+        pd.DataFrame(
+            {
+                "a": [1.0, 2.0, 3.0, 4.0],
+                "b": [4.0, 3.0, 2.0, 1.0],
+                "c": [1.0, 1.0, 2.0, 2.0],
+            }
+        ),
+    )
+    result = call_tool(
+        "find_outliers",
+        {
+            "name": "tiny",
+            "columns": ["a", "b", "c"],
+            "method": "isolation_forest",
+        },
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "insufficient_rows"
