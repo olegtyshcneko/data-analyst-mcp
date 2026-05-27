@@ -98,8 +98,7 @@ def _iqr_method(payload: FindOutliersInput) -> dict[str, Any]:
 
     from data_analyst_mcp.tools._outlier_helpers import iqr_column_mask
 
-    # Default threshold only — custom threshold handled in a later TDD cycle.
-    threshold = 1.5
+    threshold = payload.threshold if payload.threshold is not None else 1.5
     df = _materialize_columns_df(payload.name, list(payload.columns))
     n_rows = len(df)
     row_mask = np.zeros(n_rows, dtype=bool)
