@@ -478,3 +478,29 @@ def test_residual_diagnostic_all_produces_2x2_grid(call_tool, load_df_into_sessi
     result = call_tool("residual_diagnostic", {"model_name": "m"})  # kind defaults to "all"
     _assert_valid_png(result)
     assert result["plot_kind"] == "all"
+
+
+def test_residual_diagnostic_resid_vs_fitted_has_lowess_overlay(call_tool, load_df_into_session):
+    """Slice 15: resid_vs_fitted axes carry >= 2 line2d objects — one for
+    the y=0 reference, one for the LOWESS smoothed overlay."""
+    from data_analyst_mcp import session as _session
+    from data_analyst_mcp.tools.plots import (
+        ResidualDiagnosticInput,
+        _build_residual_diagnostic_figure,  # type: ignore[reportPrivateUsage]
+    )
+
+    df = _ols_fixture_df()
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    entry = _session.get_model("m")
+    assert entry is not None
+    fig = _build_residual_diagnostic_figure(
+        entry, ResidualDiagnosticInput(model_name="m", kind="resid_vs_fitted")
+    )
+    ax = fig.axes[0]
+    # axhline (y=0) + LOWESS plot() → at least 2 Line2D objects.
+    assert len(ax.lines) >= 2
