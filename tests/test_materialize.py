@@ -356,3 +356,38 @@ def test_emitted_notebook_with_materialize_runs_via_nbconvert(
     assert result.returncode == 0, (
         f"nbconvert failed:\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
     )
+
+
+def test_session_reset_clears_derived_entries(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Characterization: ``session.reset()`` empties the datasets dict and
+    drops the DuckDB tables, regardless of whether the entries were loaded
+    or derived. Confirms derived datasets don't need any special reset
+    logic — they share the same cleanup path as file-backed entries."""
+    import pandas as pd
+
+    from data_analyst_mcp import session as _session
+
+    # One file-backed (in-memory shim) + one derived.
+    load_df_into_session("base", pd.DataFrame({"x": [1, 2, 3]}))
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT x FROM base WHERE x > 1", "name": "derived"},
+    )
+    assert r["ok"], r
+    assert "base" in _session.get_datasets()
+    assert "derived" in _session.get_datasets()
+    assert _session.get_datasets()["derived"].format == "derived"
+
+    _session.reset()
+
+    # Both entries cleared, regardless of format.
+    assert _session.get_datasets() == {}
+    # And the DuckDB tables themselves are gone (CatalogException on
+    # SELECT * FROM derived).
+    import duckdb
+
+    con = _session.get_connection()
+    with pytest.raises(duckdb.CatalogException):
+        con.execute('SELECT * FROM "derived"').fetchall()
