@@ -20,3 +20,17 @@ def test_find_outliers_unknown_dataset_returns_not_found(call_tool: Any) -> None
     )
     assert result["ok"] is False
     assert result["error"]["type"] == "not_found"
+
+
+def test_find_outliers_unknown_column_returns_column_not_found(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    import pandas as pd
+
+    load_df_into_session("tiny", pd.DataFrame({"x": [1, 2, 3], "y": [4, 5, 6]}))
+    result = call_tool(
+        "find_outliers",
+        {"name": "tiny", "columns": ["x", "zzz"], "method": "iqr"},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "column_not_found"
