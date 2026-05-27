@@ -63,12 +63,18 @@ def _build_setup_source() -> str:
     from data_analyst_mcp import session as _session
 
     lines = [_SETUP_IMPORTS]
+    # First pass: file-backed datasets. Derived datasets are emitted in a
+    # second pass so that their CREATE OR REPLACE TABLE lines land *after*
+    # the base tables they SELECT from — otherwise DuckDB would fail at
+    # replay because the base table wouldn't exist yet.
     for name, entry in _session.get_datasets().items():
         if entry.format == "dataframe":
             lines.append(
                 f"# Note: in-memory dataset {name!r} was registered live and is "
                 f"not reloaded here — rematerialize it from your own source."
             )
+            continue
+        if entry.format == "derived":
             continue
         reader = _FORMAT_TO_READER.get(entry.format, "read_csv_auto")
         if reader == "read_csv_auto":
@@ -77,10 +83,25 @@ def _build_setup_source() -> str:
             call = f"{reader}('{entry.path}')"
         lines.append(f'con.execute("""CREATE OR REPLACE TABLE {name} AS SELECT * FROM {call}""")')
 
+    # Second pass: derived datasets, materialized via their recorded SQL.
+    # No hash assert — the recipe is the SQL plus the upstream datasets,
+    # which already carry their own asserts via the model rehydration
+    # block when models depend on them.
+    for name, entry in _session.get_datasets().items():
+        if entry.format != "derived":
+            continue
+        derived_sql = entry.read_options.get("sql", "")
+        lines.append(
+            f'con.execute("""CREATE OR REPLACE TABLE "{name}" AS {derived_sql}""")'
+        )
+
     models = _session.get_models()
     if models:
         # Materialize a DataFrame per reloadable dataset so the model
-        # rehydration line has something to fit against.
+        # rehydration line has something to fit against. Derived datasets
+        # (format == "derived") are reloadable too — they exist as DuckDB
+        # tables once the second-pass CREATE OR REPLACE TABLE lines above
+        # have run.
         for name, entry in _session.get_datasets().items():
             if entry.format == "dataframe":
                 continue
