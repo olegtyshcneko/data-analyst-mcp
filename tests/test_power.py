@@ -240,3 +240,27 @@ def test_two_proportion_z_missing_proportions_returns_typed_error(call_tool: Any
     assert result["error"]["type"] == "missing_proportions"
 
 
+def test_two_proportion_z_alternative_respected(call_tool: Any) -> None:
+    """Switching to alternative='larger' yields a different (smaller) n.
+
+    Two-sided requires a larger sample than a one-sided test for the same
+    effect / power. Reference: NormalIndPower.solve_power(h=abs(h(0.10,0.12)),
+    alpha=0.05, power=0.8, ratio=1.0, alternative='larger')
+    ≈ 3020.52 vs ≈ 3834.60 two-sided.
+    """
+    larger = call_tool(
+        "power_analysis",
+        {
+            "test": "two_proportion_z",
+            "p1": 0.10,
+            "p2": 0.12,
+            "power": 0.8,
+            "alpha": 0.05,
+            "alternative": "larger",
+        },
+    )
+    assert larger["ok"] is True
+    assert larger["alternative"] == "larger"
+    assert larger["n"] == pytest.approx(3020.5159, abs=1e-3)
+
+

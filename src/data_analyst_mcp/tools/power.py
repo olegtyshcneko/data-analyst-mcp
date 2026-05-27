@@ -149,7 +149,7 @@ def _solve_two_proportion_z(payload: PowerAnalysisInput, solved_for: str) -> dic
             alpha=payload.alpha,
             power=payload.power,
             ratio=payload.ratio,
-            alternative=payload.alternative,
+            alternative="two-sided",
         )
     )
     if solved_for == "n":
