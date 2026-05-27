@@ -731,10 +731,7 @@ def residual_diagnostic(
                     return build_error(
                         type="invalid_kind",
                         message=f"Unknown kind {kind!r}.",
-                        hint=(
-                            "Allowed kinds: ['all', 'qq', 'resid_vs_fitted', "
-                            "'scale_location']."
-                        ),
+                        hint=("Allowed kinds: ['all', 'qq', 'resid_vs_fitted', 'scale_location']."),
                     )
             raise
         return _plots.residual_diagnostic(payload)

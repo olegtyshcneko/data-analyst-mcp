@@ -345,9 +345,7 @@ def test_regression_line_renders_95_ci_band(call_tool, load_df_into_session):
         entry, df, RegressionLineInput(model_name="m", predictor="x1")
     )
     ax = fig.axes[0]
-    fill_collections = [
-        c for c in ax.collections if "PolyCollection" in c.__class__.__name__
-    ]
+    fill_collections = [c for c in ax.collections if "PolyCollection" in c.__class__.__name__]
     assert fill_collections, "expected at least one fill_between PolyCollection on the axes"
 
 
@@ -394,9 +392,7 @@ def test_residual_diagnostic_resid_vs_fitted_single_axes(call_tool, load_df_into
     fig = _build_residual_diagnostic_figure(entry, payload)
     assert len(fig.axes) == 1
     # Also verify the round-trip through the tool produces a valid PNG.
-    result = call_tool(
-        "residual_diagnostic", {"model_name": "m", "kind": "resid_vs_fitted"}
-    )
+    result = call_tool("residual_diagnostic", {"model_name": "m", "kind": "resid_vs_fitted"})
     _assert_valid_png(result)
     assert result["plot_kind"] == "resid_vs_fitted"
     assert result["model_name"] == "m"
@@ -419,7 +415,9 @@ def test_residual_diagnostic_qq_single_axes(call_tool, load_df_into_session):
     assert r["ok"], r
     entry = _session.get_model("m")
     assert entry is not None
-    fig = _build_residual_diagnostic_figure(entry, ResidualDiagnosticInput(model_name="m", kind="qq"))
+    fig = _build_residual_diagnostic_figure(
+        entry, ResidualDiagnosticInput(model_name="m", kind="qq")
+    )
     assert len(fig.axes) == 1
     result = call_tool("residual_diagnostic", {"model_name": "m", "kind": "qq"})
     _assert_valid_png(result)
@@ -447,9 +445,7 @@ def test_residual_diagnostic_scale_location_single_axes(call_tool, load_df_into_
         entry, ResidualDiagnosticInput(model_name="m", kind="scale_location")
     )
     assert len(fig.axes) == 1
-    result = call_tool(
-        "residual_diagnostic", {"model_name": "m", "kind": "scale_location"}
-    )
+    result = call_tool("residual_diagnostic", {"model_name": "m", "kind": "scale_location"})
     _assert_valid_png(result)
     assert result["plot_kind"] == "scale_location"
 

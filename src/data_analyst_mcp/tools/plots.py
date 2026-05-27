@@ -534,16 +534,12 @@ def regression_line(payload: RegressionLineInput) -> dict[str, Any]:
     if payload.predictor not in available_predictors:
         return build_error(
             type="column_not_found",
-            message=(
-                f"Predictor {payload.predictor!r} is not in model {payload.model_name!r}."
-            ),
+            message=(f"Predictor {payload.predictor!r} is not in model {payload.model_name!r}."),
             hint=f"Available predictors: {available_predictors}.",
         )
     con = session.get_connection()
     df: Any = con.execute(f'SELECT * FROM "{entry.fitted_on_dataset}"').df()
-    if payload.predictor not in df.columns or not _is_numeric_pandas_dtype(
-        df[payload.predictor]
-    ):
+    if payload.predictor not in df.columns or not _is_numeric_pandas_dtype(df[payload.predictor]):
         return build_error(
             type="non_numeric_predictor",
             message=(
@@ -714,16 +710,26 @@ def _residual_series(result_obj: Any) -> tuple[Any, Any, Any]:
     return fitted, resid, standardized
 
 
+def _lowess_smoother(y: Any, x: Any, frac: float = 0.6) -> Any:
+    """Untyped wrapper around statsmodels' ``lowess`` smoother.
+
+    statsmodels has no type stubs — wrapping the call here keeps the
+    untyped surface area contained to one helper and lets strict pyright
+    pass on every site that uses LOWESS.
+    """
+    import statsmodels.nonparametric.smoothers_lowess as _smoothers  # type: ignore[reportMissingTypeStubs]
+
+    mod: Any = _smoothers
+    return mod.lowess(y, x, frac=frac, return_sorted=True)
+
+
 def _render_resid_vs_fitted(ax: Any, fitted: Any, resid: Any) -> None:
     """Residuals-vs-fitted scatter with horizontal y=0 line + LOWESS overlay."""
     import numpy as np
-    from statsmodels.nonparametric.smoothers_lowess import (  # type: ignore[reportMissingTypeStubs]
-        lowess,
-    )
 
     ax.scatter(fitted, resid, s=18, alpha=0.6)
     ax.axhline(0.0, color="#666666", linestyle="--", linewidth=1.0)
-    lo: Any = lowess(np.asarray(resid), np.asarray(fitted), frac=0.6, return_sorted=True)
+    lo: Any = _lowess_smoother(np.asarray(resid), np.asarray(fitted))
     ax.plot(lo[:, 0], lo[:, 1], color="#d62728", linewidth=2.0)
     ax.set_xlabel("Fitted values")
     ax.set_ylabel("Residuals")
@@ -731,21 +737,19 @@ def _render_resid_vs_fitted(ax: Any, fitted: Any, resid: Any) -> None:
 
 def _render_qq(ax: Any, resid: Any) -> None:
     """Normal Q-Q plot of residuals via ``scipy.stats.probplot``."""
-    from scipy import stats as _stats
+    from scipy import stats as _stats  # type: ignore[reportMissingTypeStubs]
 
-    _stats.probplot(resid, plot=ax)
+    stats_mod: Any = _stats
+    stats_mod.probplot(resid, plot=ax)
 
 
 def _render_scale_location(ax: Any, fitted: Any, standardized: Any) -> None:
     """sqrt(|standardized residuals|) vs fitted + LOWESS overlay."""
     import numpy as np
-    from statsmodels.nonparametric.smoothers_lowess import (  # type: ignore[reportMissingTypeStubs]
-        lowess,
-    )
 
-    sqrt_abs = np.sqrt(np.abs(standardized))
+    sqrt_abs: Any = np.sqrt(np.abs(standardized))
     ax.scatter(fitted, sqrt_abs, s=18, alpha=0.6)
-    lo: Any = lowess(np.asarray(sqrt_abs), np.asarray(fitted), frac=0.6, return_sorted=True)
+    lo: Any = _lowess_smoother(sqrt_abs, np.asarray(fitted))
     ax.plot(lo[:, 0], lo[:, 1], color="#d62728", linewidth=2.0)
     ax.set_xlabel("Fitted values")
     ax.set_ylabel("sqrt(|standardized residuals|)")
@@ -811,10 +815,7 @@ def _record_regression_line(
     """Append markdown + code cell for a successful regression_line call."""
     if not result.get("ok"):
         return
-    md = (
-        f"### Regression line for `{payload.model_name}` "
-        f"on predictor `{payload.predictor}`"
-    )
+    md = f"### Regression line for `{payload.model_name}` on predictor `{payload.predictor}`"
     code = (
         f'{payload.model_name}_df = con.sql("SELECT * FROM {entry.fitted_on_dataset}").df()\n'
         f"_grid = {payload.model_name}_df.copy()\n"
