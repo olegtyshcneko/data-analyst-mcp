@@ -15,6 +15,7 @@ from mcp.server.fastmcp import FastMCP
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.tools import datasets as _datasets
 from data_analyst_mcp.tools import evaluate as _evaluate
+from data_analyst_mcp.tools import materialize as _materialize
 from data_analyst_mcp.tools import missingness as _missingness
 from data_analyst_mcp.tools import models as _models
 from data_analyst_mcp.tools import multitest as _multitest
@@ -47,6 +48,50 @@ def query(sql: str, limit: int = 50) -> dict[str, Any]:
         return _query.query(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("query failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def materialize_query(
+    sql: str,
+    name: str,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    """Persist a SELECT / WITH result as a named DuckDB table + session entry.
+
+    Accepts only ``SELECT`` and ``WITH`` (narrower than ``query``'s
+    allowlist — ``DESCRIBE`` / ``SHOW`` / ``PRAGMA`` are meaningless as a
+    table source and are rejected with ``write_not_allowed``). ``name``
+    must match ``^[A-Za-z_][A-Za-z0-9_]*$``. When ``name`` is already
+    registered and ``overwrite=False``, returns ``dataset_name_collision``.
+    Successful calls register a derived ``DatasetEntry`` whose
+    ``read_options["sql"]`` is the recipe; the recorder's setup cell
+    rehydrates the table from this SQL after every file-backed dataset is
+    loaded. Output mirrors ``load_dataset``'s shape: ``{ok, name, rows,
+    columns, total_rows}``.
+    """
+    try:
+        from pydantic import ValidationError
+
+        try:
+            payload = _materialize.MaterializeQueryInput(
+                sql=sql, name=name, overwrite=overwrite
+            )
+        except ValidationError as ve:
+            for err in ve.errors():
+                if err.get("loc") == ("name",):
+                    return build_error(
+                        type="invalid_name",
+                        message=f"Invalid dataset name {name!r}.",
+                        hint=(
+                            "Names must match ^[A-Za-z_][A-Za-z0-9_]*$ "
+                            "(letters, digits, underscores; not starting with a digit)."
+                        ),
+                    )
+            raise
+        return _materialize.materialize_query(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("materialize_query failed")
         return build_error(type="internal", message=str(exc))
 
 
