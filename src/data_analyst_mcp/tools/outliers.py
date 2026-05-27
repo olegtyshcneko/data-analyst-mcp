@@ -81,6 +81,8 @@ def find_outliers(payload: FindOutliersInput) -> dict[str, Any]:
 
     if payload.method == "iqr":
         return _iqr_method(payload)
+    if payload.method == "zscore":
+        return _zscore_method(payload)
     return build_error(type="internal", message="method dispatch not yet implemented")
 
 
@@ -94,28 +96,60 @@ def _materialize_columns_df(name: str, columns: list[str]) -> Any:
 
 def _iqr_method(payload: FindOutliersInput) -> dict[str, Any]:
     """IQR per-column flag + union row score = max normalized excess."""
-    import numpy as np
-
     from data_analyst_mcp.tools._outlier_helpers import iqr_column_mask
 
     threshold = payload.threshold if payload.threshold is not None else 1.5
+    return _per_column_union(
+        payload,
+        method_label="iqr",
+        threshold=threshold,
+        per_column_fn=lambda values: iqr_column_mask(values, threshold=threshold),
+    )
+
+
+def _zscore_method(payload: FindOutliersInput) -> dict[str, Any]:
+    """Z-score per-column flag + union row score = max |z|."""
+    from data_analyst_mcp.tools._outlier_helpers import zscore_column_mask
+
+    threshold = payload.threshold if payload.threshold is not None else 3.0
+    return _per_column_union(
+        payload,
+        method_label="zscore",
+        threshold=threshold,
+        per_column_fn=lambda values: zscore_column_mask(values, threshold=threshold),
+    )
+
+
+def _per_column_union(
+    payload: FindOutliersInput,
+    *,
+    method_label: str,
+    threshold: float,
+    per_column_fn: Any,
+) -> dict[str, Any]:
+    """Apply ``per_column_fn`` to every selected column and union the flags.
+
+    Each column contributes a boolean mask and a per-row score; the row
+    is flagged when any column flags it, and its row-level score is the
+    max across columns. ``per_column_flags`` records the indices flagged
+    by each column independently.
+    """
+    import numpy as np
+
     df = _materialize_columns_df(payload.name, list(payload.columns))
     n_rows = len(df)
     row_mask = np.zeros(n_rows, dtype=bool)
     row_score = np.zeros(n_rows, dtype=float)
     per_column_flags: dict[str, list[int]] = {}
     for col in payload.columns:
-        mask, excess = iqr_column_mask(df[col].to_numpy(), threshold=threshold)
+        mask, score = per_column_fn(df[col].to_numpy())
         row_mask |= mask
-        row_score = np.maximum(row_score, excess)
+        row_score = np.maximum(row_score, score)
         per_column_flags[col] = [int(i) for i in np.nonzero(mask)[0].tolist()]
 
     flagged_indices = np.nonzero(row_mask)[0]
     n_outliers = int(flagged_indices.size)
-    # Sort flagged rows by score descending, then take top `limit`.
-    order = sorted(
-        flagged_indices.tolist(), key=lambda i: row_score[i], reverse=True
-    )
+    order = sorted(flagged_indices.tolist(), key=lambda i: row_score[i], reverse=True)
     truncated = n_outliers > payload.limit
     chosen = order[: payload.limit]
     outliers = [
@@ -129,7 +163,7 @@ def _iqr_method(payload: FindOutliersInput) -> dict[str, Any]:
 
     return {
         "ok": True,
-        "method": "iqr",
+        "method": method_label,
         "n_outliers": n_outliers,
         "n_rows_scored": n_rows,
         "outliers": outliers,
