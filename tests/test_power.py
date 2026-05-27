@@ -468,3 +468,24 @@ def test_paired_t_shares_solver_with_one_sample_t(call_tool: Any) -> None:
     assert one["test"] == "one_sample_t"
 
 
+def test_paired_t_echoes_test_field_when_solving_for_effect_size(call_tool: Any) -> None:
+    """Even when solving for effect_size, ``test`` echoes ``paired_t``.
+
+    Pins the separate dispatch / interpretation path for the paired-t
+    family beyond the simple "solve for n" case (slice 24).
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "paired_t",
+            "n": 30,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    assert result["test"] == "paired_t"
+    assert result["solved_for"] == "effect_size"
+    assert "paired t" in result["interpretation"].lower()
+
+
