@@ -34,3 +34,20 @@ def test_find_outliers_unknown_column_returns_column_not_found(
     )
     assert result["ok"] is False
     assert result["error"]["type"] == "column_not_found"
+
+
+def test_find_outliers_non_numeric_column_returns_typed_error(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    import pandas as pd
+
+    load_df_into_session(
+        "mixed",
+        pd.DataFrame({"x": [1, 2, 3], "g": ["a", "b", "c"]}),
+    )
+    result = call_tool(
+        "find_outliers",
+        {"name": "mixed", "columns": ["x", "g"], "method": "iqr"},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "non_numeric_column"
