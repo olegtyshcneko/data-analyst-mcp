@@ -226,3 +226,30 @@ def test_regression_line_unknown_predictor_returns_column_not_found(
     result = call_tool("regression_line", {"model_name": "m", "predictor": "x_nope"})
     assert result["ok"] is False
     assert result["error"]["type"] == "column_not_found"
+
+
+def test_regression_line_categorical_predictor_returns_non_numeric_predictor(
+    call_tool, load_df_into_session
+):
+    """Patsy expands `y ~ group` to exog name `group[T.B]`. Requesting that
+    predictor name surfaces as non_numeric_predictor because the underlying
+    `group` column is string-typed in the training DataFrame."""
+    import numpy as np
+
+    rng = np.random.default_rng(0)
+    n = 200
+    x = rng.normal(0, 1, size=n)
+    group = np.where(rng.uniform(size=n) > 0.5, "A", "B")
+    y = 2.0 * x + (group == "A").astype(float) + rng.normal(0, 0.5, size=n)
+    df = pd.DataFrame({"y": y, "x": x, "group": group})
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x + group", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    # patsy expanded "group" → "group[T.B]" — that name IS in exog_names,
+    # but it's a categorical dummy, not a numeric column.
+    result = call_tool("regression_line", {"model_name": "m", "predictor": "group[T.B]"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "non_numeric_predictor"
