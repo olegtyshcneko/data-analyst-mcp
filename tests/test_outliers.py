@@ -321,7 +321,10 @@ def test_find_outliers_mahalanobis_known_answer_2d(
 
     assert result["ok"] is True
     assert result["method"] == "mahalanobis"
-    assert result["n_outliers"] == 1
+    # Hand-computed against the seed-42 fixture: rows 15 (7.6587…) and
+    # 50 (28.2407…) both exceed the 7.3778 cutoff.
+    assert result["n_outliers"] == 2
+    # Top by D² must be the planted (5, 5) extreme at index 50.
     top = result["outliers"][0]
     assert top["row_index"] == 50
     assert top["score"] == pytest.approx(28.2406675648, abs=1e-4)

@@ -83,7 +83,100 @@ def find_outliers(payload: FindOutliersInput) -> dict[str, Any]:
         return _iqr_method(payload)
     if payload.method == "zscore":
         return _zscore_method(payload)
+    if payload.method == "mahalanobis":
+        return _mahalanobis_method(payload)
     return build_error(type="internal", message="method dispatch not yet implemented")
+
+
+def _mahalanobis_method(payload: FindOutliersInput) -> dict[str, Any]:
+    """Joint outlier detection via D² > χ²(k, 1−α).
+
+    Drops rows with any NaN in the selected columns. ``payload.threshold``
+    overrides ``α`` (the upper-tail probability used in the chi² quantile);
+    the default ``α`` is 0.025. The echoed ``threshold_used`` is the
+    chi² quantile itself (not ``α``). If ``np.linalg.inv(Σ)`` raises
+    ``LinAlgError`` we fall back to ``np.linalg.pinv(Σ)`` and append
+    ``covariance_singular`` to ``warnings``; if the pseudoinverse also
+    fails we surface a ``singular_covariance`` error.
+    """
+    import numpy as np
+
+    df = _materialize_columns_df(payload.name, list(payload.columns))
+    n_total = len(df)
+    # Drop rows with any NaN in the selected columns.
+    valid = df[list(payload.columns)].dropna()
+    n_scored = len(valid)
+    dropped = n_total - n_scored
+    k = len(payload.columns)
+    if n_scored <= k:
+        return build_error(
+            type="insufficient_rows",
+            message=(
+                f"Mahalanobis needs n > k; got n={n_scored} after dropping "
+                f"NA rows, k={k}."
+            ),
+            hint="Add more rows or pick fewer columns.",
+        )
+    X = valid.to_numpy(dtype=float)
+    mu = X.mean(axis=0)
+    sigma = np.cov(X, rowvar=False)
+    warnings: list[str] = []
+    if dropped > 0:
+        warnings.append(f"dropped_{dropped}_na_rows")
+    try:
+        inv = np.linalg.inv(sigma)
+    except np.linalg.LinAlgError:
+        try:
+            inv = np.linalg.pinv(sigma)
+        except np.linalg.LinAlgError:
+            return build_error(
+                type="singular_covariance",
+                message=(
+                    "Covariance matrix is singular and pseudo-inverse failed."
+                ),
+                hint="Drop perfectly collinear columns and retry.",
+            )
+        warnings.append("covariance_singular")
+
+    diff = X - mu
+    # D²_i = (x_i − μ)ᵀ Σ⁻¹ (x_i − μ)
+    d2 = np.einsum("ij,jk,ik->i", diff, inv, diff)
+
+    alpha = payload.threshold if payload.threshold is not None else 0.025
+    from scipy import stats as _sps  # type: ignore[reportMissingTypeStubs]
+
+    cutoff = float(_sps.chi2.ppf(1.0 - alpha, df=k))
+
+    mask = d2 > cutoff
+    # Map back to source-dataset row indices (valid keeps original index).
+    src_indices = valid.index.to_numpy()
+    flagged_src = src_indices[mask]
+    flagged_scores = d2[mask]
+    order = np.argsort(-flagged_scores)
+    n_outliers = int(flagged_src.size)
+    truncated = n_outliers > payload.limit
+    chosen = order[: payload.limit]
+    outliers = [
+        {
+            "row_index": int(flagged_src[i]),
+            "score": float(flagged_scores[i]),
+            "values": {
+                col: _json_value(df[col].iloc[int(flagged_src[i])])
+                for col in payload.columns
+            },
+        }
+        for i in chosen
+    ]
+    return {
+        "ok": True,
+        "method": "mahalanobis",
+        "n_outliers": n_outliers,
+        "n_rows_scored": n_scored,
+        "outliers": outliers,
+        "truncated": truncated,
+        "threshold_used": cutoff,
+        "warnings": warnings,
+    }
 
 
 def _materialize_columns_df(name: str, columns: list[str]) -> Any:
