@@ -423,3 +423,25 @@ def test_one_sample_t_default_solve_for_is_n(call_tool: Any) -> None:
     assert result["power"] == pytest.approx(0.9, abs=1e-12)
 
 
+# === paired_t ===
+
+
+def test_paired_t_known_answer(call_tool: Any) -> None:
+    """Paired-t shares the TTestPower solver: d=0.5, alpha=0.05, power=0.8
+    → n ≈ 33.3671 (the same as one-sample on the same inputs)."""
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "paired_t",
+            "effect_size": 0.5,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    assert result["test"] == "paired_t"
+    assert result["solved_for"] == "n"
+    assert result["effect_size_metric"] == "cohens_d"
+    assert result["n"] == pytest.approx(33.3671, abs=1e-4)
+
+

@@ -128,7 +128,7 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
     if payload.test == "two_proportion_z":
         return _solve_two_proportion_z(payload, solved_for)
 
-    if payload.test in ("one_sample_t", "paired_t"):
+    if payload.test == "one_sample_t":
         # The default-solve-for-n case (only effect_size + power supplied)
         # routes through this branch unchanged — solved_for is just
         # ``unknowns[0]`` and is "n" by construction.
