@@ -378,3 +378,24 @@ def test_one_sample_t_known_answer(call_tool: Any) -> None:
     assert "n_total" not in result
 
 
+def test_one_sample_t_alternative_respected(call_tool: Any) -> None:
+    """alternative='larger' yields a smaller n than two-sided for the same d.
+
+    Reference: TTestPower().solve_power(effect_size=0.5, alpha=0.05,
+        power=0.8, alternative='larger') → 26.137503817059283.
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "one_sample_t",
+            "effect_size": 0.5,
+            "power": 0.8,
+            "alpha": 0.05,
+            "alternative": "larger",
+        },
+    )
+    assert result["ok"] is True
+    assert result["alternative"] == "larger"
+    assert result["n"] == pytest.approx(26.1375, abs=1e-4)
+
+

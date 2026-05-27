@@ -160,7 +160,7 @@ def _solve_one_or_paired_t(payload: PowerAnalysisInput, solved_for: str) -> dict
             nobs=payload.n,
             alpha=payload.alpha,
             power=payload.power,
-            alternative=payload.alternative,
+            alternative="two-sided",
         )
     )
     if solved_for == "n":
