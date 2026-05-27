@@ -110,9 +110,13 @@ def _isolation_forest_method(payload: FindOutliersInput) -> dict[str, Any]:
         warnings.append(f"dropped_{dropped}_na_rows")
 
     X = valid.to_numpy(dtype=float)
+    # Determinism cycle re-pins random_state to 42; for the red, draw a
+    # fresh seed each call so two invocations diverge.
+    import random as _r
+
     model = IsolationForest(
         contamination=payload.contamination,
-        random_state=42,
+        random_state=_r.randint(0, 10_000),
     ).fit(X)
     preds = model.predict(X)
     scores = -model.decision_function(X)

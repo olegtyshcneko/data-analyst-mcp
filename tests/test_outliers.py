@@ -529,3 +529,27 @@ def test_find_outliers_isolation_forest_contamination_respected(
     assert r_high["n_outliers"] > r_low["n_outliers"]
     assert r_high["threshold_used"] == 0.20
     assert r_low["threshold_used"] == 0.02
+
+
+def test_find_outliers_isolation_forest_is_deterministic_at_seed_42(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Repeated calls on the same data must produce identical row indices + scores."""
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.default_rng(11)
+    X = rng.standard_normal(size=(80, 2))
+    load_df_into_session("d", pd.DataFrame({"x": X[:, 0], "y": X[:, 1]}))
+
+    r1 = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["x", "y"], "method": "isolation_forest"},
+    )
+    r2 = call_tool(
+        "find_outliers",
+        {"name": "d", "columns": ["x", "y"], "method": "isolation_forest"},
+    )
+
+    assert r1["outliers"] == r2["outliers"]
+    assert r1["n_outliers"] == r2["n_outliers"]
