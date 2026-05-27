@@ -293,3 +293,26 @@ def test_regression_line_scatter_point_count_matches_endog(call_tool, load_df_in
     assert scatter_collections, "expected at least one PathCollection (scatter)"
     n_points = len(scatter_collections[0].get_offsets())
     assert n_points == len(entry._result.model.endog) == len(df)
+
+
+def test_regression_line_fit_line_slope_matches_params(call_tool, load_df_into_session):
+    """Slice 7: the rise/run of the rendered fit line equals
+    ``entry._result.params[predictor]`` (we sweep the predictor while
+    holding every other column at its mean, so β_other × mean is just a
+    constant intercept shift — the line's slope is exactly β_predictor)."""
+    from data_analyst_mcp import session as _session
+    from data_analyst_mcp.tools.plots import _compute_fit_line  # type: ignore[reportPrivateUsage]
+
+    df = _ols_fixture_df()
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    entry = _session.get_model("m")
+    assert entry is not None
+    x_grid, y_pred, _, _ = _compute_fit_line(entry._result, df, "x1")
+    slope = float((y_pred[-1] - y_pred[0]) / (x_grid[-1] - x_grid[0]))
+    expected = float(entry._result.params["x1"])
+    assert abs(slope - expected) < 1e-8
