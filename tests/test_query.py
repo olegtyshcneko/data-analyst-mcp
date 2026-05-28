@@ -29,6 +29,29 @@ def test_query_rejects_write_statements(call_tool: Any, sql: str) -> None:
     assert result["error"]["type"] == "write_not_allowed"
 
 
+def test_query_rejects_multistatement_injection(call_tool: Any) -> None:
+    """``query`` must reject a multi-statement payload that splices a
+    second (potentially destructive) statement after ``;``. The legacy
+    ``_first_keyword`` allowlist only inspected the leading SELECT and
+    let the injection through; DuckDB then happily executed it.
+    """
+    from data_analyst_mcp import session as _session
+
+    con = _session.get_connection()
+    con.execute('CREATE OR REPLACE TABLE "base" AS SELECT 1 AS x')
+
+    result = call_tool(
+        "query",
+        {"sql": "SELECT 1; CREATE TABLE evil AS SELECT 42"},
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["type"] == "write_not_allowed"
+    # The injected statement must not have created the evil table.
+    tables = {row[0] for row in con.execute("SHOW TABLES").fetchall()}
+    assert "evil" not in tables, "injected CREATE TABLE was executed"
+
+
 def test_query_select_returns_rows_columns_total_and_timing(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 
