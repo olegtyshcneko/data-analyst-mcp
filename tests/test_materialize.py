@@ -81,6 +81,27 @@ def test_materialize_query_rejects_multistatement_injection(
     assert "base" in tables, "baseline table was dropped by the injection payload"
 
 
+@pytest.mark.parametrize(
+    "sql",
+    [
+        # Semicolon inside a -- line comment.
+        "SELECT 1 AS x -- ; nope",
+        # Semicolon inside a /* block */ comment.
+        "SELECT 1 AS x /* ; nope */",
+        # Semicolon inside a single-quoted string literal.
+        "SELECT 'a;b' AS x",
+        # Trailing single semicolon (statement terminator).
+        "SELECT 1 AS x;",
+    ],
+)
+def test_materialize_query_accepts_benign_semicolons(call_tool: Any, sql: str) -> None:
+    """The multi-statement guard must not false-positive on ``;`` inside
+    comments / string literals / trailing whitespace — those are part of a
+    single statement and must continue to materialize successfully."""
+    result = call_tool("materialize_query", {"sql": sql, "name": "ok"})
+    assert result["ok"] is True, result
+
+
 def test_materialize_query_rejects_with_cte_injection(
     call_tool: Any, load_df_into_session: Any
 ) -> None:
