@@ -247,6 +247,33 @@ def test_emitted_notebook_with_fit_predict_evaluate_runs_via_nbconvert(tmp_path,
     )
 
 
+def test_setup_cell_compiles_when_derived_dataset_sql_contains_triple_quotes() -> None:
+    """Derived datasets whose SQL contains ``\"\"\"`` (e.g. inside a block
+    comment) must not break the generated setup cell. Naive f-string
+    interpolation would terminate the host triple-quoted string early
+    and produce a SyntaxError; ``repr()`` escaping avoids it.
+    """
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import NotebookRecorder
+
+    session.reset()
+    # Register a derived dataset whose recorded SQL embeds a triple-quote.
+    session.register(
+        name="weird",
+        path="(query)",
+        read_options={"sql": 'SELECT 1 /* """ */ AS x'},
+        format="derived",
+        rows=1,
+        columns=[{"name": "x", "dtype": "INTEGER"}],
+    )
+
+    rec = NotebookRecorder()
+    setup_src = rec.to_notebook(include_setup=True).cells[0].source
+    # Currently this raises SyntaxError because the embedded ``"""``
+    # closes the host triple-quoted CREATE OR REPLACE TABLE string.
+    compile(setup_src, "<setup>", "exec")
+
+
 def test_emitted_notebook_hash_assert_fires_when_training_csv_is_mutated(
     tmp_path, call_tool
 ) -> None:
