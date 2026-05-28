@@ -806,21 +806,112 @@ def _cooks_distance_contour(d_ref: float, lev_grid: Any, p: int) -> tuple[Any, A
 def _record_residual_diagnostic(
     payload: ResidualDiagnosticInput, entry: Any, result: dict[str, Any]
 ) -> None:
-    """Append markdown + code cell for a successful residual_diagnostic call."""
+    """Append markdown + code cell for a successful residual_diagnostic call.
+
+    The emitted cell varies by ``payload.kind``. Each branch transliterates
+    the matching ``_render_*`` helper so the replayed notebook produces the
+    same panel(s) the live tool returned. ``kind="all"`` lays out a 2×2
+    grid; the singleton kinds emit a single-axes figure.
+    """
     if not result.get("ok"):
         return
     md = f"### Residual diagnostic ({payload.kind}) for `{payload.model_name}`"
-    code = (
-        f"import matplotlib.pyplot as plt\n"
-        f"import numpy as np\n"
-        f"_fitted = np.asarray({payload.model_name}.fittedvalues)\n"
-        f"_resid = np.asarray({payload.model_name}.resid)\n"
-        f"_infl = {payload.model_name}.get_influence()\n"
-        f"_std_resid = np.asarray(_infl.resid_studentized_internal)\n"
-        f"# Renders the {payload.kind!r} panel(s) — see "
-        f"statsmodels.nonparametric.smoothers_lowess.lowess for the smoothed overlays.\n"
-    )
+    code = _residual_diagnostic_code(payload.model_name, payload.kind)
     get_recorder().record(markdown=md, code=code, tool_name="residual_diagnostic")
+
+
+_RESID_PREAMBLE = (
+    "import matplotlib.pyplot as plt\n"
+    "import numpy as np\n"
+    "from scipy import stats as _stats\n"
+    "import statsmodels.nonparametric.smoothers_lowess as _lo\n"
+)
+
+
+def _resid_series_block(model: str) -> str:
+    """Shared block that pulls fitted / resid / standardized series."""
+    return (
+        f"_fitted = np.asarray({model}.fittedvalues)\n"
+        f"_resid = np.asarray({model}.resid)\n"
+        f"_infl = {model}.get_influence()\n"
+        f"_std_resid = np.asarray(_infl.resid_studentized_internal)\n"
+    )
+
+
+def _resid_vs_fitted_block(ax: str = "ax") -> str:
+    """Code that renders the residuals-vs-fitted panel into ``ax``."""
+    return (
+        f"{ax}.scatter(_fitted, _resid, s=18, alpha=0.6)\n"
+        f"{ax}.axhline(0.0, color='#666666', linestyle='--', linewidth=1.0)\n"
+        "_smoothed = _lo.lowess(_resid, _fitted, frac=0.6, return_sorted=True)\n"
+        f"{ax}.plot(_smoothed[:, 0], _smoothed[:, 1], color='#d62728', linewidth=2.0)\n"
+        f"{ax}.set_xlabel('Fitted values')\n"
+        f"{ax}.set_ylabel('Residuals')\n"
+    )
+
+
+def _qq_block(ax: str = "ax") -> str:
+    """Code that renders the Q-Q panel into ``ax`` via probplot."""
+    return f"_stats.probplot(_resid, plot={ax})\n"
+
+
+def _scale_location_block(ax: str = "ax") -> str:
+    """Code that renders the scale-location panel into ``ax``."""
+    return (
+        "_sqrt_abs = np.sqrt(np.abs(_std_resid))\n"
+        f"{ax}.scatter(_fitted, _sqrt_abs, s=18, alpha=0.6)\n"
+        "_smoothed = _lo.lowess(_sqrt_abs, _fitted, frac=0.6, return_sorted=True)\n"
+        f"{ax}.plot(_smoothed[:, 0], _smoothed[:, 1], color='#d62728', linewidth=2.0)\n"
+        f"{ax}.set_xlabel('Fitted values')\n"
+        f"{ax}.set_ylabel('sqrt(|standardized residuals|)')\n"
+    )
+
+
+def _residuals_vs_leverage_block(model: str, ax: str = "ax") -> str:
+    """Code that renders the residuals-vs-leverage panel + Cook's contours."""
+    return (
+        "_lev = np.asarray(_infl.hat_matrix_diag)\n"
+        f"{ax}.scatter(_lev, _std_resid, s=18, alpha=0.6)\n"
+        f"{ax}.axhline(0.0, color='#666666', linestyle='--', linewidth=1.0)\n"
+        f"{ax}.set_xlabel('Leverage')\n"
+        f"{ax}.set_ylabel('Standardized residuals')\n"
+        f"_p = int({model}.df_model) + 1\n"
+        "_lev_max = float(np.max(_lev)) * 1.05\n"
+        "_lev_grid = np.linspace(max(float(np.min(_lev)), 1e-4), "
+        "min(_lev_max, 1.0 - 1e-9), 100)\n"
+        "for _d_ref in (0.5, 1.0):\n"
+        "    _boundary = np.sqrt(_d_ref * _p * (1.0 - _lev_grid) / _lev_grid)\n"
+        f"    {ax}.plot(_lev_grid, _boundary, color='#aaaaaa', "
+        "linestyle=':', linewidth=1.0)\n"
+        f"    {ax}.plot(_lev_grid, -_boundary, color='#aaaaaa', "
+        "linestyle=':', linewidth=1.0)\n"
+    )
+
+
+def _residual_diagnostic_code(model: str, kind: str) -> str:
+    """Dispatch on ``kind`` and return the full cell source for that panel."""
+    body = _RESID_PREAMBLE + _resid_series_block(model)
+    if kind == "all":
+        body += (
+            "fig, axes = plt.subplots(2, 2, figsize=(12, 9))\n"
+            "ax_rf, ax_qq, ax_sl, ax_lv = axes[0, 0], axes[0, 1], axes[1, 0], axes[1, 1]\n"
+            + _resid_vs_fitted_block("ax_rf")
+            + _qq_block("ax_qq")
+            + _scale_location_block("ax_sl")
+            + _residuals_vs_leverage_block(model, "ax_lv")
+            + "fig.tight_layout()\n"
+            "plt.show()"
+        )
+        return body
+    body += "fig, ax = plt.subplots(figsize=(8, 6))\n"
+    if kind == "resid_vs_fitted":
+        body += _resid_vs_fitted_block("ax")
+    elif kind == "qq":
+        body += _qq_block("ax")
+    elif kind == "scale_location":
+        body += _scale_location_block("ax")
+    body += "plt.show()"
+    return body
 
 
 def _record_regression_line(
