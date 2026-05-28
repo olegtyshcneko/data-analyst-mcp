@@ -302,6 +302,35 @@ def test_materialize_query_recorder_writes_on_success_only(
     assert code["metadata"]["tool_name"] == "materialize_query"
 
 
+def test_materialize_query_recorder_code_cell_handles_triple_quote_in_sql(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Recorder code cell must be valid Python even when the SQL contains
+    a ``\"\"\"`` substring (e.g. in a block comment) — otherwise the
+    embedded triple-quoted string literal terminates early and
+    ``jupyter nbconvert --execute`` breaks on legitimate user input."""
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("src", pd.DataFrame({"x": [1, 2, 3]}))
+
+    sql_with_triple_quote = 'SELECT x FROM src /* """ */ WHERE x > 0'
+    result = call_tool(
+        "materialize_query",
+        {"sql": sql_with_triple_quote, "name": "tq_out"},
+    )
+    assert result["ok"] is True
+
+    rec = get_recorder()
+    code_cell = rec.cells[-1]
+    assert code_cell["cell_type"] == "code"
+
+    # The cell source must parse as valid Python — currently fails when
+    # ``payload.sql`` is f-string-interpolated into a ``\"\"\"...\"\"\"`` literal.
+    compile(code_cell["source"], "<recorder-cell>", "exec")
+
+
 def test_setup_cell_emits_derived_after_base_tables(call_tool: Any, tmp_path: Any) -> None:
     """The derived CREATE OR REPLACE TABLE for a derived dataset must
     appear *after* the base-table CREATE line — otherwise DuckDB would
