@@ -534,3 +534,39 @@ def test_residual_diagnostic_all_4th_panel_uses_cooks_distance(call_tool, load_d
     # Cook's distance reference contours: two D values (0.5 and 1.0), each
     # rendered as ± boundary → at least 4 reference Line2D objects.
     assert len(panel_4.lines) >= 4
+
+
+def test_cooks_distance_contour_matches_canonical_formula() -> None:
+    """The Cook's distance boundary helper returns ``|r| = sqrt(D · p · (1-h) / h)``.
+
+    Earlier code used ``sqrt(D · h / (1-h)^2)`` (off by orders of magnitude
+    at typical leverage values). At ``h=0.05, D=1.0, p=3`` the correct
+    boundary is ``|r| ≈ 7.5498``; this test pins that value to <1e-6
+    tolerance and also re-derives it across a grid.
+    """
+    import math
+
+    import numpy as np
+
+    from data_analyst_mcp.tools.plots import (
+        _cooks_distance_contour,  # type: ignore[reportPrivateUsage]
+    )
+
+    h = 0.05
+    d_ref = 1.0
+    p = 3
+    expected_at_h = math.sqrt(d_ref * p * (1.0 - h) / h)
+    assert abs(expected_at_h - 7.549834435270749) < 1e-9
+
+    lev_grid = np.array([h])
+    lev_out, pos, neg = _cooks_distance_contour(d_ref, lev_grid, p)
+    # Helper echoes the grid back unchanged.
+    assert lev_out is lev_grid or np.array_equal(lev_out, lev_grid)
+    assert abs(float(pos[0]) - expected_at_h) < 1e-6
+    assert abs(float(neg[0]) + expected_at_h) < 1e-6
+    # And the relation holds across a finer grid too.
+    lev_grid = np.linspace(0.01, 0.5, 50)
+    _, pos, neg = _cooks_distance_contour(0.5, lev_grid, 4)
+    expected = np.sqrt(0.5 * 4 * (1.0 - lev_grid) / lev_grid)
+    assert np.allclose(pos, expected, atol=1e-9)
+    assert np.allclose(neg, -expected, atol=1e-9)
