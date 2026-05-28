@@ -316,7 +316,7 @@ Every tool follows this contract:
    - `isolation_forest` — `sklearn.ensemble.IsolationForest(contamination=..., random_state=42)`; row score = `−decision_function(X)`. Drops NA rows and counts them. Requires `n ≥ max(10, 2·k)`.
 3. Sort flagged rows by score descending, truncate to `limit`, emit per-column raw `values`.
 
-**Output**: `{ok, method, n_outliers, n_rows_scored, outliers: [{row_index, score, values}], truncated, threshold_used, warnings}`. `n_outliers` is the pre-truncation count; `warnings` covers `covariance_singular` and `dropped_N_na_rows`.
+**Output**: `{ok, method, n_outliers, n_rows_scored, outliers: [{row_index, score, values}], truncated, threshold_used, warnings}`. `n_outliers` is the pre-truncation count; `warnings` covers `covariance_singular` and `dropped_N_na_rows`. The `iqr` and `zscore` branches additionally return a `per_column_flags: dict[str, list[int]]` mapping each column to the list of row indices flagged on that column; `mahalanobis` and `isolation_forest` omit this field because their score is intrinsically joint across columns.
 
 **Errors**: `not_found`, `column_not_found`, `non_numeric_column`, `insufficient_rows` (Mahalanobis / Isolation Forest), `singular_covariance`.
 
