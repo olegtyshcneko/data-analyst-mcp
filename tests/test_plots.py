@@ -536,6 +536,29 @@ def test_residual_diagnostic_all_4th_panel_uses_cooks_distance(call_tool, load_d
     assert len(panel_4.lines) >= 4
 
 
+def test_residual_diagnostic_qq_recorder_cell_plots(call_tool, load_df_into_session):
+    """``residual_diagnostic`` with ``kind='qq'`` must emit a cell that
+    actually renders a Q-Q plot — the legacy cell computed residuals and
+    stopped at a comment, producing nothing on replay.
+    """
+    from data_analyst_mcp.recorder import get_recorder
+
+    df = _ols_fixture_df()
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    r = call_tool("residual_diagnostic", {"model_name": "m", "kind": "qq"})
+    assert r["ok"], r
+
+    code_cells = [c for c in get_recorder().cells if c["cell_type"] == "code"]
+    source = code_cells[-1]["source"]
+    assert "probplot" in source, "qq cell must call scipy.stats.probplot"
+    assert "plt.show" in source or "fig.savefig" in source
+
+
 def test_regression_line_recorder_cell_is_faithful_reproducer(call_tool, load_df_into_session):
     """The recorded code cell for ``regression_line`` must be a faithful
     reproducer of the live render: a linspace grid over the predictor,
