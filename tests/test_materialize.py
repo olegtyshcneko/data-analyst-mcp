@@ -81,6 +81,32 @@ def test_materialize_query_rejects_multistatement_injection(
     assert "base" in tables, "baseline table was dropped by the injection payload"
 
 
+def test_materialize_query_rejects_with_cte_injection(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """A WITH-prefixed query that splices a second statement after ``;``
+    is rejected too — the scanner must be keyword-agnostic and only cares
+    whether an executable second statement follows."""
+    import pandas as pd
+
+    from data_analyst_mcp import session as _session
+
+    load_df_into_session("base", pd.DataFrame({"x": [1, 2, 3]}))
+
+    result = call_tool(
+        "materialize_query",
+        {
+            "sql": 'WITH cte AS (SELECT 1) SELECT * FROM cte; DROP TABLE "base"',
+            "name": "evil",
+        },
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "write_not_allowed"
+    con = _session.get_connection()
+    tables = {row[0] for row in con.execute("SHOW TABLES").fetchall()}
+    assert "base" in tables
+
+
 def test_materialize_query_creates_registered_dataset_with_row_count(
     call_tool: Any, load_df_into_session: Any
 ) -> None:

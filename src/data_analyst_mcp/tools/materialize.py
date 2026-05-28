@@ -70,7 +70,7 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
     # multi-statement payloads like ``SELECT 1; DROP TABLE base``. Reject
     # any ``;`` that lives outside string literals / comments / trailing
     # whitespace — see ``_sql_safety.contains_unsafe_semicolon``.
-    if contains_unsafe_semicolon(payload.sql):
+    if first == "SELECT" and contains_unsafe_semicolon(payload.sql):
         return build_error(
             type="write_not_allowed",
             message="Multi-statement SQL is not allowed.",
