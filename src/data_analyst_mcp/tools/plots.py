@@ -909,7 +909,7 @@ def _residual_diagnostic_code(model: str, kind: str) -> str:
     elif kind == "qq":
         body += _qq_block("ax")
     elif kind == "scale_location":
-        body += "# TODO: implement scale_location recorder cell\n"
+        body += _scale_location_block("ax")
     body += "plt.show()"
     return body
 
