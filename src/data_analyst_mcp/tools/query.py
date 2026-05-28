@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.recorder import get_recorder
+from data_analyst_mcp.tools._sql_safety import contains_unsafe_semicolon
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,20 @@ def query(payload: QueryInput) -> dict[str, Any]:
             type="write_not_allowed",
             message=f"Statements starting with {first!r} are not allowed.",
             hint="Use SELECT / WITH / DESCRIBE / SHOW / EXPLAIN / PRAGMA show_tables.",
+        )
+    # Defence-in-depth against ``SELECT 1; CREATE TABLE evil ...``-style
+    # multi-statement injection. The leading-keyword check above only
+    # inspects the first token; DuckDB will execute every ``;``-separated
+    # statement that follows. ``contains_unsafe_semicolon`` allows benign
+    # ``;`` (inside comments / string literals / trailing whitespace).
+    if contains_unsafe_semicolon(payload.sql):
+        return build_error(
+            type="write_not_allowed",
+            message="Multi-statement SQL is not allowed.",
+            hint=(
+                "query accepts a single read-only statement. Remove any "
+                "embedded `;` followed by another statement."
+            ),
         )
 
     con = session.get_connection()
