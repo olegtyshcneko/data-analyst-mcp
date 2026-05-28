@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.recorder import get_recorder
+from data_analyst_mcp.tools._sql_safety import contains_unsafe_semicolon
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,19 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
             type="write_not_allowed",
             message=f"Statements starting with {first!r} are not allowed.",
             hint=hint,
+        )
+    # Defence-in-depth: the leading-keyword allowlist doesn't catch
+    # multi-statement payloads like ``SELECT 1; DROP TABLE base``. Reject
+    # any ``;`` that lives outside string literals / comments / trailing
+    # whitespace — see ``_sql_safety.contains_unsafe_semicolon``.
+    if contains_unsafe_semicolon(payload.sql):
+        return build_error(
+            type="write_not_allowed",
+            message="Multi-statement SQL is not allowed.",
+            hint=(
+                "materialize_query accepts a single SELECT or WITH statement. "
+                "Remove any embedded `;` followed by another statement."
+            ),
         )
 
     if not payload.overwrite and payload.name in session.get_datasets():
