@@ -905,7 +905,7 @@ def _residual_diagnostic_code(model: str, kind: str) -> str:
         return body
     body += "fig, ax = plt.subplots(figsize=(8, 6))\n"
     if kind == "resid_vs_fitted":
-        body += "# TODO: implement resid_vs_fitted recorder cell\n"
+        body += _resid_vs_fitted_block("ax")
     elif kind == "qq":
         body += _qq_block("ax")
     elif kind == "scale_location":
