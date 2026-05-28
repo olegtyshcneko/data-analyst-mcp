@@ -114,7 +114,8 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
     )
 
     md = f"### Materialize query as dataset `{payload.name}`\n\n```sql\n{payload.sql}\n```"
-    code = f'con.execute("""CREATE OR REPLACE TABLE "{payload.name}" AS {payload.sql}""")'
+    stmt = f'CREATE OR REPLACE TABLE "{payload.name}" AS {payload.sql}'
+    code = f"con.execute({stmt!r})"
     get_recorder().record(markdown=md, code=code, tool_name="materialize_query")
 
     return {
