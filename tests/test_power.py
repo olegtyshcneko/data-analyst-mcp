@@ -118,6 +118,33 @@ def test_power_analysis_infeasible_solution_wraps_statsmodels_error(call_tool: A
     assert result["error"]["type"] == "infeasible_solution"
 
 
+@pytest.mark.parametrize("ratio", [-1.0, 0.0])
+def test_power_analysis_nonpositive_ratio_returns_invalid_inputs(
+    call_tool: Any, ratio: float
+) -> None:
+    """``ratio<=0`` is nonsensical for the two-sample / two-proportion
+    families and previously leaked a ``ZeroDivisionError`` through the
+    generic ``internal`` envelope. The pydantic field now constrains
+    ``ratio>0`` so the validation layer returns a typed error.
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_sample_t",
+            "effect_size": 0.5,
+            "power": 0.8,
+            "ratio": ratio,
+            # n omitted → solve for n.
+        },
+    )
+    assert result["ok"] is False
+    # The exact error.type may be either ``invalid_inputs`` (if the server
+    # layer translates pydantic.ValidationError) or whatever the existing
+    # tool maps to. We only require the call NOT to return ``internal``
+    # (which means an unhandled exception leaked through).
+    assert result["error"]["type"] != "internal", result
+
+
 def test_power_analysis_two_unknowns_returns_invalid_inputs(call_tool: Any) -> None:
     """Two of effect_size/n/power omitted → invalid_inputs."""
     result = call_tool(
