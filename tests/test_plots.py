@@ -562,6 +562,32 @@ def test_residual_diagnostic_resid_vs_fitted_recorder_cell_plots(
     assert "plt.show" in source or "fig.savefig" in source
 
 
+def test_residual_diagnostic_scale_location_recorder_cell_plots(
+    call_tool, load_df_into_session
+):
+    """``residual_diagnostic`` with ``kind='scale_location'`` must emit a
+    cell that plots ``sqrt(|standardized residuals|)`` against fitted
+    values with the LOWESS overlay."""
+    from data_analyst_mcp.recorder import get_recorder
+
+    df = _ols_fixture_df()
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    r = call_tool("residual_diagnostic", {"model_name": "m", "kind": "scale_location"})
+    assert r["ok"], r
+
+    code_cells = [c for c in get_recorder().cells if c["cell_type"] == "code"]
+    source = code_cells[-1]["source"]
+    assert "sqrt" in source
+    assert "_std_resid" in source
+    assert "lowess" in source
+    assert "plt.show" in source or "fig.savefig" in source
+
+
 def test_residual_diagnostic_qq_recorder_cell_plots(call_tool, load_df_into_session):
     """``residual_diagnostic`` with ``kind='qq'`` must emit a cell that
     actually renders a Q-Q plot — the legacy cell computed residuals and
