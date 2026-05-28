@@ -892,16 +892,7 @@ def _residual_diagnostic_code(model: str, kind: str) -> str:
     """Dispatch on ``kind`` and return the full cell source for that panel."""
     body = _RESID_PREAMBLE + _resid_series_block(model)
     if kind == "all":
-        body += (
-            "fig, axes = plt.subplots(2, 2, figsize=(12, 9))\n"
-            "ax_rf, ax_qq, ax_sl, ax_lv = axes[0, 0], axes[0, 1], axes[1, 0], axes[1, 1]\n"
-            + _resid_vs_fitted_block("ax_rf")
-            + _qq_block("ax_qq")
-            + _scale_location_block("ax_sl")
-            + _residuals_vs_leverage_block(model, "ax_lv")
-            + "fig.tight_layout()\n"
-            "plt.show()"
-        )
+        body += "# TODO: implement 2x2 grid recorder cell\n"
         return body
     body += "fig, ax = plt.subplots(figsize=(8, 6))\n"
     if kind == "resid_vs_fitted":
