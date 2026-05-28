@@ -536,9 +536,7 @@ def test_residual_diagnostic_all_4th_panel_uses_cooks_distance(call_tool, load_d
     assert len(panel_4.lines) >= 4
 
 
-def test_residual_diagnostic_resid_vs_fitted_recorder_cell_plots(
-    call_tool, load_df_into_session
-):
+def test_residual_diagnostic_resid_vs_fitted_recorder_cell_plots(call_tool, load_df_into_session):
     """``residual_diagnostic`` with ``kind='resid_vs_fitted'`` must emit a
     cell that scatter-plots residuals against fitted values and overlays
     the LOWESS smoother."""
@@ -562,9 +560,7 @@ def test_residual_diagnostic_resid_vs_fitted_recorder_cell_plots(
     assert "plt.show" in source or "fig.savefig" in source
 
 
-def test_residual_diagnostic_scale_location_recorder_cell_plots(
-    call_tool, load_df_into_session
-):
+def test_residual_diagnostic_scale_location_recorder_cell_plots(call_tool, load_df_into_session):
     """``residual_diagnostic`` with ``kind='scale_location'`` must emit a
     cell that plots ``sqrt(|standardized residuals|)`` against fitted
     values with the LOWESS overlay."""
@@ -588,9 +584,7 @@ def test_residual_diagnostic_scale_location_recorder_cell_plots(
     assert "plt.show" in source or "fig.savefig" in source
 
 
-def test_residual_diagnostic_all_recorder_cell_plots_2x2_grid(
-    call_tool, load_df_into_session
-):
+def test_residual_diagnostic_all_recorder_cell_plots_2x2_grid(call_tool, load_df_into_session):
     """``residual_diagnostic`` with ``kind='all'`` must emit a 2×2 grid:
     resid-vs-fitted, Q-Q, scale-location, residuals-vs-leverage with
     Cook's distance reference contours."""
