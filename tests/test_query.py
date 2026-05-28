@@ -52,6 +52,26 @@ def test_query_rejects_multistatement_injection(call_tool: Any) -> None:
     assert "evil" not in tables, "injected CREATE TABLE was executed"
 
 
+@pytest.mark.parametrize(
+    "sql",
+    [
+        # Semicolon inside a -- line comment.
+        "SELECT 1 AS x -- ; nope",
+        # Semicolon inside a /* block */ comment.
+        "SELECT 1 AS x /* ; nope */",
+        # Semicolon inside a single-quoted string literal.
+        "SELECT 'a;b' AS x",
+        # Trailing single semicolon (statement terminator).
+        "SELECT 1 AS x;",
+    ],
+)
+def test_query_accepts_benign_semicolons(call_tool: Any, sql: str) -> None:
+    """The multi-statement guard must not false-positive on ``;`` inside
+    comments / string literals / trailing whitespace."""
+    result = call_tool("query", {"sql": sql})
+    assert result["ok"] is True, result
+
+
 def test_query_rejects_with_cte_injection(call_tool: Any) -> None:
     """A WITH-prefixed query that splices a second statement after ``;``
     is rejected — the scanner is keyword-agnostic."""
