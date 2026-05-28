@@ -81,7 +81,7 @@ def query(payload: QueryInput) -> dict[str, Any]:
     # inspects the first token; DuckDB will execute every ``;``-separated
     # statement that follows. ``contains_unsafe_semicolon`` allows benign
     # ``;`` (inside comments / string literals / trailing whitespace).
-    if first == "SELECT" and contains_unsafe_semicolon(payload.sql):
+    if contains_unsafe_semicolon(payload.sql):
         return build_error(
             type="write_not_allowed",
             message="Multi-statement SQL is not allowed.",
