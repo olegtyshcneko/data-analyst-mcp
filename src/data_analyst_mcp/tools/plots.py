@@ -826,25 +826,45 @@ def _record_residual_diagnostic(
 def _record_regression_line(
     payload: RegressionLineInput, entry: Any, result: dict[str, Any]
 ) -> None:
-    """Append markdown + code cell for a successful regression_line call."""
+    """Append markdown + code cell for a successful regression_line call.
+
+    Mirrors ``_compute_fit_line`` + ``_build_regression_line_figure`` so
+    the re-executed cell produces a faithful plot: a 100-point linspace
+    over the predictor's observed range, every other column held at its
+    column-wise mean (numeric) or first observed value (non-numeric),
+    ``get_prediction(...).summary_frame()`` for the band, ``fill_between``
+    for the 95 % CI ribbon.
+    """
     if not result.get("ok"):
         return
-    md = f"### Regression line for `{payload.model_name}` on predictor `{payload.predictor}`"
+    m = payload.model_name
+    pred = payload.predictor
+    md = f"### Regression line for `{m}` on predictor `{pred}`"
     code = (
-        f'{payload.model_name}_df = con.sql("SELECT * FROM {entry.fitted_on_dataset}").df()\n'
-        f"_grid = {payload.model_name}_df.copy()\n"
-        f"# Hold non-target predictors at their mean; sweep `{payload.predictor}` across "
-        f"its observed range.\n"
-        f"_pred = {payload.model_name}.get_prediction(_grid).summary_frame()\n"
-        f"import matplotlib.pyplot as plt\n"
-        f"fig, ax = plt.subplots(figsize=(8, 6))\n"
-        f"ax.scatter({payload.model_name}_df['{payload.predictor}'], "
-        f"{payload.model_name}.model.endog, s=18, alpha=0.6)\n"
-        f"ax.plot({payload.model_name}_df['{payload.predictor}'], _pred['mean'], "
-        f"color='#d62728', linewidth=2.0)\n"
-        f"ax.fill_between({payload.model_name}_df['{payload.predictor}'], "
-        f"_pred['mean_ci_lower'], _pred['mean_ci_upper'], color='#d62728', alpha=0.2)\n"
-        f"ax.set_xlabel('{payload.predictor}')\nax.set_ylabel('response')\nplt.show()"
+        "import matplotlib.pyplot as plt\n"
+        "import numpy as np\n"
+        "import pandas as pd\n"
+        f'{m}_df = con.sql("SELECT * FROM {entry.fitted_on_dataset}").df()\n'
+        f"_x = {m}_df['{pred}']\n"
+        f"_x_grid = np.linspace(float(_x.min()), float(_x.max()), 100)\n"
+        f"_grid = pd.DataFrame({{'{pred}': _x_grid}})\n"
+        f"for _col in {m}_df.columns:\n"
+        f"    if _col == '{pred}':\n"
+        "        continue\n"
+        f"    _series = {m}_df[_col]\n"
+        "    if pd.api.types.is_numeric_dtype(_series):\n"
+        "        _grid[_col] = float(_series.mean())\n"
+        "    else:\n"
+        "        _grid[_col] = _series.iloc[0]\n"
+        f"_pred = {m}.get_prediction(_grid).summary_frame()\n"
+        "fig, ax = plt.subplots(figsize=(8, 6))\n"
+        f"ax.scatter(_x, {m}.model.endog, s=18, alpha=0.6)\n"
+        "ax.plot(_x_grid, _pred['mean'], color='#d62728', linewidth=2.0)\n"
+        "ax.fill_between(_x_grid, _pred['mean_ci_lower'], _pred['mean_ci_upper'], "
+        "color='#d62728', alpha=0.2)\n"
+        f"ax.set_xlabel('{pred}')\n"
+        "ax.set_ylabel('response')\n"
+        "plt.show()"
     )
     get_recorder().record(markdown=md, code=code, tool_name="regression_line")
 
