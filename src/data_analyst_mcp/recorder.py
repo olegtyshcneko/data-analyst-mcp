@@ -97,7 +97,11 @@ def _build_setup_source() -> str:
         if entry.format != "derived":
             continue
         derived_sql = entry.read_options.get("sql", "")
-        lines.append(f'con.execute("""CREATE OR REPLACE TABLE "{name}" AS {derived_sql}""")')
+        stmt = f'CREATE OR REPLACE TABLE "{name}" AS {derived_sql}'
+        # repr() escapes embedded quotes (including ``\"\"\"``) so the
+        # emitted Python source compiles regardless of what SQL the user
+        # passed to materialize_query.
+        lines.append(f"con.execute({stmt!r})")
 
     models = _session.get_models()
     if models:
