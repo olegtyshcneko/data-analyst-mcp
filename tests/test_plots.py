@@ -536,6 +536,45 @@ def test_residual_diagnostic_all_4th_panel_uses_cooks_distance(call_tool, load_d
     assert len(panel_4.lines) >= 4
 
 
+def test_regression_line_recorder_cell_is_faithful_reproducer(call_tool, load_df_into_session):
+    """The recorded code cell for ``regression_line`` must be a faithful
+    reproducer of the live render: a linspace grid over the predictor,
+    other predictors held at mean / first-value, ``get_prediction(...)
+    .summary_frame()`` for the band, ``fill_between`` for the CI ribbon.
+
+    Earlier code emitted ``_grid = _df.copy()`` and plotted the unsorted
+    raw predictor → a tangled line at replay. We assert on the source
+    string because the alternative (exec the cell and introspect axes) is
+    heavy and equally brittle.
+    """
+    from data_analyst_mcp.recorder import get_recorder
+
+    df = _ols_fixture_df()
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+
+    r = call_tool("regression_line", {"model_name": "m", "predictor": "x1"})
+    assert r["ok"], r
+
+    cells = get_recorder().cells
+    # The most recent code cell came from regression_line.
+    code_cells = [c for c in cells if c["cell_type"] == "code"]
+    assert code_cells, "no code cell was recorded"
+    source = code_cells[-1]["source"]
+    # Faithful-reproducer markers — every one of these is in the live path
+    # _compute_fit_line + _build_regression_line_figure transliterates to.
+    assert "linspace" in source, "fit-line grid must be linspace over the predictor range"
+    assert "get_prediction" in source
+    assert "summary_frame" in source
+    assert "fill_between" in source
+    # The legacy bug: copying _df unchanged and reusing it as both x and grid.
+    assert "_df.copy()" not in source
+
+
 def test_cooks_distance_contour_matches_canonical_formula() -> None:
     """The Cook's distance boundary helper returns ``|r| = sqrt(D · p · (1-h) / h)``.
 
