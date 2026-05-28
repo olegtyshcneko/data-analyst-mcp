@@ -77,11 +77,15 @@ def _build_setup_source() -> str:
         if entry.format == "derived":
             continue
         reader = _FORMAT_TO_READER.get(entry.format, "read_csv_auto")
+        # ``repr()`` quotes the path safely — embedded ``'`` / ``"`` /
+        # ``\"\"\"`` no longer break out of the host literal.
+        path_lit = repr(entry.path)
         if reader == "read_csv_auto":
-            call = f"{reader}('{entry.path}', SAMPLE_SIZE=-1)"
+            call = f"{reader}({path_lit}, SAMPLE_SIZE=-1)"
         else:
-            call = f"{reader}('{entry.path}')"
-        lines.append(f'con.execute("""CREATE OR REPLACE TABLE {name} AS SELECT * FROM {call}""")')
+            call = f"{reader}({path_lit})"
+        stmt = f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM {call}"
+        lines.append(f"con.execute({stmt!r})")
 
     # Second pass: derived datasets, materialized via their recorded SQL.
     # No hash assert — the recipe is the SQL plus the upstream datasets,
