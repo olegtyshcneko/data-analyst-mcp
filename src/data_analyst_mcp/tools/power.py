@@ -62,7 +62,10 @@ class PowerAnalysisInput(BaseModel):
     p1: float | None = None
     p2: float | None = None
     k_groups: int | None = Field(default=None, ge=2)
-    ratio: float = 1.0
+    # ratio must be strictly positive — statsmodels' two-sample / two-
+    # proportion solvers divide by ``nobs1 * ratio`` and leak a raw
+    # ``ZeroDivisionError`` at ratio=0. Negative ratios are nonsensical.
+    ratio: float = Field(default=1.0, gt=0.0)
     alternative: Literal["two-sided", "larger", "smaller"] = "two-sided"
 
 
@@ -149,10 +152,12 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
             result = _solve_anova_oneway(payload, solved_for)
         else:  # pragma: no cover - Literal in input model excludes this branch
             return build_error(type="internal", message="not implemented")
-    except (ValueError, FloatingPointError) as exc:
+    except (ValueError, FloatingPointError, ZeroDivisionError) as exc:
         # statsmodels raises ValueError on contradictory inputs (e.g.
-        # effect_size=0). Surface the underlying message rather than the
-        # generic ``internal`` envelope.
+        # effect_size=0) and ZeroDivisionError when the solver internals
+        # hit ``1/0`` (e.g. on edge-case inputs that bypass pydantic).
+        # Surface the underlying message rather than the generic
+        # ``internal`` envelope.
         return build_error(
             type="infeasible_solution",
             message=f"Solver could not converge: {exc}",

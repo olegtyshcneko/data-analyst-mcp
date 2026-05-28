@@ -647,21 +647,33 @@ def power_analysis(
     size. Returns ``solved_for`` plus every echoed input parameter and a
     plain-English ``interpretation``.
     """
+    from pydantic import ValidationError
+
     try:
-        payload = _power.PowerAnalysisInput.model_validate(
-            {
-                "test": test,
-                "effect_size": effect_size,
-                "n": n,
-                "power": power,
-                "alpha": alpha,
-                "p1": p1,
-                "p2": p2,
-                "k_groups": k_groups,
-                "ratio": ratio,
-                "alternative": alternative,
-            }
-        )
+        try:
+            payload = _power.PowerAnalysisInput.model_validate(
+                {
+                    "test": test,
+                    "effect_size": effect_size,
+                    "n": n,
+                    "power": power,
+                    "alpha": alpha,
+                    "p1": p1,
+                    "p2": p2,
+                    "k_groups": k_groups,
+                    "ratio": ratio,
+                    "alternative": alternative,
+                }
+            )
+        except ValidationError as ve:
+            return build_error(
+                type="invalid_inputs",
+                message=f"Input validation failed: {ve.errors()!r}",
+                hint=(
+                    "Check the input constraints — alpha in (0, 1), power "
+                    "in [0, 1], ratio > 0, k_groups >= 2."
+                ),
+            )
         return _power.power_analysis(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("power_analysis failed")
