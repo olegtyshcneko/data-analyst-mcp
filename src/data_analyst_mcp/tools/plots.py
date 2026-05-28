@@ -768,25 +768,39 @@ def _render_residuals_vs_leverage(ax: Any, result_obj: Any, standardized: Any) -
 
     influence: Any = result_obj.get_influence()
     leverage: Any = np.asarray(influence.hat_matrix_diag)
-    cooks_d: Any = np.asarray(influence.cooks_distance[0])
     ax.scatter(leverage, standardized, s=18, alpha=0.6)
-    if cooks_d.size > 0:
-        max_d = float(np.max(cooks_d))
-        if max_d > 0.0:
-            ax.scatter(leverage, standardized, s=18 + 40 * cooks_d / max_d, alpha=0.0)
     ax.axhline(0.0, color="#666666", linestyle="--", linewidth=1.0)
     ax.set_xlabel("Leverage")
     ax.set_ylabel("Standardized residuals")
     p = int(result_obj.df_model) + 1
+    # Cook's distance reference contours. Identity:
+    #     D = std_resid^2 * h / ((1-h) * p)
+    # solved for |std_resid|:
+    #     |std_resid| = sqrt(D * p * (1-h) / h)
+    # The leverage grid is clamped to ``(0, 1)`` so the formula is finite.
+    lev_max = float(np.max(leverage)) * 1.05
     lev_grid: Any = np.linspace(
-        max(float(np.min(leverage)), 1e-4), float(np.max(leverage)) * 1.05, 100
+        max(float(np.min(leverage)), 1e-4),
+        min(lev_max, 1.0 - 1e-9),
+        100,
     )
     for d_ref in (0.5, 1.0):
-        denom: Any = (1.0 - lev_grid) ** 2 * p
-        denom = np.where(denom <= 0, np.nan, denom)
-        boundary: Any = np.sqrt(d_ref * lev_grid / denom * p)
-        ax.plot(lev_grid, boundary, color="#aaaaaa", linestyle=":", linewidth=1.0)
-        ax.plot(lev_grid, -boundary, color="#aaaaaa", linestyle=":", linewidth=1.0)
+        _, boundary_pos, boundary_neg = _cooks_distance_contour(d_ref, lev_grid, p)
+        ax.plot(lev_grid, boundary_pos, color="#aaaaaa", linestyle=":", linewidth=1.0)
+        ax.plot(lev_grid, boundary_neg, color="#aaaaaa", linestyle=":", linewidth=1.0)
+
+
+def _cooks_distance_contour(d_ref: float, lev_grid: Any, p: int) -> tuple[Any, Any, Any]:
+    """Return ``(lev_grid, +|std_resid|, -|std_resid|)`` for Cook's ``D = d_ref``.
+
+    Solves the canonical identity ``D = std_resid^2 * h / ((1-h) * p)`` for
+    ``|std_resid|`` at every point of ``lev_grid``. Caller is expected to
+    pre-clamp ``lev_grid`` to ``(0, 1)`` so the divisor stays finite.
+    """
+    import numpy as np
+
+    boundary: Any = np.sqrt(d_ref * p * (1.0 - lev_grid) / lev_grid)
+    return lev_grid, boundary, -boundary
 
 
 def _record_residual_diagnostic(
