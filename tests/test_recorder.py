@@ -274,6 +274,31 @@ def test_setup_cell_compiles_when_derived_dataset_sql_contains_triple_quotes() -
     compile(setup_src, "<setup>", "exec")
 
 
+def test_setup_cell_compiles_when_file_dataset_path_contains_quotes(tmp_path) -> None:
+    """File-backed datasets whose ``path`` contains embedded triple-quotes
+    must still produce a syntactically valid setup cell. The legacy
+    interpolation embedded ``path`` directly inside ``\"\"\"...\"\"\"``,
+    so any embedded ``\"\"\"`` terminated the host literal early.
+    """
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import NotebookRecorder
+
+    session.reset()
+    weird_path = str(tmp_path / 'weird"""name.csv')
+    session.register(
+        name="weird",
+        path=weird_path,
+        read_options={},
+        format="csv",
+        rows=3,
+        columns=[{"name": "x", "dtype": "INTEGER"}],
+    )
+
+    rec = NotebookRecorder()
+    setup_src = rec.to_notebook(include_setup=True).cells[0].source
+    compile(setup_src, "<setup>", "exec")
+
+
 def test_emitted_notebook_hash_assert_fires_when_training_csv_is_mutated(
     tmp_path, call_tool
 ) -> None:
