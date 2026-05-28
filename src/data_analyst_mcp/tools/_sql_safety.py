@@ -32,9 +32,6 @@ def contains_unsafe_semicolon(sql: str) -> bool:
 
     Everything else is flagged.
     """
-    # Naive intermediate implementation: flag any ``;`` anywhere. Subsequent
-    # green pass refines this to ignore comments / literals / trailing ``;``.
-    return ";" in sql
     n = len(sql)
     i = 0
     # Track positions of every "real" semicolon (outside literals/comments).
