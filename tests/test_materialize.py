@@ -52,6 +52,35 @@ def test_materialize_query_rejects_meta_statements(call_tool: Any, sql: str) -> 
     assert result["error"]["type"] == "write_not_allowed"
 
 
+def test_materialize_query_rejects_multistatement_injection(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """A SELECT containing a trailing ``;`` followed by a destructive
+    statement must be rejected with ``write_not_allowed``. The legacy
+    ``_first_keyword`` allowlist only inspected the leading token, so the
+    payload below silently dropped the baseline table ``base``.
+    """
+    import pandas as pd
+
+    from data_analyst_mcp import session as _session
+
+    # Pre-load a baseline dataset so we can verify it survives the attack.
+    load_df_into_session("base", pd.DataFrame({"x": [1, 2, 3]}))
+    assert "base" in _session.get_datasets()
+
+    result = call_tool(
+        "materialize_query",
+        {"sql": 'SELECT 1; DROP TABLE "base"', "name": "evil"},
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["type"] == "write_not_allowed"
+    # The baseline table must still be present.
+    con = _session.get_connection()
+    tables = {row[0] for row in con.execute("SHOW TABLES").fetchall()}
+    assert "base" in tables, "baseline table was dropped by the injection payload"
+
+
 def test_materialize_query_creates_registered_dataset_with_row_count(
     call_tool: Any, load_df_into_session: Any
 ) -> None:
