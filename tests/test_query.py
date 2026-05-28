@@ -52,6 +52,25 @@ def test_query_rejects_multistatement_injection(call_tool: Any) -> None:
     assert "evil" not in tables, "injected CREATE TABLE was executed"
 
 
+def test_query_rejects_with_cte_injection(call_tool: Any) -> None:
+    """A WITH-prefixed query that splices a second statement after ``;``
+    is rejected — the scanner is keyword-agnostic."""
+    from data_analyst_mcp import session as _session
+
+    con = _session.get_connection()
+    con.execute('CREATE OR REPLACE TABLE "base" AS SELECT 1 AS x')
+
+    result = call_tool(
+        "query",
+        {"sql": "WITH cte AS (SELECT 1) SELECT * FROM cte; CREATE TABLE evil AS SELECT 42"},
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["type"] == "write_not_allowed"
+    tables = {row[0] for row in con.execute("SHOW TABLES").fetchall()}
+    assert "evil" not in tables
+
+
 def test_query_select_returns_rows_columns_total_and_timing(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 
