@@ -286,6 +286,26 @@ def test_regression_line_small_dataset_fewer_than_grid_points(call_tool, load_df
     assert result["plot_kind"] == "regression_line"
 
 
+def test_regression_line_with_nan_rows_in_training_data(call_tool, load_df_into_session):
+    """statsmodels drops rows with a NaN in any model variable during fit, so
+    model.endog is shorter than df[predictor]. The scatter must align its
+    x-values to the surviving rows; plotting the full predictor column against
+    the shorter endog is a length mismatch that crashes matplotlib (surfaced
+    as a generic `internal` error)."""
+    import numpy as np
+
+    df = _ols_fixture_df(n=200)
+    df.loc[:9, "x2"] = np.nan  # 10 rows dropped during fit (NaN in a predictor)
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    result = call_tool("regression_line", {"model_name": "m", "predictor": "x1"})
+    _assert_valid_png(result)
+
+
 def test_regression_line_scatter_point_count_matches_endog(call_tool, load_df_into_session):
     """Slice 7: the scatter has one point per training-set row (len(endog))."""
     from data_analyst_mcp import session as _session
