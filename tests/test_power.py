@@ -355,6 +355,39 @@ def test_two_proportion_z_missing_proportions_returns_typed_error(call_tool: Any
     assert result["error"]["type"] == "missing_proportions"
 
 
+def test_two_proportion_z_solves_for_effect_size_mde(call_tool: Any) -> None:
+    """Solving for the minimum detectable Cohen's h: given n + power + alpha
+    and no effect_size/p1/p2, the solver returns the MDE.
+
+    This is the same triple-None input shape the other four families accept
+    when effect_size is the unknown; two_proportion_z must not reject it with
+    missing_proportions just because no proportions were supplied.
+
+    Reference: NormalIndPower().solve_power(effect_size=None, nobs1=3000,
+        alpha=0.05, power=0.8, ratio=1.0, alternative='two-sided').
+    """
+    from statsmodels.stats.power import NormalIndPower
+
+    expected_h = float(
+        NormalIndPower().solve_power(
+            effect_size=None,
+            nobs1=3000,
+            alpha=0.05,
+            power=0.8,
+            ratio=1.0,
+            alternative="two-sided",
+        )
+    )
+    result = call_tool(
+        "power_analysis",
+        {"test": "two_proportion_z", "n": 3000, "power": 0.8, "alpha": 0.05},
+    )
+    assert result["ok"] is True, result
+    assert result["solved_for"] == "effect_size"
+    assert result["effect_size_metric"] == "cohens_h"
+    assert result["effect_size"] == pytest.approx(expected_h, abs=1e-6)
+
+
 def test_two_proportion_z_alternative_respected(call_tool: Any) -> None:
     """Switching to alternative='larger' yields a different (smaller) n.
 
