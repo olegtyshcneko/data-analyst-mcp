@@ -567,8 +567,14 @@ def _build_regression_line_figure(entry: Any, df: Any, payload: RegressionLineIn
     going through the PNG-encode path.
     """
     result_obj: Any = entry._result  # type: ignore[reportPrivateUsage]
-    x_values: Any = df[payload.predictor].to_numpy()
     y_values: Any = result_obj.model.endog
+    # statsmodels (formula API, missing='drop') drops rows with a NaN in any
+    # model variable during fit, so model.endog can be shorter than df. Align
+    # the scatter x-values to exactly the rows that survived the fit — the
+    # fitted-values index carries the kept original row labels in endog order
+    # — otherwise ax.scatter raises "x and y must be the same size".
+    used_index: Any = result_obj.fittedvalues.index
+    x_values: Any = df.loc[used_index, payload.predictor].to_numpy()
     x_grid, y_pred, ci_lower, ci_upper = _compute_fit_line(result_obj, df, payload.predictor)
     fig, ax = _make_figure()
     ax.scatter(x_values, y_values, s=18, alpha=0.6)
