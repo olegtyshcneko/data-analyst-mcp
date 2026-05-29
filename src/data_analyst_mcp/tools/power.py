@@ -76,8 +76,19 @@ def power_analysis(payload: PowerAnalysisInput) -> dict[str, Any]:
     # downstream). If neither effect_size nor (p1, p2) is provided we emit
     # the family-specific missing_proportions error so callers don't get
     # the more generic invalid_inputs.
-    if payload.test == "two_proportion_z" and (
-        payload.effect_size is None and (payload.p1 is None or payload.p2 is None)
+    #
+    # Exception: when effect_size is itself the unknown being solved for (the
+    # MDE case — n and power both supplied, effect_size omitted), having no
+    # proportions is expected; the solver returns the minimum detectable
+    # Cohen's h, exactly as the other four test families do.
+    solving_for_effect_size = (
+        payload.effect_size is None and payload.n is not None and payload.power is not None
+    )
+    if (
+        payload.test == "two_proportion_z"
+        and not solving_for_effect_size
+        and payload.effect_size is None
+        and (payload.p1 is None or payload.p2 is None)
     ):
         return build_error(
             type="missing_proportions",
