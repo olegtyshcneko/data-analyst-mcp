@@ -108,6 +108,25 @@ def test_query_select_returns_rows_columns_total_and_timing(call_tool: Any) -> N
     assert result["execution_time_ms"] >= 0
 
 
+def test_query_accepts_trailing_line_comment(call_tool: Any) -> None:
+    """A SELECT ending in a ``-- line comment`` must execute, count, and
+    auto-LIMIT correctly. The COUNT(*) row-count wrapper spliced the closing
+    paren onto the commented-out line (``FROM (SELECT ... -- c)`` → the
+    ``)`` is swallowed by the comment → parser error), and the auto-LIMIT
+    append put ``LIMIT N`` on the same line too. Both now break onto a fresh
+    line."""
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool(
+        "query",
+        {"sql": "SELECT customer_id FROM messy -- trailing comment", "limit": 3},
+    )
+
+    assert result["ok"] is True, result
+    assert len(result["rows"]) == 3
+    assert result["total_rows"] == 5000
+
+
 def test_query_explicit_limit_is_honored(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 
