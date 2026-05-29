@@ -255,6 +255,19 @@ def test_materialize_query_invalid_name(call_tool: Any, name: str) -> None:
     assert result["error"]["type"] == "invalid_name"
 
 
+def test_materialize_query_empty_sql_returns_typed_error(call_tool: Any) -> None:
+    """Empty sql must surface a typed error rather than leaking the generic
+    `internal` envelope. The pydantic min_length violation was caught only
+    for `name` and re-raised for `sql`, so it fell through to the wrapper's
+    `except Exception` → `internal`. Empty sql now behaves like `query`:
+    the leading-keyword guard rejects it with `write_not_allowed`."""
+    result = call_tool("materialize_query", {"sql": "", "name": "out"})
+
+    assert result["ok"] is False
+    assert result["error"]["type"] != "internal"
+    assert result["error"]["type"] == "write_not_allowed"
+
+
 def test_materialize_query_bad_sql_returns_query_error(call_tool: Any) -> None:
     result = call_tool(
         "materialize_query",
