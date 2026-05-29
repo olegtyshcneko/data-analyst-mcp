@@ -590,18 +590,23 @@ def _compute_fit_line(
     Returns ``(x_grid, y_pred, ci_lower, ci_upper)`` as numpy arrays.
     """
     import numpy as np
+    import pandas as pd
 
     x_values: Any = df[predictor].to_numpy()
     x_min: float = float(np.min(x_values))
     x_max: float = float(np.max(x_values))
     x_grid: Any = np.linspace(x_min, x_max, n_points)
-    # Build the prediction frame: hold each non-target column at its mean
-    # (numeric) or first value (non-numeric — patsy handles factor refs).
-    grid_df: Any = df.iloc[:n_points].copy().reset_index(drop=True)
+    # Build the prediction frame fresh from the predictor grid so it always
+    # has exactly n_points rows — slicing it from df (df.iloc[:n_points])
+    # would yield fewer rows than x_grid whenever len(df) < n_points and the
+    # column assignment would raise a length-mismatch ValueError. Hold each
+    # non-target column at its mean (numeric) or first value (non-numeric —
+    # patsy handles factor refs).
+    grid_df: Any = pd.DataFrame({predictor: x_grid})
     for col in df.columns:
         if col == predictor:
-            grid_df[col] = x_grid
-        elif _is_numeric_pandas_dtype(df[col]):
+            continue
+        if _is_numeric_pandas_dtype(df[col]):
             grid_df[col] = float(df[col].mean())
         else:
             grid_df[col] = df[col].iloc[0]
