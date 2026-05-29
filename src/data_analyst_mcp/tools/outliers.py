@@ -109,8 +109,16 @@ def _record_cell(payload: FindOutliersInput, result: dict[str, Any]) -> None:
 
 def _code_snippet(payload: FindOutliersInput) -> str:
     """Method-specific code cell that re-runs the detection from the DataFrame."""
-    cols_repr = ", ".join(f'"{c}"' for c in payload.columns)
-    fetch = f'df = con.sql("SELECT {cols_repr} FROM {payload.name}").df()'
+    # Quote SQL identifiers with double quotes (``""``-escaped) exactly like
+    # the live ``_materialize_columns_df`` query — both columns *and* the
+    # table name, so reserved-word names (e.g. ``order``) replay cleanly.
+    # Embed the SQL via ``repr()`` so the double-quoted identifiers don't
+    # terminate the host Python string literal (the legacy f-string nested
+    # ``"col"`` inside a ``"..."`` literal, producing invalid Python).
+    cols_repr = ", ".join('"' + c.replace('"', '""') + '"' for c in payload.columns)
+    table_repr = '"' + payload.name.replace('"', '""') + '"'
+    fetch_sql = f"SELECT {cols_repr} FROM {table_repr}"
+    fetch = f"df = con.sql({fetch_sql!r}).df()"
     if payload.method == "iqr":
         k = payload.threshold if payload.threshold is not None else 1.5
         return (
