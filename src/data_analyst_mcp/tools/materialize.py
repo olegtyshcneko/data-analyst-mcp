@@ -21,7 +21,13 @@ class MaterializeQueryInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    sql: str = Field(min_length=1)
+    # No min_length on sql: an empty/whitespace string flows to the
+    # leading-keyword guard, which rejects it with the typed
+    # ``write_not_allowed`` error (consistent with ``query``). A min_length
+    # constraint here would raise a pydantic ValidationError on ``("sql",)``
+    # that the server wrapper only special-cases for ``name``, leaking the
+    # rest as the generic ``internal`` envelope.
+    sql: str
     name: str = Field(min_length=1, pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
     overwrite: bool = False
 
