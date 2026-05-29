@@ -269,6 +269,23 @@ def test_regression_line_returns_valid_png(call_tool, load_df_into_session):
     assert result["plot_kind"] == "regression_line"
 
 
+def test_regression_line_small_dataset_fewer_than_grid_points(call_tool, load_df_into_session):
+    """A training set smaller than the dense fit grid (n_points=100) must
+    still render. The prediction grid has n_points rows regardless of
+    len(df); slicing it from the (shorter) training DataFrame raises a
+    length-mismatch ValueError that surfaces as a generic `internal` error."""
+    df = _ols_fixture_df(n=50)
+    load_df_into_session("d", df)
+    r = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x1 + x2", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    result = call_tool("regression_line", {"model_name": "m", "predictor": "x1"})
+    _assert_valid_png(result)
+    assert result["plot_kind"] == "regression_line"
+
+
 def test_regression_line_scatter_point_count_matches_endog(call_tool, load_df_into_session):
     """Slice 7: the scatter has one point per training-set row (len(endog))."""
     from data_analyst_mcp import session as _session
