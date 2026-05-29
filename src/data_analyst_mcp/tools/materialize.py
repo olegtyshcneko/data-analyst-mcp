@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import re
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -11,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.recorder import get_recorder
-from data_analyst_mcp.tools._sql_safety import contains_unsafe_semicolon
+from data_analyst_mcp.tools._sql_safety import contains_unsafe_semicolon, leading_keyword
 
 logger = logging.getLogger(__name__)
 
@@ -40,12 +39,6 @@ _ALLOWED_LEADING_KEYWORDS = ("SELECT", "WITH")
 _META_KEYWORDS = ("DESCRIBE", "SHOW", "PRAGMA", "EXPLAIN")
 
 
-def _first_keyword(sql: str) -> str:
-    """Uppercase first token of ``sql`` (no comment stripping)."""
-    match = re.match(r"^\s*([A-Za-z_][A-Za-z0-9_]*)", sql)
-    return match.group(1).upper() if match else ""
-
-
 def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
     """Persist a SELECT/WITH result as a registered derived dataset.
 
@@ -58,7 +51,7 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
     session registry (via ``session.register``, which overwrites by
     name).
     """
-    first = _first_keyword(payload.sql)
+    first = leading_keyword(payload.sql)
     if first not in _ALLOWED_LEADING_KEYWORDS:
         if first in _META_KEYWORDS:
             hint = (

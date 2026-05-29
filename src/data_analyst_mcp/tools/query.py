@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.recorder import get_recorder
-from data_analyst_mcp.tools._sql_safety import contains_unsafe_semicolon
+from data_analyst_mcp.tools._sql_safety import contains_unsafe_semicolon, leading_keyword
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +38,6 @@ class QueryInput(BaseModel):
 
 
 _ALLOWED_LEADING_KEYWORDS = ("SELECT", "WITH", "DESCRIBE", "SHOW", "EXPLAIN", "PRAGMA")
-
-
-def _first_keyword(sql: str) -> str:
-    """Uppercase first token of ``sql`` (no comment stripping)."""
-    match = re.match(r"^\s*([A-Za-z_][A-Za-z0-9_]*)", sql)
-    return match.group(1).upper() if match else ""
 
 
 _LIMIT_PATTERN = re.compile(r"\bLIMIT\s+\d+", re.IGNORECASE)
@@ -79,7 +73,7 @@ def _total_rows(con: Any, sql: str) -> int:
 
 def query(payload: QueryInput) -> dict[str, Any]:
     """Run a read-only SQL query through DuckDB with auto-LIMIT."""
-    first = _first_keyword(payload.sql)
+    first = leading_keyword(payload.sql)
     if first not in _ALLOWED_LEADING_KEYWORDS:
         return build_error(
             type="write_not_allowed",

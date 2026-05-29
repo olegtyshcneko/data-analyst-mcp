@@ -16,6 +16,54 @@ inside a literal/comment. That is the only thing we need to reject.
 
 from __future__ import annotations
 
+import re
+
+_KEYWORD_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def leading_keyword(sql: str) -> str:
+    """Return the uppercase first SQL keyword, skipping leading whitespace
+    and comments.
+
+    Leading ``-- line comments`` and ``/* block comments */`` are skipped so
+    that valid SQL prefixed with a comment (e.g. ``-- fetch users\\nSELECT
+    ...`` or ``/* note */ WITH ...``) is classified by its real first
+    keyword rather than rejected as empty. A naive ``re.match`` anchored at
+    position 0 sees the comment's first char (``-`` / ``/``) and matches
+    nothing.
+
+    Only keyword *detection* skips comments — the SQL string handed to DuckDB
+    is unchanged, so the multi-statement guard
+    (:func:`contains_unsafe_semicolon`) is unaffected, and a comment can never
+    hide a dangerous leading keyword (comments are not executed; the first
+    executable keyword is what matters).
+    """
+    n = len(sql)
+    i = 0
+    while i < n:
+        ch = sql[i]
+        if ch.isspace():
+            i += 1
+            continue
+        # ---- line comment: -- ... end-of-line ----
+        if ch == "-" and i + 1 < n and sql[i + 1] == "-":
+            i += 2
+            while i < n and sql[i] != "\n":
+                i += 1
+            continue
+        # ---- block comment: /* ... */ (no nesting per SQL spec) ----
+        if ch == "/" and i + 1 < n and sql[i + 1] == "*":
+            i += 2
+            while i < n:
+                if sql[i] == "*" and i + 1 < n and sql[i + 1] == "/":
+                    i += 2
+                    break
+                i += 1
+            continue
+        break
+    match = _KEYWORD_RE.match(sql, i)
+    return match.group(0).upper() if match else ""
+
 
 def contains_unsafe_semicolon(sql: str) -> bool:
     """Return True if ``sql`` contains a ``;`` that would terminate the
