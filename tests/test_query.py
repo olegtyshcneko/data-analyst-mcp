@@ -65,10 +65,10 @@ def test_query_rejects_multistatement_injection(call_tool: Any) -> None:
 )
 def test_query_accepts_benign_semicolons(call_tool: Any, sql: str) -> None:
     """The multi-statement guard must not false-positive on ``;`` inside
-    block comments / string literals / trailing whitespace. Line comments
-    (``-- ...``) without a trailing newline are not tested here because
-    ``query``'s ``COUNT(*)`` subquery wrapper truncates them — that's an
-    orthogonal limitation of the row-count helper, not the safety guard."""
+    block comments / string literals / trailing whitespace. Trailing line
+    comments (``-- ...``) are covered separately by
+    ``test_query_accepts_trailing_line_comment`` now that the COUNT(*) /
+    auto-LIMIT helpers break onto a fresh line."""
     result = call_tool("query", {"sql": sql})
     assert result["ok"] is True, result
 

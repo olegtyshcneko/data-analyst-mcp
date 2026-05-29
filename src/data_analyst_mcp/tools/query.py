@@ -55,15 +55,25 @@ def _has_explicit_limit(sql: str) -> bool:
 
 
 def _apply_limit(sql: str, limit: int) -> str:
-    """Append a ``LIMIT limit`` clause when none is present."""
+    """Append a ``LIMIT limit`` clause when none is present.
+
+    The clause goes on a fresh line so a trailing ``-- line comment`` in the
+    user's SQL doesn't swallow it (``SELECT ... -- c LIMIT 50`` would comment
+    the LIMIT out).
+    """
     stripped = sql.rstrip().rstrip(";")
-    return stripped + f" LIMIT {int(limit)}"
+    return stripped + f"\nLIMIT {int(limit)}"
 
 
 def _total_rows(con: Any, sql: str) -> int:
-    """Run a separate COUNT(*) over the original SQL (without auto-LIMIT)."""
+    """Run a separate COUNT(*) over the original SQL (without auto-LIMIT).
+
+    The wrapped SQL is bracketed by newlines so a trailing ``-- line
+    comment`` doesn't swallow the closing paren (``FROM (SELECT ... -- c)``
+    → the ``)`` is commented out → parser error).
+    """
     base = sql.rstrip().rstrip(";")
-    count_row = con.execute(f"SELECT COUNT(*) FROM ({base})").fetchone()
+    count_row = con.execute(f"SELECT COUNT(*) FROM (\n{base}\n)").fetchone()
     return int(count_row[0]) if count_row else 0
 
 
