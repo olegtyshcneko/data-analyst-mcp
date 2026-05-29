@@ -590,7 +590,7 @@ def _compute_fit_line(
     Returns ``(x_grid, y_pred, ci_lower, ci_upper)`` as numpy arrays.
     """
     import numpy as np
-    import pandas as pd
+    import pandas as pd  # type: ignore[reportMissingTypeStubs]
 
     x_values: Any = df[predictor].to_numpy()
     x_min: float = float(np.min(x_values))
