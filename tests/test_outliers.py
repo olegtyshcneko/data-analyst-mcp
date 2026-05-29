@@ -613,3 +613,18 @@ def test_find_outliers_isolation_forest_insufficient_rows(
     )
     assert result["ok"] is False
     assert result["error"]["type"] == "insufficient_rows"
+
+
+def test_find_outliers_recorded_cell_quotes_dataset_name() -> None:
+    """The recorded code cell must be valid Python and quote the table name
+    in its FROM clause, matching the live query (``_materialize_columns_df``
+    at outliers.py:342). The legacy fetch line nested double-quoted SQL
+    identifiers inside a double-quoted Python string (invalid Python) and
+    left the table name unquoted (breaks replay on reserved-word names like
+    ``order``)."""
+    from data_analyst_mcp.tools.outliers import FindOutliersInput, _code_snippet
+
+    payload = FindOutliersInput(name="order", columns=["x"], method="iqr")
+    code = _code_snippet(payload)
+    compile(code, "<cell>", "exec")  # must be syntactically valid Python
+    assert 'FROM "order"' in code
