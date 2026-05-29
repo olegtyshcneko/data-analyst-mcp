@@ -268,6 +268,19 @@ def test_materialize_query_empty_sql_returns_typed_error(call_tool: Any) -> None
     assert result["error"]["type"] == "write_not_allowed"
 
 
+def test_materialize_query_accepts_leading_comment_before_keyword(call_tool: Any) -> None:
+    """A SELECT/WITH prefixed with a ``/* block */`` or ``-- line`` comment
+    must be accepted — the leading-keyword guard skips comments to find the
+    real verb instead of rejecting valid SQL as ``write_not_allowed``."""
+    result = call_tool(
+        "materialize_query",
+        {"sql": "/* derive a constant */ SELECT 1 AS x", "name": "out"},
+    )
+
+    assert result["ok"] is True, result
+    assert result["name"] == "out"
+
+
 def test_materialize_query_bad_sql_returns_query_error(call_tool: Any) -> None:
     result = call_tool(
         "materialize_query",

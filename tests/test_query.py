@@ -127,6 +127,22 @@ def test_query_accepts_trailing_line_comment(call_tool: Any) -> None:
     assert result["total_rows"] == 5000
 
 
+def test_query_accepts_leading_comment_before_keyword(call_tool: Any) -> None:
+    """A SELECT prefixed with a ``-- line`` or ``/* block */`` comment must
+    be accepted — the leading-keyword guard skips comments to find the real
+    verb instead of seeing the comment's first char (``-`` / ``/``) and
+    rejecting valid SQL as ``write_not_allowed``."""
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    result = call_tool(
+        "query",
+        {"sql": "-- fetch ids\nSELECT customer_id FROM messy", "limit": 3},
+    )
+
+    assert result["ok"] is True, result
+    assert len(result["rows"]) == 3
+
+
 def test_query_explicit_limit_is_honored(call_tool: Any) -> None:
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
 
