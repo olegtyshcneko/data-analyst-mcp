@@ -216,7 +216,7 @@ For OpenCode (single command array):
 
 </details>
 
-After restarting (or reloading MCP servers in) your client, all 20 tools become available in any new conversation: the original 11 (`load_dataset`, `list_datasets`, `profile_dataset`, `describe_column`, `query`, `correlate`, `compare_groups`, `test_hypothesis`, `fit_model`, `plot`, `emit_notebook`), the v1.x additions (`adjust_pvalues`, `analyze_missingness`, `list_models`, `predict`, `evaluate_model`), and the tier-1 bundle (`materialize_query`, `find_outliers`, `power_analysis`, `regression_line`, `residual_diagnostic`).
+After restarting (or reloading MCP servers in) your client, all 21 tools become available in any new conversation: the original 11 (`load_dataset`, `list_datasets`, `profile_dataset`, `describe_column`, `query`, `correlate`, `compare_groups`, `test_hypothesis`, `fit_model`, `plot`, `emit_notebook`), the v1.x additions (`adjust_pvalues`, `analyze_missingness`, `list_models`, `predict`, `evaluate_model`), and the tier-1 bundle (`materialize_query`, `find_outliers`, `power_analysis`, `regression_line`, `residual_diagnostic`).
 
 ## Worked example
 
@@ -392,7 +392,7 @@ The agent will reach for MotherDuck when the task is "query the warehouse" and f
             │
    ┌────────┴────────────────────────────────┐
    ▼                                         ▼
- 20 tools (datasets / query / stats /     NotebookRecorder
+ 21 tools (datasets / query / stats /     NotebookRecorder
  models / registry / plots / notebook)    (markdown + code cells)
             │                                         │
             ▼                                         ▼
@@ -428,7 +428,7 @@ The implementation spec is `docs/SPEC.md`. It is the source of truth — when in
 
 ## Contributing
 
-Issues and PRs are welcome. **Open an issue first for any new tool**: the 20-tool surface is intentionally closed at the v2 boundary (spec §5, §11, ROADMAP), and tool ideas are parked in `ROADMAP.md` until they're either promoted to v3 or explicitly declined. Bug fixes, doc improvements, and test additions are easier to land — just open a PR. Every change in `src/` must come with a failing test first (`red:` then `green:`); the `check_tdd_commits.py` script enforces this on the commit log.
+Issues and PRs are welcome. **Open an issue first for any new tool**: the 21-tool surface is intentionally closed at the v2 boundary (spec §5, §11, ROADMAP), and tool ideas are parked in `ROADMAP.md` until they're either promoted to v3 or explicitly declined. Bug fixes, doc improvements, and test additions are easier to land — just open a PR. Every change in `src/` must come with a failing test first (`red:` then `green:`); the `check_tdd_commits.py` script enforces this on the commit log.
 
 ## License
 

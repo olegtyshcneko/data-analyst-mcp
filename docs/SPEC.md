@@ -749,7 +749,7 @@ README with worked example, `DEPS.md`, LICENSE, ROADMAP, tag `v0.1.0`, `uv build
 - Loading entire datasets into pandas at tool-call time.
 - Adding `plotly`, `seaborn`, `altair`, `bokeh`, `dash`, `streamlit`, `polars`, `dask`, `ray`.
 - Adding `Anthropic`/`OpenAI` clients to call an LLM from inside the server.
-- Adding tools beyond the 20 in §5 (park in `ROADMAP.md`).
+- Adding tools beyond the 21 in §5 (park in `ROADMAP.md`).
 - Silently coercing data types in `load_dataset`.
 - Making the recorder optional/feature-flagged.
 - `emit_notebook` depending on internet, API key, or anything non-local.
