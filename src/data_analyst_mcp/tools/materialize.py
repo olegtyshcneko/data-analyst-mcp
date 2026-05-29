@@ -104,6 +104,25 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
     describe_rows = con.execute(f'DESCRIBE "{payload.name}"').fetchall()
     columns = [{"name": str(row[0]), "dtype": str(row[1])} for row in describe_rows]
 
+    # When overwriting a file-backed dataset with a derived query, retain the
+    # original file loader so the recorder can re-create the base table at
+    # replay time — the derived SQL frequently self-references the same name
+    # (transform-in-place: ``... AS SELECT ... FROM data`` over ``data``). If
+    # overwriting an already-derived entry, carry its base_loader forward so a
+    # chain of overwrites still rehydrates the original file. In-memory
+    # (dataframe) bases are not reloadable, so they leave base_loader None.
+    existing = session.get_datasets().get(payload.name)
+    base_loader: dict[str, Any] | None = None
+    if existing is not None:
+        if existing.format not in ("derived", "dataframe"):
+            base_loader = {
+                "path": existing.path,
+                "format": existing.format,
+                "read_options": dict(existing.read_options),
+            }
+        elif existing.format == "derived":
+            base_loader = existing.base_loader
+
     session.register(
         name=payload.name,
         path="(query)",
@@ -111,6 +130,7 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
         format="derived",
         rows=rows,
         columns=columns,
+        base_loader=base_loader,
     )
 
     md = f"### Materialize query as dataset `{payload.name}`\n\n```sql\n{payload.sql}\n```"

@@ -40,6 +40,22 @@ _FORMAT_TO_READER: dict[str, str] = {
 }
 
 
+def _file_load_stmt(name: str, fmt: str, path: str) -> str:
+    """Build the ``CREATE OR REPLACE TABLE`` line that reloads a file-backed
+    dataset from disk via the format-appropriate DuckDB reader.
+
+    ``repr()`` quotes the path safely — embedded ``'`` / ``"`` / ``\"\"\"`` no
+    longer break out of the host literal.
+    """
+    reader = _FORMAT_TO_READER.get(fmt, "read_csv_auto")
+    path_lit = repr(path)
+    if reader == "read_csv_auto":
+        call = f"{reader}({path_lit}, SAMPLE_SIZE=-1)"
+    else:
+        call = f"{reader}({path_lit})"
+    return f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM {call}"
+
+
 def _build_setup_source() -> str:
     """Compose the setup-cell body from the live session registry.
 
@@ -75,16 +91,16 @@ def _build_setup_source() -> str:
             )
             continue
         if entry.format == "derived":
+            # A derived entry that overwrote a file-backed dataset retains the
+            # original loader in base_loader; emit it here (first pass) so the
+            # second-pass derived CREATE — which may self-reference this same
+            # name (transform-in-place) — has its base table at replay.
+            base = entry.base_loader
+            if base is not None:
+                stmt = _file_load_stmt(name, base["format"], base["path"])
+                lines.append(f"con.execute({stmt!r})")
             continue
-        reader = _FORMAT_TO_READER.get(entry.format, "read_csv_auto")
-        # ``repr()`` quotes the path safely — embedded ``'`` / ``"`` /
-        # ``\"\"\"`` no longer break out of the host literal.
-        path_lit = repr(entry.path)
-        if reader == "read_csv_auto":
-            call = f"{reader}({path_lit}, SAMPLE_SIZE=-1)"
-        else:
-            call = f"{reader}({path_lit})"
-        stmt = f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM {call}"
+        stmt = _file_load_stmt(name, entry.format, entry.path)
         lines.append(f"con.execute({stmt!r})")
 
     # Second pass: derived datasets, materialized via their recorded SQL.
