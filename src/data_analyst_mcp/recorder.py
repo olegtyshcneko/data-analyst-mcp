@@ -40,6 +40,22 @@ _FORMAT_TO_READER: dict[str, str] = {
 }
 
 
+def _file_load_stmt(name: str, fmt: str, path: str) -> str:
+    """Build the ``CREATE OR REPLACE TABLE`` line that reloads a file-backed
+    dataset from disk via the format-appropriate DuckDB reader.
+
+    ``repr()`` quotes the path safely — embedded ``'`` / ``"`` / ``\"\"\"`` no
+    longer break out of the host literal.
+    """
+    reader = _FORMAT_TO_READER.get(fmt, "read_csv_auto")
+    path_lit = repr(path)
+    if reader == "read_csv_auto":
+        call = f"{reader}({path_lit}, SAMPLE_SIZE=-1)"
+    else:
+        call = f"{reader}({path_lit})"
+    return f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM {call}"
+
+
 def _build_setup_source() -> str:
     """Compose the setup-cell body from the live session registry.
 
@@ -63,6 +79,10 @@ def _build_setup_source() -> str:
     from data_analyst_mcp import session as _session
 
     lines = [_SETUP_IMPORTS]
+    # First pass: file-backed datasets. Derived datasets are emitted in a
+    # second pass so that their CREATE OR REPLACE TABLE lines land *after*
+    # the base tables they SELECT from — otherwise DuckDB would fail at
+    # replay because the base table wouldn't exist yet.
     for name, entry in _session.get_datasets().items():
         if entry.format == "dataframe":
             lines.append(
@@ -70,17 +90,46 @@ def _build_setup_source() -> str:
                 f"not reloaded here — rematerialize it from your own source."
             )
             continue
-        reader = _FORMAT_TO_READER.get(entry.format, "read_csv_auto")
-        if reader == "read_csv_auto":
-            call = f"{reader}('{entry.path}', SAMPLE_SIZE=-1)"
-        else:
-            call = f"{reader}('{entry.path}')"
-        lines.append(f'con.execute("""CREATE OR REPLACE TABLE {name} AS SELECT * FROM {call}""")')
+        if entry.format == "derived":
+            # A derived entry that overwrote a file-backed dataset retains the
+            # original loader in base_loader; emit it here (first pass) so the
+            # second-pass derived CREATE — which may self-reference this same
+            # name (transform-in-place) — has its base table at replay.
+            base = entry.base_loader
+            if base is not None:
+                stmt = _file_load_stmt(name, base["format"], base["path"])
+                lines.append(f"con.execute({stmt!r})")
+            continue
+        stmt = _file_load_stmt(name, entry.format, entry.path)
+        lines.append(f"con.execute({stmt!r})")
+
+    # Second pass: derived datasets, materialized via their recorded SQL.
+    # No hash assert — the recipe is the SQL plus the upstream datasets,
+    # which already carry their own asserts via the model rehydration
+    # block when models depend on them.
+    #
+    # Chained derived datasets (derived_b SELECTs FROM derived_a) work
+    # because ``_session.get_datasets()`` is a regular dict and Python
+    # dicts preserve insertion order — so a derived dataset registered
+    # after its upstream derived dataset will also be emitted after it
+    # here.
+    for name, entry in _session.get_datasets().items():
+        if entry.format != "derived":
+            continue
+        derived_sql = entry.read_options.get("sql", "")
+        stmt = f'CREATE OR REPLACE TABLE "{name}" AS {derived_sql}'
+        # repr() escapes embedded quotes (including ``\"\"\"``) so the
+        # emitted Python source compiles regardless of what SQL the user
+        # passed to materialize_query.
+        lines.append(f"con.execute({stmt!r})")
 
     models = _session.get_models()
     if models:
         # Materialize a DataFrame per reloadable dataset so the model
-        # rehydration line has something to fit against.
+        # rehydration line has something to fit against. Derived datasets
+        # (format == "derived") are reloadable too — they exist as DuckDB
+        # tables once the second-pass CREATE OR REPLACE TABLE lines above
+        # have run.
         for name, entry in _session.get_datasets().items():
             if entry.format == "dataframe":
                 continue

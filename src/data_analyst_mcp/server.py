@@ -15,11 +15,14 @@ from mcp.server.fastmcp import FastMCP
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.tools import datasets as _datasets
 from data_analyst_mcp.tools import evaluate as _evaluate
+from data_analyst_mcp.tools import materialize as _materialize
 from data_analyst_mcp.tools import missingness as _missingness
 from data_analyst_mcp.tools import models as _models
 from data_analyst_mcp.tools import multitest as _multitest
 from data_analyst_mcp.tools import notebook as _notebook
+from data_analyst_mcp.tools import outliers as _outliers
 from data_analyst_mcp.tools import plots as _plots
+from data_analyst_mcp.tools import power as _power
 from data_analyst_mcp.tools import predict as _predict
 from data_analyst_mcp.tools import query as _query
 from data_analyst_mcp.tools import stats as _stats
@@ -47,6 +50,50 @@ def query(sql: str, limit: int = 50) -> dict[str, Any]:
         return _query.query(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("query failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def materialize_query(
+    sql: str,
+    name: str,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    """Persist a SELECT / WITH result as a named DuckDB table + session entry.
+
+    Accepts only ``SELECT`` and ``WITH`` (narrower than ``query``'s
+    allowlist — ``DESCRIBE`` / ``SHOW`` / ``PRAGMA`` are meaningless as a
+    table source and are rejected with ``write_not_allowed``). ``name``
+    must match ``^[A-Za-z_][A-Za-z0-9_]*$``. When ``name`` is already
+    registered and ``overwrite=False``, returns ``dataset_name_collision``.
+    Successful calls register a derived ``DatasetEntry`` whose
+    ``read_options["sql"]`` is the recipe; the recorder's setup cell
+    rehydrates the table from this SQL after every file-backed dataset is
+    loaded. Output mirrors ``load_dataset``'s shape: ``{ok, name, rows,
+    columns, total_rows}``.
+    """
+    try:
+        from pydantic import ValidationError
+
+        try:
+            payload = _materialize.MaterializeQueryInput(sql=sql, name=name, overwrite=overwrite)
+        except ValidationError as ve:
+            for err in ve.errors():
+                if err.get("loc") == ("name",):
+                    return build_error(
+                        type="invalid_name",
+                        message=f"Invalid dataset name {name!r}.",
+                        hint=(
+                            "Names must match ^[A-Za-z_][A-Za-z0-9_]*$ — "
+                            "letters, digits, and underscores only; cannot "
+                            "start with a digit; no spaces, dashes, dots, or "
+                            "semicolons. Examples: 'cohort_a', 'q1_2024', '_tmp'."
+                        ),
+                    )
+            raise
+        return _materialize.materialize_query(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("materialize_query failed")
         return build_error(type="internal", message=str(exc))
 
 
@@ -531,6 +578,177 @@ def plot(
         return _plots.plot(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("plot failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def find_outliers(
+    name: str,
+    columns: list[str],
+    method: str,
+    threshold: float | None = None,
+    contamination: float = 0.05,
+    limit: int = 50,
+) -> dict[str, Any]:
+    """Detect outliers across one or more numeric columns of a registered dataset.
+
+    ``method`` is one of ``iqr`` (default threshold 1.5), ``zscore`` (default
+    threshold 3.0), ``mahalanobis`` (joint detection via D² vs χ²(k, 1−α)
+    quantile; default α=0.025; ``threshold`` overrides α; falls back to a
+    Moore-Penrose pseudoinverse with a ``covariance_singular`` warning when
+    Σ is singular), or ``isolation_forest`` (sklearn with
+    ``random_state=42``; ``contamination`` in (0, 0.5)). IQR / z-score row
+    score = max per-column normalized excess; Mahalanobis score = D²;
+    Isolation Forest score = ``−decision_function(X)``. Returns
+    ``n_outliers`` (pre-truncation), ``n_rows_scored``, the top-``limit``
+    flagged rows (each with ``row_index``, ``score``, and per-column raw
+    ``values``), ``truncated``, ``threshold_used`` (method default echoed
+    back), and a list of ``warnings`` (e.g. ``covariance_singular``,
+    ``dropped_n_na_rows``).
+    """
+    try:
+        payload = _outliers.FindOutliersInput.model_validate(
+            {
+                "name": name,
+                "columns": columns,
+                "method": method,
+                "threshold": threshold,
+                "contamination": contamination,
+                "limit": limit,
+            }
+        )
+        return _outliers.find_outliers(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("find_outliers failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def power_analysis(
+    test: str,
+    effect_size: float | None = None,
+    n: int | float | None = None,
+    power: float | None = None,
+    alpha: float = 0.05,
+    p1: float | None = None,
+    p2: float | None = None,
+    k_groups: int | None = None,
+    ratio: float = 1.0,
+    alternative: str = "two-sided",
+) -> dict[str, Any]:
+    """Compute statistical power / sample size / MDE for the named test family.
+
+    ``test`` is one of ``two_sample_t``, ``one_sample_t``, ``paired_t``,
+    ``two_proportion_z``, ``anova_oneway``. Exactly one of
+    ``effect_size``, ``n``, ``power`` must be omitted — the solver fills
+    it in. For ``two_proportion_z``, supplying ``p1`` and ``p2`` auto-
+    derives Cohen's h via ``proportion_effectsize``. ``anova_oneway``
+    requires ``k_groups`` (≥2) and treats ``n`` as the *total* sample
+    size. Returns ``solved_for`` plus every echoed input parameter and a
+    plain-English ``interpretation``.
+    """
+    from pydantic import ValidationError
+
+    try:
+        try:
+            payload = _power.PowerAnalysisInput.model_validate(
+                {
+                    "test": test,
+                    "effect_size": effect_size,
+                    "n": n,
+                    "power": power,
+                    "alpha": alpha,
+                    "p1": p1,
+                    "p2": p2,
+                    "k_groups": k_groups,
+                    "ratio": ratio,
+                    "alternative": alternative,
+                }
+            )
+        except ValidationError as ve:
+            return build_error(
+                type="invalid_inputs",
+                message=f"Input validation failed: {ve.errors()!r}",
+                hint=(
+                    "Check the input constraints — alpha in (0, 1), power "
+                    "in [0, 1], ratio > 0, k_groups >= 2."
+                ),
+            )
+        return _power.power_analysis(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("power_analysis failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def regression_line(
+    model_name: str,
+    predictor: str,
+    title: str | None = None,
+) -> dict[str, Any]:
+    """Render a predictor-vs-response scatter with the OLS fit line + 95 % mean-CI band.
+
+    ``model_name`` is a registry handle from a previous ``fit_model`` call
+    of ``kind="ols"`` — logistic / Poisson / negbin raise
+    ``regression_diagnostics_ols_only``. ``predictor`` must appear in the
+    model's exog names (i.e. one of the formula RHS terms, after dropping
+    ``Intercept``) and must be numeric in the training DataFrame. The fit
+    line is drawn by predicting across a dense grid of the predictor while
+    holding the other predictors at their mean; the 95 % mean-CI band is
+    shaded from statsmodels' ``get_prediction(...).summary_frame()``.
+    Returns ``{ok, png_base64, width, height, model_name, plot_kind}``.
+    """
+    try:
+        payload = _plots.RegressionLineInput(
+            model_name=model_name,
+            predictor=predictor,
+            title=title,
+        )
+        return _plots.regression_line(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("regression_line failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def residual_diagnostic(
+    model_name: str,
+    kind: str = "all",
+    title: str | None = None,
+) -> dict[str, Any]:
+    """Render OLS residual diagnostics as a base64-encoded PNG.
+
+    ``model_name`` is a registry handle from a previous ``fit_model``
+    call of ``kind="ols"`` — logistic / Poisson / negbin raise
+    ``regression_diagnostics_ols_only``. ``kind`` picks the panel:
+    ``resid_vs_fitted`` (with LOWESS overlay + y=0 line),
+    ``qq`` (scipy.stats.probplot Q-Q), ``scale_location``
+    (sqrt(|standardized resid|) vs fitted, LOWESS overlay), or ``all``
+    (2×2 grid where the 4th panel is residuals vs leverage with Cook's
+    distance contours). Returns ``{ok, png_base64, width, height,
+    model_name, plot_kind}``.
+    """
+    try:
+        from pydantic import ValidationError
+
+        try:
+            payload = _plots.ResidualDiagnosticInput(
+                model_name=model_name,
+                kind=kind,  # type: ignore[arg-type]
+                title=title,
+            )
+        except ValidationError as ve:
+            for err in ve.errors():
+                if err.get("loc") == ("kind",):
+                    return build_error(
+                        type="invalid_kind",
+                        message=f"Unknown kind {kind!r}.",
+                        hint=("Allowed kinds: ['all', 'qq', 'resid_vs_fitted', 'scale_location']."),
+                    )
+            raise
+        return _plots.residual_diagnostic(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("residual_diagnostic failed")
         return build_error(type="internal", message=str(exc))
 
 

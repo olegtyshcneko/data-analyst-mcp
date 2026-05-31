@@ -493,3 +493,487 @@ def _missing_required_params(kind: str, *, x: str | None, y: str | None) -> list
     if kind in _REQUIRES_Y and y is None:
         missing.append("y")
     return missing
+
+
+# === regression_line + residual_diagnostic ===
+
+
+class RegressionLineInput(BaseModel):
+    """Inputs for ``regression_line``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model_name: str = Field(..., description="Registered OLS model handle.")
+    predictor: str = Field(
+        ..., description="Numeric predictor (one of the model's exog names) to plot against."
+    )
+    title: str | None = Field(default=None, description="Optional chart title.")
+
+
+def regression_line(payload: RegressionLineInput) -> dict[str, Any]:
+    """Render a predictor-vs-response scatter with the OLS fit line + 95% mean-CI band."""
+    entry = session.get_model(payload.model_name)
+    if entry is None:
+        known = sorted(session.get_models().keys())
+        return build_error(
+            type="model_not_found",
+            message=f"No model named {payload.model_name!r} registered.",
+            hint=f"Known model names: {known}." if known else "Registry is empty.",
+        )
+    if entry.kind != "ols":
+        return build_error(
+            type="regression_diagnostics_ols_only",
+            message=(
+                f"regression_line/residual_diagnostic require OLS; "
+                f"{payload.model_name} is kind={entry.kind}."
+            ),
+            hint="These plots are only meaningful for linear models. Use plot() for other kinds.",
+        )
+    result_obj: Any = entry._result  # type: ignore[reportPrivateUsage]
+    available_predictors = [n for n in result_obj.model.exog_names if n != "Intercept"]
+    if payload.predictor not in available_predictors:
+        return build_error(
+            type="column_not_found",
+            message=(f"Predictor {payload.predictor!r} is not in model {payload.model_name!r}."),
+            hint=f"Available predictors: {available_predictors}.",
+        )
+    con = session.get_connection()
+    df: Any = con.execute(f'SELECT * FROM "{entry.fitted_on_dataset}"').df()
+    if payload.predictor not in df.columns or not _is_numeric_pandas_dtype(df[payload.predictor]):
+        return build_error(
+            type="non_numeric_predictor",
+            message=(
+                f"Predictor {payload.predictor!r} is not numeric in the training "
+                f"DataFrame for {payload.model_name!r}."
+            ),
+            hint=(
+                "regression_line requires a numeric predictor — categorical "
+                "factors (C(...) / dummy-expanded terms) are not plottable."
+            ),
+        )
+    fig = _build_regression_line_figure(entry, df, payload)
+    out = render_to_base64(fig)
+    out["model_name"] = payload.model_name
+    out["plot_kind"] = "regression_line"
+    _record_regression_line(payload, entry, out)
+    return out
+
+
+def _build_regression_line_figure(entry: Any, df: Any, payload: RegressionLineInput) -> Any:
+    """Build (without rendering) the regression-line figure.
+
+    Factored out so tests can introspect the matplotlib Axes objects
+    (scatter point counts, fitted-line slope, CI band collections) without
+    going through the PNG-encode path.
+    """
+    result_obj: Any = entry._result  # type: ignore[reportPrivateUsage]
+    y_values: Any = result_obj.model.endog
+    # statsmodels (formula API, missing='drop') drops rows with a NaN in any
+    # model variable during fit, so model.endog can be shorter than df. Align
+    # the scatter x-values to exactly the rows that survived the fit — the
+    # fitted-values index carries the kept original row labels in endog order
+    # — otherwise ax.scatter raises "x and y must be the same size".
+    used_index: Any = result_obj.fittedvalues.index
+    x_values: Any = df.loc[used_index, payload.predictor].to_numpy()
+    x_grid, y_pred, ci_lower, ci_upper = _compute_fit_line(result_obj, df, payload.predictor)
+    fig, ax = _make_figure()
+    ax.scatter(x_values, y_values, s=18, alpha=0.6)
+    ax.plot(x_grid, y_pred, color="#d62728", linewidth=2.0, label="fit")
+    ax.fill_between(x_grid, ci_lower, ci_upper, color="#d62728", alpha=0.2, label="95% CI")
+    ax.set_xlabel(payload.predictor)
+    ax.set_ylabel("response")
+    _apply_title(ax, payload.title)
+    return fig
+
+
+def _compute_fit_line(
+    result_obj: Any, df: Any, predictor: str, n_points: int = 100
+) -> tuple[Any, Any, Any, Any]:
+    """Build the dense fit-line grid + 95 % mean-CI band for ``predictor``.
+
+    Holds every other predictor at its mean (or first observed value for
+    non-numeric columns — patsy will turn those into the reference level).
+    Returns ``(x_grid, y_pred, ci_lower, ci_upper)`` as numpy arrays.
+    """
+    import numpy as np
+    import pandas as pd  # type: ignore[reportMissingTypeStubs]
+
+    x_values: Any = df[predictor].to_numpy()
+    x_min: float = float(np.min(x_values))
+    x_max: float = float(np.max(x_values))
+    x_grid: Any = np.linspace(x_min, x_max, n_points)
+    # Build the prediction frame fresh from the predictor grid so it always
+    # has exactly n_points rows — slicing it from df (df.iloc[:n_points])
+    # would yield fewer rows than x_grid whenever len(df) < n_points and the
+    # column assignment would raise a length-mismatch ValueError. Hold each
+    # non-target column at its mean (numeric) or first value (non-numeric —
+    # patsy handles factor refs).
+    grid_df: Any = pd.DataFrame({predictor: x_grid})
+    for col in df.columns:
+        if col == predictor:
+            continue
+        if _is_numeric_pandas_dtype(df[col]):
+            grid_df[col] = float(df[col].mean())
+        else:
+            grid_df[col] = df[col].iloc[0]
+    pred: Any = result_obj.get_prediction(grid_df).summary_frame()
+    return (
+        x_grid,
+        pred["mean"].to_numpy(),
+        pred["mean_ci_lower"].to_numpy(),
+        pred["mean_ci_upper"].to_numpy(),
+    )
+
+
+ResidualDiagnosticKind = Literal["resid_vs_fitted", "qq", "scale_location", "all"]
+
+
+class ResidualDiagnosticInput(BaseModel):
+    """Inputs for ``residual_diagnostic``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model_name: str = Field(..., description="Registered OLS model handle.")
+    kind: ResidualDiagnosticKind = Field(
+        default="all",
+        description=(
+            "Which diagnostic panel to render: 'resid_vs_fitted', 'qq', "
+            "'scale_location', or 'all' (2×2 grid with the four canonical "
+            "OLS diagnostics)."
+        ),
+    )
+    title: str | None = Field(default=None, description="Optional chart title.")
+
+
+def residual_diagnostic(payload: ResidualDiagnosticInput) -> dict[str, Any]:
+    """Render OLS residual diagnostics — residuals-vs-fitted, Q-Q,
+    scale-location, residuals-vs-leverage (Cook's distance)."""
+    entry = session.get_model(payload.model_name)
+    if entry is None:
+        known = sorted(session.get_models().keys())
+        return build_error(
+            type="model_not_found",
+            message=f"No model named {payload.model_name!r} registered.",
+            hint=f"Known model names: {known}." if known else "Registry is empty.",
+        )
+    if entry.kind != "ols":
+        return build_error(
+            type="regression_diagnostics_ols_only",
+            message=(
+                f"regression_line/residual_diagnostic require OLS; "
+                f"{payload.model_name} is kind={entry.kind}."
+            ),
+            hint="These plots are only meaningful for linear models. Use plot() for other kinds.",
+        )
+    fig = _build_residual_diagnostic_figure(entry, payload)
+    out = render_to_base64(fig)
+    out["model_name"] = payload.model_name
+    out["plot_kind"] = payload.kind
+    _record_residual_diagnostic(payload, entry, out)
+    return out
+
+
+def _build_residual_diagnostic_figure(entry: Any, payload: ResidualDiagnosticInput) -> Any:
+    """Build (without rendering) the residual-diagnostic figure for ``payload.kind``.
+
+    Factored out so tests can introspect axis counts and overlay lines
+    without going through the PNG-encode path.
+    """
+    from matplotlib.figure import Figure
+
+    result_obj: Any = entry._result  # type: ignore[reportPrivateUsage]
+    fitted, resid, standardized = _residual_series(result_obj)
+    if payload.kind == "all":
+        fig = Figure(figsize=(12.0, 9.0), dpi=_DPI)
+        ax_rf = fig.add_subplot(2, 2, 1)
+        ax_qq = fig.add_subplot(2, 2, 2)
+        ax_sl = fig.add_subplot(2, 2, 3)
+        ax_lv = fig.add_subplot(2, 2, 4)
+        for ax in (ax_rf, ax_qq, ax_sl, ax_lv):
+            _apply_style(fig, ax)
+        _render_resid_vs_fitted(ax_rf, fitted, resid)
+        _render_qq(ax_qq, resid)
+        _render_scale_location(ax_sl, fitted, standardized)
+        _render_residuals_vs_leverage(ax_lv, result_obj, standardized)
+        _apply_title(ax_rf, payload.title)
+        fig.tight_layout()
+        return fig
+    fig = Figure(figsize=_FIGSIZE, dpi=_DPI)
+    ax = fig.add_subplot(111)
+    _apply_style(fig, ax)
+    if payload.kind == "resid_vs_fitted":
+        _render_resid_vs_fitted(ax, fitted, resid)
+    elif payload.kind == "qq":
+        _render_qq(ax, resid)
+    else:  # scale_location
+        _render_scale_location(ax, fitted, standardized)
+    _apply_title(ax, payload.title)
+    return fig
+
+
+def _residual_series(result_obj: Any) -> tuple[Any, Any, Any]:
+    """Pull ``fitted``, ``resid``, and ``standardized_resid`` from a fitted OLS."""
+    import numpy as np
+
+    fitted: Any = np.asarray(result_obj.fittedvalues)
+    resid: Any = np.asarray(result_obj.resid)
+    standardized: Any = np.asarray(result_obj.get_influence().resid_studentized_internal)
+    return fitted, resid, standardized
+
+
+def _lowess_smoother(y: Any, x: Any, frac: float = 0.6) -> Any:
+    """Untyped wrapper around statsmodels' ``lowess`` smoother.
+
+    statsmodels has no type stubs — wrapping the call here keeps the
+    untyped surface area contained to one helper and lets strict pyright
+    pass on every site that uses LOWESS.
+    """
+    import statsmodels.nonparametric.smoothers_lowess as _smoothers  # type: ignore[reportMissingTypeStubs]
+
+    mod: Any = _smoothers
+    return mod.lowess(y, x, frac=frac, return_sorted=True)
+
+
+def _render_resid_vs_fitted(ax: Any, fitted: Any, resid: Any) -> None:
+    """Residuals-vs-fitted scatter with horizontal y=0 line + LOWESS overlay."""
+    import numpy as np
+
+    ax.scatter(fitted, resid, s=18, alpha=0.6)
+    ax.axhline(0.0, color="#666666", linestyle="--", linewidth=1.0)
+    lo: Any = _lowess_smoother(np.asarray(resid), np.asarray(fitted))
+    ax.plot(lo[:, 0], lo[:, 1], color="#d62728", linewidth=2.0)
+    ax.set_xlabel("Fitted values")
+    ax.set_ylabel("Residuals")
+
+
+def _render_qq(ax: Any, resid: Any) -> None:
+    """Normal Q-Q plot of residuals via ``scipy.stats.probplot``."""
+    from scipy import stats as _stats  # type: ignore[reportMissingTypeStubs]
+
+    stats_mod: Any = _stats
+    stats_mod.probplot(resid, plot=ax)
+
+
+def _render_scale_location(ax: Any, fitted: Any, standardized: Any) -> None:
+    """sqrt(|standardized residuals|) vs fitted + LOWESS overlay."""
+    import numpy as np
+
+    sqrt_abs: Any = np.sqrt(np.abs(standardized))
+    ax.scatter(fitted, sqrt_abs, s=18, alpha=0.6)
+    lo: Any = _lowess_smoother(sqrt_abs, np.asarray(fitted))
+    ax.plot(lo[:, 0], lo[:, 1], color="#d62728", linewidth=2.0)
+    ax.set_xlabel("Fitted values")
+    ax.set_ylabel("sqrt(|standardized residuals|)")
+
+
+def _render_residuals_vs_leverage(ax: Any, result_obj: Any, standardized: Any) -> None:
+    """Residuals-vs-leverage scatter with Cook's distance reference contours.
+
+    Pulls leverage from ``hat_matrix_diag`` and Cook's distance from
+    ``get_influence().cooks_distance[0]`` (see statsmodels' ``OLSResults``).
+    Overlays ± reference contours at D = 0.5 and D = 1.0 — Cook &
+    Weisberg's rule-of-thumb for "concerning" influence — using the
+    standard relation ``D = std_resid² · h/((1-h)·p)``.
+    """
+    import numpy as np
+
+    influence: Any = result_obj.get_influence()
+    leverage: Any = np.asarray(influence.hat_matrix_diag)
+    ax.scatter(leverage, standardized, s=18, alpha=0.6)
+    ax.axhline(0.0, color="#666666", linestyle="--", linewidth=1.0)
+    ax.set_xlabel("Leverage")
+    ax.set_ylabel("Standardized residuals")
+    p = int(result_obj.df_model) + 1
+    # Cook's distance reference contours. Identity:
+    #     D = std_resid^2 * h / ((1-h) * p)
+    # solved for |std_resid|:
+    #     |std_resid| = sqrt(D * p * (1-h) / h)
+    # The leverage grid is clamped to ``(0, 1)`` so the formula is finite.
+    lev_max = float(np.max(leverage)) * 1.05
+    lev_grid: Any = np.linspace(
+        max(float(np.min(leverage)), 1e-4),
+        min(lev_max, 1.0 - 1e-9),
+        100,
+    )
+    for d_ref in (0.5, 1.0):
+        _, boundary_pos, boundary_neg = _cooks_distance_contour(d_ref, lev_grid, p)
+        ax.plot(lev_grid, boundary_pos, color="#aaaaaa", linestyle=":", linewidth=1.0)
+        ax.plot(lev_grid, boundary_neg, color="#aaaaaa", linestyle=":", linewidth=1.0)
+
+
+def _cooks_distance_contour(d_ref: float, lev_grid: Any, p: int) -> tuple[Any, Any, Any]:
+    """Return ``(lev_grid, +|std_resid|, -|std_resid|)`` for Cook's ``D = d_ref``.
+
+    Solves the canonical identity ``D = std_resid^2 * h / ((1-h) * p)`` for
+    ``|std_resid|`` at every point of ``lev_grid``. Caller is expected to
+    pre-clamp ``lev_grid`` to ``(0, 1)`` so the divisor stays finite.
+    """
+    import numpy as np
+
+    boundary: Any = np.sqrt(d_ref * p * (1.0 - lev_grid) / lev_grid)
+    return lev_grid, boundary, -boundary
+
+
+def _record_residual_diagnostic(
+    payload: ResidualDiagnosticInput, entry: Any, result: dict[str, Any]
+) -> None:
+    """Append markdown + code cell for a successful residual_diagnostic call.
+
+    The emitted cell varies by ``payload.kind``. Each branch transliterates
+    the matching ``_render_*`` helper so the replayed notebook produces the
+    same panel(s) the live tool returned. ``kind="all"`` lays out a 2×2
+    grid; the singleton kinds emit a single-axes figure.
+    """
+    if not result.get("ok"):
+        return
+    md = f"### Residual diagnostic ({payload.kind}) for `{payload.model_name}`"
+    code = _residual_diagnostic_code(payload.model_name, payload.kind)
+    get_recorder().record(markdown=md, code=code, tool_name="residual_diagnostic")
+
+
+_RESID_PREAMBLE = (
+    "import matplotlib.pyplot as plt\n"
+    "import numpy as np\n"
+    "from scipy import stats as _stats\n"
+    "import statsmodels.nonparametric.smoothers_lowess as _lo\n"
+)
+
+
+def _resid_series_block(model: str) -> str:
+    """Shared block that pulls fitted / resid / standardized series."""
+    return (
+        f"_fitted = np.asarray({model}.fittedvalues)\n"
+        f"_resid = np.asarray({model}.resid)\n"
+        f"_infl = {model}.get_influence()\n"
+        f"_std_resid = np.asarray(_infl.resid_studentized_internal)\n"
+    )
+
+
+def _resid_vs_fitted_block(ax: str = "ax") -> str:
+    """Code that renders the residuals-vs-fitted panel into ``ax``."""
+    return (
+        f"{ax}.scatter(_fitted, _resid, s=18, alpha=0.6)\n"
+        f"{ax}.axhline(0.0, color='#666666', linestyle='--', linewidth=1.0)\n"
+        "_smoothed = _lo.lowess(_resid, _fitted, frac=0.6, return_sorted=True)\n"
+        f"{ax}.plot(_smoothed[:, 0], _smoothed[:, 1], color='#d62728', linewidth=2.0)\n"
+        f"{ax}.set_xlabel('Fitted values')\n"
+        f"{ax}.set_ylabel('Residuals')\n"
+    )
+
+
+def _qq_block(ax: str = "ax") -> str:
+    """Code that renders the Q-Q panel into ``ax`` via probplot."""
+    return f"_stats.probplot(_resid, plot={ax})\n"
+
+
+def _scale_location_block(ax: str = "ax") -> str:
+    """Code that renders the scale-location panel into ``ax``."""
+    return (
+        "_sqrt_abs = np.sqrt(np.abs(_std_resid))\n"
+        f"{ax}.scatter(_fitted, _sqrt_abs, s=18, alpha=0.6)\n"
+        "_smoothed = _lo.lowess(_sqrt_abs, _fitted, frac=0.6, return_sorted=True)\n"
+        f"{ax}.plot(_smoothed[:, 0], _smoothed[:, 1], color='#d62728', linewidth=2.0)\n"
+        f"{ax}.set_xlabel('Fitted values')\n"
+        f"{ax}.set_ylabel('sqrt(|standardized residuals|)')\n"
+    )
+
+
+def _residuals_vs_leverage_block(model: str, ax: str = "ax") -> str:
+    """Code that renders the residuals-vs-leverage panel + Cook's contours."""
+    return (
+        "_lev = np.asarray(_infl.hat_matrix_diag)\n"
+        f"{ax}.scatter(_lev, _std_resid, s=18, alpha=0.6)\n"
+        f"{ax}.axhline(0.0, color='#666666', linestyle='--', linewidth=1.0)\n"
+        f"{ax}.set_xlabel('Leverage')\n"
+        f"{ax}.set_ylabel('Standardized residuals')\n"
+        f"_p = int({model}.df_model) + 1\n"
+        "_lev_max = float(np.max(_lev)) * 1.05\n"
+        "_lev_grid = np.linspace(max(float(np.min(_lev)), 1e-4), "
+        "min(_lev_max, 1.0 - 1e-9), 100)\n"
+        "for _d_ref in (0.5, 1.0):\n"
+        "    _boundary = np.sqrt(_d_ref * _p * (1.0 - _lev_grid) / _lev_grid)\n"
+        f"    {ax}.plot(_lev_grid, _boundary, color='#aaaaaa', "
+        "linestyle=':', linewidth=1.0)\n"
+        f"    {ax}.plot(_lev_grid, -_boundary, color='#aaaaaa', "
+        "linestyle=':', linewidth=1.0)\n"
+    )
+
+
+def _residual_diagnostic_code(model: str, kind: str) -> str:
+    """Dispatch on ``kind`` and return the full cell source for that panel."""
+    body = _RESID_PREAMBLE + _resid_series_block(model)
+    if kind == "all":
+        body += (
+            "fig, axes = plt.subplots(2, 2, figsize=(12, 9))\n"
+            "ax_rf, ax_qq, ax_sl, ax_lv = axes[0, 0], axes[0, 1], axes[1, 0], axes[1, 1]\n"
+            + _resid_vs_fitted_block("ax_rf")
+            + _qq_block("ax_qq")
+            + _scale_location_block("ax_sl")
+            + _residuals_vs_leverage_block(model, "ax_lv")
+            + "fig.tight_layout()\n"
+            "plt.show()"
+        )
+        return body
+    body += "fig, ax = plt.subplots(figsize=(8, 6))\n"
+    if kind == "resid_vs_fitted":
+        body += _resid_vs_fitted_block("ax")
+    elif kind == "qq":
+        body += _qq_block("ax")
+    elif kind == "scale_location":
+        body += _scale_location_block("ax")
+    body += "plt.show()"
+    return body
+
+
+def _record_regression_line(
+    payload: RegressionLineInput, entry: Any, result: dict[str, Any]
+) -> None:
+    """Append markdown + code cell for a successful regression_line call.
+
+    Mirrors ``_compute_fit_line`` + ``_build_regression_line_figure`` so
+    the re-executed cell produces a faithful plot: a 100-point linspace
+    over the predictor's observed range, every other column held at its
+    column-wise mean (numeric) or first observed value (non-numeric),
+    ``get_prediction(...).summary_frame()`` for the band, ``fill_between``
+    for the 95 % CI ribbon.
+    """
+    if not result.get("ok"):
+        return
+    m = payload.model_name
+    pred = payload.predictor
+    md = f"### Regression line for `{m}` on predictor `{pred}`"
+    code = (
+        "import matplotlib.pyplot as plt\n"
+        "import numpy as np\n"
+        "import pandas as pd\n"
+        f'{m}_df = con.sql("SELECT * FROM {entry.fitted_on_dataset}").df()\n'
+        f"_x = {m}_df['{pred}']\n"
+        f"_x_grid = np.linspace(float(_x.min()), float(_x.max()), 100)\n"
+        f"_grid = pd.DataFrame({{'{pred}': _x_grid}})\n"
+        f"for _col in {m}_df.columns:\n"
+        f"    if _col == '{pred}':\n"
+        "        continue\n"
+        f"    _series = {m}_df[_col]\n"
+        "    if pd.api.types.is_numeric_dtype(_series):\n"
+        "        _grid[_col] = float(_series.mean())\n"
+        "    else:\n"
+        "        _grid[_col] = _series.iloc[0]\n"
+        f"_pred = {m}.get_prediction(_grid).summary_frame()\n"
+        "fig, ax = plt.subplots(figsize=(8, 6))\n"
+        f"ax.scatter(_x, {m}.model.endog, s=18, alpha=0.6)\n"
+        "ax.plot(_x_grid, _pred['mean'], color='#d62728', linewidth=2.0)\n"
+        "ax.fill_between(_x_grid, _pred['mean_ci_lower'], _pred['mean_ci_upper'], "
+        "color='#d62728', alpha=0.2)\n"
+        f"ax.set_xlabel('{pred}')\n"
+        "ax.set_ylabel('response')\n"
+        "plt.show()"
+    )
+    get_recorder().record(markdown=md, code=code, tool_name="regression_line")
+
+
+def _is_numeric_pandas_dtype(series: Any) -> bool:
+    """True when a pandas Series has a numeric dtype."""
+    import pandas as _pd  # type: ignore[reportMissingTypeStubs]
+
+    pd_mod: Any = _pd
+    return bool(pd_mod.api.types.is_numeric_dtype(series))

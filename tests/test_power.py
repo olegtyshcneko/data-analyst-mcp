@@ -1,0 +1,637 @@
+"""Tests for the ``power_analysis`` tool.
+
+Numeric expected values come from statsmodels reference computations
+(see the helper notebook commented inline) and are pinned to ≥4 decimal
+places per SPEC §3.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+
+# === shared ===
+
+
+def test_power_analysis_zero_unknowns_returns_invalid_inputs(call_tool: Any) -> None:
+    """All three of effect_size/n/power provided → invalid_inputs."""
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_sample_t",
+            "effect_size": 0.5,
+            "n": 64,
+            "power": 0.8,
+        },
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "invalid_inputs"
+
+
+def test_power_analysis_recorder_writes_markdown_code_pair_on_success(call_tool: Any) -> None:
+    """A successful power_analysis call appends exactly one markdown+code cell pair."""
+    from data_analyst_mcp.recorder import get_recorder
+
+    assert get_recorder().cells == []
+    r = call_tool(
+        "power_analysis",
+        {
+            "test": "two_sample_t",
+            "effect_size": 0.5,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert r["ok"] is True
+    cells = get_recorder().cells
+    assert len(cells) == 2
+    md, code = cells
+    assert md["cell_type"] == "markdown"
+    assert code["cell_type"] == "code"
+    assert md["metadata"]["tool_name"] == "power_analysis"
+    assert code["metadata"]["tool_name"] == "power_analysis"
+    # The code cell must compile as Python.
+    compile(code["source"], "<power_analysis_cell>", "exec")
+
+
+def test_power_analysis_recorder_silent_on_error(call_tool: Any) -> None:
+    """Failures must not emit recorder cells."""
+    from data_analyst_mcp.recorder import get_recorder
+
+    r = call_tool(
+        "power_analysis",
+        {"test": "two_sample_t"},
+    )
+    assert r["ok"] is False
+    assert get_recorder().cells == []
+
+
+def test_power_analysis_solved_for_field_matches_omitted_input(call_tool: Any) -> None:
+    """The ``solved_for`` field always names the field the caller left None.
+
+    Three calls — each omitting a different one of {effect_size, n, power}
+    — must report the right ``solved_for`` value.
+    """
+    # Omit effect_size → solved_for = "effect_size".
+    r_es = call_tool(
+        "power_analysis",
+        {"test": "two_sample_t", "n": 64, "power": 0.8, "alpha": 0.05},
+    )
+    assert r_es["ok"] is True
+    assert r_es["solved_for"] == "effect_size"
+    # Omit n → solved_for = "n".
+    r_n = call_tool(
+        "power_analysis",
+        {"test": "two_sample_t", "effect_size": 0.5, "power": 0.8, "alpha": 0.05},
+    )
+    assert r_n["ok"] is True
+    assert r_n["solved_for"] == "n"
+    # Omit power → solved_for = "power".
+    r_pw = call_tool(
+        "power_analysis",
+        {"test": "two_sample_t", "effect_size": 0.5, "n": 64, "alpha": 0.05},
+    )
+    assert r_pw["ok"] is True
+    assert r_pw["solved_for"] == "power"
+
+
+def test_power_analysis_infeasible_solution_wraps_statsmodels_error(call_tool: Any) -> None:
+    """Effect-size of 0 is statsmodels' canonical infeasible case → typed error.
+
+    ``TTestIndPower().solve_power(effect_size=0, ...)`` raises
+    ``ValueError('Cannot detect an effect-size of 0. ...')`` — the tool
+    must wrap it in the typed ``infeasible_solution`` envelope rather than
+    let the generic ``internal`` fallback handle it.
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_sample_t",
+            "effect_size": 0.0,
+            "alpha": 0.05,
+            "power": 0.8,
+            # n omitted → statsmodels solves for n and raises on effect=0.
+        },
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "infeasible_solution"
+
+
+@pytest.mark.parametrize("ratio", [-1.0, 0.0])
+def test_power_analysis_nonpositive_ratio_returns_invalid_inputs(
+    call_tool: Any, ratio: float
+) -> None:
+    """``ratio<=0`` is nonsensical for the two-sample / two-proportion
+    families and previously leaked a ``ZeroDivisionError`` through the
+    generic ``internal`` envelope. The pydantic field now constrains
+    ``ratio>0`` so the validation layer returns a typed error.
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_sample_t",
+            "effect_size": 0.5,
+            "power": 0.8,
+            "ratio": ratio,
+            # n omitted → solve for n.
+        },
+    )
+    assert result["ok"] is False
+    # The exact error.type may be either ``invalid_inputs`` (if the server
+    # layer translates pydantic.ValidationError) or whatever the existing
+    # tool maps to. We only require the call NOT to return ``internal``
+    # (which means an unhandled exception leaked through).
+    assert result["error"]["type"] != "internal", result
+
+
+def test_power_analysis_two_unknowns_returns_invalid_inputs(call_tool: Any) -> None:
+    """Two of effect_size/n/power omitted → invalid_inputs."""
+    result = call_tool(
+        "power_analysis",
+        {"test": "two_sample_t", "effect_size": 0.5},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "invalid_inputs"
+
+
+# === two_sample_t ===
+
+
+def test_two_sample_t_known_answer_solves_n(call_tool: Any) -> None:
+    """Cohen's d=0.5, alpha=0.05, power=0.8, two-sided → n_1 ≈ 63.7656.
+
+    Reference (statsmodels):
+        from statsmodels.stats.power import TTestIndPower
+        TTestIndPower().solve_power(effect_size=0.5, alpha=0.05,
+            power=0.8, ratio=1.0, alternative='two-sided')
+        # → 63.76561058891169
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_sample_t",
+            "effect_size": 0.5,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    assert result["test"] == "two_sample_t"
+    assert result["solved_for"] == "n"
+    assert result["n"] == pytest.approx(63.7656, abs=1e-4)
+    assert result["effect_size_metric"] == "cohens_d"
+
+
+def test_two_sample_t_solve_for_n_reports_n_total_and_interpretation(call_tool: Any) -> None:
+    """Solving for n must echo n_total = ceil(n) + ceil(ratio*n) and an interpretation string."""
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_sample_t",
+            "effect_size": 0.5,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    # n is the per-group sample (statsmodels nobs1); n_total = ceil(n) + ceil(ratio*n)
+    assert "n_total" in result
+    assert result["n_total"] == 128  # ceil(63.7656) * 2 = 64 * 2
+    assert "interpretation" in result
+    assert "0.5" in result["interpretation"]
+    assert "80%" in result["interpretation"] or "0.8" in result["interpretation"]
+
+
+def test_two_sample_t_solves_for_effect_size(call_tool: Any) -> None:
+    """Given n=64, alpha=0.05, power=0.8 → effect_size ≈ 0.49907 (MDE).
+
+    Reference: TTestIndPower().solve_power(effect_size=None, nobs1=64,
+        alpha=0.05, power=0.8, ratio=1.0, alternative='two-sided')
+        → 0.499069177194551
+    """
+    result = call_tool(
+        "power_analysis",
+        {"test": "two_sample_t", "n": 64, "power": 0.8, "alpha": 0.05},
+    )
+    assert result["ok"] is True
+    assert result["solved_for"] == "effect_size"
+    assert result["effect_size"] == pytest.approx(0.4991, abs=1e-4)
+    assert result["n"] == 64
+    assert result["power"] == pytest.approx(0.8, abs=1e-12)
+    # Interpretation must report the *solved* MDE, not the placeholder.
+    assert "0.4991" in result["interpretation"] or "0.499" in result["interpretation"]
+    # When solving for effect_size, phrasing should highlight the MDE/detectability.
+    assert "detectable" in result["interpretation"].lower()
+
+
+def test_two_sample_t_solves_for_power(call_tool: Any) -> None:
+    """Given effect=0.5, n=64, alpha=0.05 → power ≈ 0.8015.
+
+    Reference: TTestIndPower().solve_power(effect_size=0.5, nobs1=64,
+        alpha=0.05, power=None, ratio=1.0, alternative='two-sided')
+        → 0.8014595579222542
+    """
+    result = call_tool(
+        "power_analysis",
+        {"test": "two_sample_t", "effect_size": 0.5, "n": 64, "alpha": 0.05},
+    )
+    assert result["ok"] is True
+    assert result["solved_for"] == "power"
+    assert result["power"] == pytest.approx(0.8015, abs=1e-4)
+    # Interpretation should mention achieved power.
+    assert "achieved power" in result["interpretation"].lower()
+
+
+def test_two_sample_t_ratio_respected(call_tool: Any) -> None:
+    """Asymmetric ratio=2 (n2 = 2*n1) shrinks n1 vs ratio=1.
+
+    Reference: TTestIndPower().solve_power(effect_size=0.5, alpha=0.05,
+        power=0.8, ratio=2.0, alternative='two-sided')
+        → 47.741920646056975
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_sample_t",
+            "effect_size": 0.5,
+            "power": 0.8,
+            "alpha": 0.05,
+            "ratio": 2.0,
+        },
+    )
+    assert result["ok"] is True
+    assert result["n"] == pytest.approx(47.7419, abs=1e-4)
+    # n_total = ceil(n1) + ceil(2 * n1) = 48 + 96 = 144
+    assert result["n_total"] == 144
+
+
+# === two_proportion_z ===
+
+
+def test_two_proportion_z_known_answer(call_tool: Any) -> None:
+    """Worked example from the proposal: p1=0.10, p2=0.12, power=0.8, alpha=0.05.
+
+    Cohen's h = proportion_effectsize(0.10, 0.12) ≈ -0.063982.
+    Reference: NormalIndPower().solve_power(effect_size=h, alpha=0.05,
+        power=0.8, ratio=1.0, alternative='two-sided')
+        → 3834.595739884031 (n per group, ignoring sign).
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_proportion_z",
+            "p1": 0.10,
+            "p2": 0.12,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    assert result["test"] == "two_proportion_z"
+    assert result["solved_for"] == "n"
+    assert result["effect_size_metric"] == "cohens_h"
+    # Cohen's h is reported in absolute value (sign-invariant for power).
+    assert result["effect_size"] == pytest.approx(0.063982, abs=1e-4)
+    assert result["n"] == pytest.approx(3834.5957, abs=1e-3)
+
+
+def test_two_proportion_z_p1_p2_auto_derives_effect_size(call_tool: Any) -> None:
+    """p1=0.50, p2=0.55 → h ≈ 0.10017 (auto-derived without explicit effect_size)."""
+    from statsmodels.stats.proportion import proportion_effectsize
+
+    expected_h = abs(float(proportion_effectsize(0.50, 0.55)))
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_proportion_z",
+            "p1": 0.50,
+            "p2": 0.55,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    assert result["effect_size"] == pytest.approx(expected_h, abs=1e-10)
+
+
+def test_two_proportion_z_explicit_effect_size_overrides_p1_p2(call_tool: Any) -> None:
+    """When effect_size is given alongside p1/p2, effect_size wins (no error)."""
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_proportion_z",
+            "effect_size": 0.30,
+            # p1+p2 here would yield h ≈ 0.064; the explicit 0.30 must win.
+            "p1": 0.10,
+            "p2": 0.12,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    assert result["effect_size"] == pytest.approx(0.30, abs=1e-12)
+    # n for h=0.30 is far smaller than for h=0.064 — sanity-check the dispatch.
+    assert result["n"] < 200
+
+
+def test_two_proportion_z_missing_proportions_returns_typed_error(call_tool: Any) -> None:
+    """Solving for n with neither effect_size nor (p1+p2) → missing_proportions.
+
+    Without an effect size in any form the solver has nothing to compute
+    against; we surface a typed error rather than letting statsmodels
+    raise ``need exactly one keyword that is None``.
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_proportion_z",
+            "power": 0.8,
+            "alpha": 0.05,
+            # n omitted (solving for n) AND no effect_size, no p1/p2 → error.
+        },
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "missing_proportions"
+
+
+def test_two_proportion_z_solves_for_effect_size_mde(call_tool: Any) -> None:
+    """Solving for the minimum detectable Cohen's h: given n + power + alpha
+    and no effect_size/p1/p2, the solver returns the MDE.
+
+    This is the same triple-None input shape the other four families accept
+    when effect_size is the unknown; two_proportion_z must not reject it with
+    missing_proportions just because no proportions were supplied.
+
+    Reference: NormalIndPower().solve_power(effect_size=None, nobs1=3000,
+        alpha=0.05, power=0.8, ratio=1.0, alternative='two-sided').
+    """
+    from statsmodels.stats.power import NormalIndPower
+
+    expected_h = float(
+        NormalIndPower().solve_power(
+            effect_size=None,
+            nobs1=3000,
+            alpha=0.05,
+            power=0.8,
+            ratio=1.0,
+            alternative="two-sided",
+        )
+    )
+    result = call_tool(
+        "power_analysis",
+        {"test": "two_proportion_z", "n": 3000, "power": 0.8, "alpha": 0.05},
+    )
+    assert result["ok"] is True, result
+    assert result["solved_for"] == "effect_size"
+    assert result["effect_size_metric"] == "cohens_h"
+    assert result["effect_size"] == pytest.approx(expected_h, abs=1e-6)
+
+
+def test_two_proportion_z_alternative_respected(call_tool: Any) -> None:
+    """Switching to alternative='larger' yields a different (smaller) n.
+
+    Two-sided requires a larger sample than a one-sided test for the same
+    effect / power. Reference: NormalIndPower.solve_power(h=abs(h(0.10,0.12)),
+    alpha=0.05, power=0.8, ratio=1.0, alternative='larger')
+    ≈ 3020.52 vs ≈ 3834.60 two-sided.
+    """
+    larger = call_tool(
+        "power_analysis",
+        {
+            "test": "two_proportion_z",
+            "p1": 0.10,
+            "p2": 0.12,
+            "power": 0.8,
+            "alpha": 0.05,
+            "alternative": "larger",
+        },
+    )
+    assert larger["ok"] is True
+    assert larger["alternative"] == "larger"
+    assert larger["n"] == pytest.approx(3020.5159, abs=1e-3)
+
+
+# === anova_oneway ===
+
+
+def test_anova_oneway_known_answer(call_tool: Any) -> None:
+    """Cohen's f=0.25, k_groups=4, alpha=0.05, power=0.8 → total_n ≈ 178.397.
+
+    Reference: FTestAnovaPower().solve_power(effect_size=0.25, alpha=0.05,
+        power=0.8, k_groups=4) → 178.39709722701812.
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "anova_oneway",
+            "effect_size": 0.25,
+            "power": 0.8,
+            "alpha": 0.05,
+            "k_groups": 4,
+        },
+    )
+    assert result["ok"] is True
+    assert result["test"] == "anova_oneway"
+    assert result["solved_for"] == "n"
+    assert result["effect_size_metric"] == "cohens_f"
+    # statsmodels returns *total* n for ANOVA.
+    assert result["n"] == pytest.approx(178.3971, abs=1e-3)
+
+
+def test_anova_oneway_missing_k_groups_returns_typed_error(call_tool: Any) -> None:
+    """ANOVA without k_groups → missing_k_groups."""
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "anova_oneway",
+            "effect_size": 0.25,
+            "power": 0.8,
+            "alpha": 0.05,
+            # k_groups deliberately omitted
+        },
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "missing_k_groups"
+
+
+def test_anova_oneway_n_is_total_not_per_group(call_tool: Any) -> None:
+    """For ANOVA, ``n`` represents *total* across groups and is echoed accordingly.
+
+    The interpretation must say "total" so the agent doesn't misread n as
+    per-group (which it is for the t-test families).
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "anova_oneway",
+            "effect_size": 0.25,
+            "power": 0.8,
+            "alpha": 0.05,
+            "k_groups": 4,
+        },
+    )
+    assert result["ok"] is True
+    # Echo n_total (ceil of solved total n).
+    assert result["n_total"] == 179
+    # ANOVA must not echo n_total = ceil(n) * 2 like two-sample t.
+    assert result["n_total"] != 2 * 179
+    # The interpretation must mention "total" and "groups".
+    assert "total" in result["interpretation"].lower()
+    assert "group" in result["interpretation"].lower()
+
+
+def test_anova_oneway_omits_alternative_and_reports_cohens_f(call_tool: Any) -> None:
+    """F-test is two-sided by construction → no ``alternative`` field for ANOVA."""
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "anova_oneway",
+            "effect_size": 0.25,
+            "power": 0.8,
+            "alpha": 0.05,
+            "k_groups": 3,
+        },
+    )
+    assert result["ok"] is True
+    assert result["effect_size_metric"] == "cohens_f"
+    # ANOVA is two-sided F; do not echo `alternative` for it.
+    assert "alternative" not in result
+
+
+# === one_sample_t ===
+
+
+def test_one_sample_t_known_answer(call_tool: Any) -> None:
+    """d=0.5, alpha=0.05, power=0.8, two-sided → n ≈ 33.3671.
+
+    Reference: TTestPower().solve_power(effect_size=0.5, alpha=0.05,
+        power=0.8, alternative='two-sided') → 33.36713118431779.
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "one_sample_t",
+            "effect_size": 0.5,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    assert result["test"] == "one_sample_t"
+    assert result["solved_for"] == "n"
+    assert result["effect_size_metric"] == "cohens_d"
+    assert result["n"] == pytest.approx(33.3671, abs=1e-4)
+    # one-sample → no n_total (n IS the total).
+    assert "n_total" not in result
+
+
+def test_one_sample_t_alternative_respected(call_tool: Any) -> None:
+    """alternative='larger' yields a smaller n than two-sided for the same d.
+
+    Reference: TTestPower().solve_power(effect_size=0.5, alpha=0.05,
+        power=0.8, alternative='larger') → 26.137503817059283.
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "one_sample_t",
+            "effect_size": 0.5,
+            "power": 0.8,
+            "alpha": 0.05,
+            "alternative": "larger",
+        },
+    )
+    assert result["ok"] is True
+    assert result["alternative"] == "larger"
+    assert result["n"] == pytest.approx(26.1375, abs=1e-4)
+
+
+def test_one_sample_t_default_solve_for_is_n(call_tool: Any) -> None:
+    """When only effect_size + power are supplied, solved_for = n (no n echoed back).
+
+    This is the proposal's slice 21 — clarifies that the default behavior
+    (omit n) corresponds to "compute the required sample size".
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "one_sample_t",
+            "effect_size": 0.4,
+            "power": 0.9,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    assert result["solved_for"] == "n"
+    # The returned n must be strictly > 0 — the actual solver did the work.
+    assert result["n"] > 0
+    # Echoed inputs unchanged.
+    assert result["effect_size"] == pytest.approx(0.4, abs=1e-12)
+    assert result["power"] == pytest.approx(0.9, abs=1e-12)
+
+
+# === paired_t ===
+
+
+def test_paired_t_known_answer(call_tool: Any) -> None:
+    """Paired-t shares the TTestPower solver: d=0.5, alpha=0.05, power=0.8
+    → n ≈ 33.3671 (the same as one-sample on the same inputs)."""
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "paired_t",
+            "effect_size": 0.5,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    assert result["test"] == "paired_t"
+    assert result["solved_for"] == "n"
+    assert result["effect_size_metric"] == "cohens_d"
+    assert result["n"] == pytest.approx(33.3671, abs=1e-4)
+
+
+def test_paired_t_shares_solver_with_one_sample_t(call_tool: Any) -> None:
+    """Same effect_size/alpha/power on one_sample_t and paired_t yields the same n.
+
+    Paired-t is statistically just a one-sample t on the differences, so
+    statsmodels uses ``TTestPower`` for both. This characterization test
+    pins that contract.
+    """
+    one = call_tool(
+        "power_analysis",
+        {"test": "one_sample_t", "effect_size": 0.35, "power": 0.8, "alpha": 0.05},
+    )
+    paired = call_tool(
+        "power_analysis",
+        {"test": "paired_t", "effect_size": 0.35, "power": 0.8, "alpha": 0.05},
+    )
+    assert one["ok"] is True
+    assert paired["ok"] is True
+    assert paired["n"] == pytest.approx(one["n"], abs=1e-10)
+    # ``test`` field must distinguish them.
+    assert paired["test"] == "paired_t"
+    assert one["test"] == "one_sample_t"
+
+
+def test_paired_t_echoes_test_field_when_solving_for_effect_size(call_tool: Any) -> None:
+    """Even when solving for effect_size, ``test`` echoes ``paired_t``.
+
+    Pins the separate dispatch / interpretation path for the paired-t
+    family beyond the simple "solve for n" case (slice 24).
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "paired_t",
+            "n": 30,
+            "power": 0.8,
+            "alpha": 0.05,
+        },
+    )
+    assert result["ok"] is True
+    assert result["test"] == "paired_t"
+    assert result["solved_for"] == "effect_size"
+    assert "paired t" in result["interpretation"].lower()

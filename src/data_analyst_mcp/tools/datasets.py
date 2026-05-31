@@ -184,7 +184,11 @@ def describe_column(payload: DescribeColumnInput) -> dict[str, Any]:
         iqr = (p75 - p25) if (p25 is not None and p75 is not None) else 0.0
         result["iqr"] = iqr
         result["histogram"] = _histogram(con, table, quoted, bins=payload.bins)
-        result["outliers"] = _outliers(con, table, quoted, p25=p25, p75=p75)
+        from data_analyst_mcp.tools._outlier_helpers import iqr_outliers_sql
+
+        result["outliers"] = iqr_outliers_sql(
+            con, table, quoted, p25=p25, p75=p75, json_safe=_json_safe
+        )
     elif _is_temporal(col_meta["dtype"]):
         result.update(_temporal_describe(con, table, quoted))
     elif _is_string(col_meta["dtype"]):
@@ -334,36 +338,6 @@ def _categorical_describe(con: Any, table: str, quoted: str) -> dict[str, Any]:
         entropy -= p * math.log2(p)
     counts = [{"value": _json_safe(r[0]), "count": int(r[1])} for r in rows[:50]]
     return {"value_counts": counts, "entropy": entropy}
-
-
-def _outliers(con: Any, table: str, quoted: str, *, p25: Any, p75: Any) -> dict[str, Any]:
-    """IQR-rule outliers + z>3 outliers, with up to 5 example raw values."""
-    lo = p25 - 1.5 * (p75 - p25)
-    hi = p75 + 1.5 * (p75 - p25)
-    iqr_row = con.execute(
-        f"SELECT COUNT(*) FROM {table} WHERE {quoted} IS NOT NULL "
-        f"AND ({quoted} < {lo!r} OR {quoted} > {hi!r})"
-    ).fetchone()
-    assert iqr_row is not None
-    iqr_count = int(iqr_row[0])
-    z_row = con.execute(
-        f"""
-        WITH s AS (
-            SELECT AVG({quoted}) AS m, STDDEV_SAMP({quoted}) AS sd FROM {table}
-        )
-        SELECT COUNT(*) FROM {table}, s
-        WHERE {quoted} IS NOT NULL AND s.sd > 0
-          AND ABS(({quoted} - s.m) / s.sd) > 3
-        """
-    ).fetchone()
-    assert z_row is not None
-    z_count = int(z_row[0])
-    example_rows = con.execute(
-        f"SELECT {quoted} FROM {table} WHERE {quoted} IS NOT NULL "
-        f"AND ({quoted} < {lo!r} OR {quoted} > {hi!r}) LIMIT 5"
-    ).fetchall()
-    examples = [_json_safe(r[0]) for r in example_rows]
-    return {"iqr_count": iqr_count, "zscore_count": z_count, "examples": examples}
 
 
 def _histogram(con: Any, table: str, quoted: str, bins: int) -> dict[str, Any]:

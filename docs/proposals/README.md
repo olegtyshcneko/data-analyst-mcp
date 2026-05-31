@@ -11,8 +11,6 @@ acceptance criteria, ROADMAP impact).
 
 ## Current proposals
 
-No active proposals. The Phase 1 (`adjust_pvalues`), Phase 3 / 4
-(`analyze_missingness` v1 + v1.1 Little's MCAR), and Phase 5
-(`model_registry` — `list_models` + `predict` + `evaluate_model` plus the
-additive `fit_model(model_name=...)`) bundle has been folded into
-`docs/SPEC.md` and shipped. New ideas start as fresh proposal files here.
+No active proposals.
+
+The tier-1 feature bundle (`materialize_query`, `find_outliers`, `power_analysis`, `regression_line` + `residual_diagnostic`) shipped and was folded into `docs/SPEC.md` §5 (entries 5.5a, 5.6a, 5.10a, 5.12a, 5.12b). Per the convention above, the proposal files themselves were deleted once folded; the git history retains the design context.

@@ -23,6 +23,12 @@ class DatasetEntry:
     format: str
     rows: int
     columns: list[dict[str, str]]
+    # When a derived dataset (materialize_query) overwrites a file-backed
+    # entry, base_loader retains the original file loader as
+    # ``{"path", "format", "read_options"}`` so the recorder can re-create the
+    # base table before the derived SQL — which often self-references the same
+    # name (transform-in-place) — runs at notebook-replay time.
+    base_loader: dict[str, Any] | None = None
     registered_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -70,6 +76,7 @@ def register(
     format: str,
     rows: int,
     columns: list[dict[str, str]],
+    base_loader: dict[str, Any] | None = None,
 ) -> None:
     """Insert (or replace) a dataset entry under ``name``."""
     _datasets[name] = DatasetEntry(
@@ -78,6 +85,7 @@ def register(
         format=format,
         rows=rows,
         columns=list(columns),
+        base_loader=dict(base_loader) if base_loader is not None else None,
     )
 
 
@@ -135,6 +143,11 @@ def reset() -> None:
     in-memory state on the connection is left alone. Model entries are
     dropped alongside datasets — Python GC handles cleanup of the live
     statsmodels Results objects.
+
+    Derived datasets (``format == "derived"``) share this same cleanup path:
+    the DROP TABLE loop iterates every registered name regardless of format,
+    so a derived table created by ``materialize_query`` is dropped and its
+    registry entry cleared just like any file-backed dataset.
     """
     if _connection is not None:
         for name in list(_datasets.keys()):

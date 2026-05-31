@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.recorder import get_recorder
+from data_analyst_mcp.tools._sql_safety import contains_unsafe_semicolon, leading_keyword
 
 logger = logging.getLogger(__name__)
 
@@ -39,12 +40,6 @@ class QueryInput(BaseModel):
 _ALLOWED_LEADING_KEYWORDS = ("SELECT", "WITH", "DESCRIBE", "SHOW", "EXPLAIN", "PRAGMA")
 
 
-def _first_keyword(sql: str) -> str:
-    """Uppercase first token of ``sql`` (no comment stripping)."""
-    match = re.match(r"^\s*([A-Za-z_][A-Za-z0-9_]*)", sql)
-    return match.group(1).upper() if match else ""
-
-
 _LIMIT_PATTERN = re.compile(r"\bLIMIT\s+\d+", re.IGNORECASE)
 
 
@@ -54,26 +49,50 @@ def _has_explicit_limit(sql: str) -> bool:
 
 
 def _apply_limit(sql: str, limit: int) -> str:
-    """Append a ``LIMIT limit`` clause when none is present."""
+    """Append a ``LIMIT limit`` clause when none is present.
+
+    The clause goes on a fresh line so a trailing ``-- line comment`` in the
+    user's SQL doesn't swallow it (``SELECT ... -- c LIMIT 50`` would comment
+    the LIMIT out).
+    """
     stripped = sql.rstrip().rstrip(";")
-    return stripped + f" LIMIT {int(limit)}"
+    return stripped + f"\nLIMIT {int(limit)}"
 
 
 def _total_rows(con: Any, sql: str) -> int:
-    """Run a separate COUNT(*) over the original SQL (without auto-LIMIT)."""
+    """Run a separate COUNT(*) over the original SQL (without auto-LIMIT).
+
+    The wrapped SQL is bracketed by newlines so a trailing ``-- line
+    comment`` doesn't swallow the closing paren (``FROM (SELECT ... -- c)``
+    → the ``)`` is commented out → parser error).
+    """
     base = sql.rstrip().rstrip(";")
-    count_row = con.execute(f"SELECT COUNT(*) FROM ({base})").fetchone()
+    count_row = con.execute(f"SELECT COUNT(*) FROM (\n{base}\n)").fetchone()
     return int(count_row[0]) if count_row else 0
 
 
 def query(payload: QueryInput) -> dict[str, Any]:
     """Run a read-only SQL query through DuckDB with auto-LIMIT."""
-    first = _first_keyword(payload.sql)
+    first = leading_keyword(payload.sql)
     if first not in _ALLOWED_LEADING_KEYWORDS:
         return build_error(
             type="write_not_allowed",
             message=f"Statements starting with {first!r} are not allowed.",
             hint="Use SELECT / WITH / DESCRIBE / SHOW / EXPLAIN / PRAGMA show_tables.",
+        )
+    # Defence-in-depth against ``SELECT 1; CREATE TABLE evil ...``-style
+    # multi-statement injection. The leading-keyword check above only
+    # inspects the first token; DuckDB will execute every ``;``-separated
+    # statement that follows. ``contains_unsafe_semicolon`` allows benign
+    # ``;`` (inside comments / string literals / trailing whitespace).
+    if contains_unsafe_semicolon(payload.sql):
+        return build_error(
+            type="write_not_allowed",
+            message="Multi-statement SQL is not allowed.",
+            hint=(
+                "query accepts a single read-only statement. Remove any "
+                "embedded `;` followed by another statement."
+            ),
         )
 
     con = session.get_connection()

@@ -247,6 +247,111 @@ def test_emitted_notebook_with_fit_predict_evaluate_runs_via_nbconvert(tmp_path,
     )
 
 
+def test_emitted_notebook_replays_overwrite_of_file_backed_dataset(tmp_path, call_tool) -> None:
+    """materialize_query(overwrite=True) over a file-backed dataset replaces
+    its registry entry with a derived one whose SQL self-references the same
+    name. The emitted setup cell must still load the original file as the
+    base table first, otherwise the derived CREATE OR REPLACE TABLE has no
+    source at replay and nbconvert dies with
+    ``CatalogException: Table with name data does not exist``.
+    """
+    import os
+    import subprocess
+
+    import pandas as pd
+
+    df = pd.DataFrame({"a": [1, 2, 3]})
+    csv = tmp_path / "tiny.csv"
+    df.to_csv(csv, index=False)
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "data"})
+    assert r["ok"], r
+    # Transform-in-place: overwrite the file-backed `data` with a derived
+    # query that reads from `data` itself.
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT a * 10 AS a FROM data", "name": "data", "overwrite": True},
+    )
+    assert r["ok"], r
+
+    nb_path = tmp_path / "overwrite.ipynb"
+    r = call_tool("emit_notebook", {"path": str(nb_path)})
+    assert r["ok"], r
+
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "jupyter",
+            "nbconvert",
+            "--to",
+            "notebook",
+            "--execute",
+            "--inplace",
+            str(nb_path),
+            "--ExecutePreprocessor.timeout=120",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    assert result.returncode == 0, (
+        f"nbconvert failed:\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+    )
+
+
+def test_setup_cell_compiles_when_derived_dataset_sql_contains_triple_quotes() -> None:
+    """Derived datasets whose SQL contains ``\"\"\"`` (e.g. inside a block
+    comment) must not break the generated setup cell. Naive f-string
+    interpolation would terminate the host triple-quoted string early
+    and produce a SyntaxError; ``repr()`` escaping avoids it.
+    """
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import NotebookRecorder
+
+    session.reset()
+    # Register a derived dataset whose recorded SQL embeds a triple-quote.
+    session.register(
+        name="weird",
+        path="(query)",
+        read_options={"sql": 'SELECT 1 /* """ */ AS x'},
+        format="derived",
+        rows=1,
+        columns=[{"name": "x", "dtype": "INTEGER"}],
+    )
+
+    rec = NotebookRecorder()
+    setup_src = rec.to_notebook(include_setup=True).cells[0].source
+    # Currently this raises SyntaxError because the embedded ``"""``
+    # closes the host triple-quoted CREATE OR REPLACE TABLE string.
+    compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_compiles_when_file_dataset_path_contains_quotes(tmp_path) -> None:
+    """File-backed datasets whose ``path`` contains embedded triple-quotes
+    must still produce a syntactically valid setup cell. The legacy
+    interpolation embedded ``path`` directly inside ``\"\"\"...\"\"\"``,
+    so any embedded ``\"\"\"`` terminated the host literal early.
+    """
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import NotebookRecorder
+
+    session.reset()
+    weird_path = str(tmp_path / 'weird"""name.csv')
+    session.register(
+        name="weird",
+        path=weird_path,
+        read_options={},
+        format="csv",
+        rows=3,
+        columns=[{"name": "x", "dtype": "INTEGER"}],
+    )
+
+    rec = NotebookRecorder()
+    setup_src = rec.to_notebook(include_setup=True).cells[0].source
+    compile(setup_src, "<setup>", "exec")
+
+
 def test_emitted_notebook_hash_assert_fires_when_training_csv_is_mutated(
     tmp_path, call_tool
 ) -> None:
