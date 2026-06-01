@@ -1036,3 +1036,33 @@ def test_fit_model_logistic_separation_skips_registration_and_recorder(
     # A separated fit must not be registered and must not emit a notebook cell.
     assert "m_sep" not in session.get_models()
     assert get_recorder().cells == []
+
+
+class _StubLogitResult:
+    """Minimal stand-in for a statsmodels Logit Results, for _detect_logistic_separation.
+
+    The public fit_model API exposes no maxiter, and every natural non-converged
+    logistic fixture also exhibits the separation blow-up — so the convergence_failed
+    branch (and the non-finite-SE branch) are exercised here with constructed inputs.
+    """
+
+    def __init__(self, converged: bool, bse: Any, params: Any) -> None:
+        self.mle_retvals = {"converged": converged}
+        self.bse = np.asarray(bse, dtype=float)
+        self.params = np.asarray(params, dtype=float)
+
+
+def test_detect_logistic_separation_classifies_each_regime():
+    from data_analyst_mcp.tools.models import _detect_logistic_separation
+
+    # Converged → clean fit, no error.
+    assert _detect_logistic_separation(_StubLogitResult(True, [0.3, 0.4], [0.5, -0.2])) is None
+    # Not converged + blown-up SE → perfect_separation.
+    huge = _detect_logistic_separation(_StubLogitResult(False, [0.3, 5e5], [1.0, 90.0]))
+    assert huge is not None and huge["error"]["type"] == "perfect_separation"
+    # Not converged + non-finite SE → perfect_separation.
+    inf = _detect_logistic_separation(_StubLogitResult(False, [0.3, np.inf], [1.0, 2.0]))
+    assert inf is not None and inf["error"]["type"] == "perfect_separation"
+    # Not converged + small finite SE (no separation signature) → convergence_failed.
+    conv = _detect_logistic_separation(_StubLogitResult(False, [0.3, 0.4], [0.5, -0.2]))
+    assert conv is not None and conv["error"]["type"] == "convergence_failed"
