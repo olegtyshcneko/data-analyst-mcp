@@ -438,6 +438,20 @@ def _perfect_separation_error() -> dict[str, Any]:
     )
 
 
+def _logistic_convergence_error() -> dict[str, Any]:
+    """Structured error for a logistic MLE that failed to converge *without* the
+    coefficient/SE divergence signature of perfect separation."""
+    return build_error(
+        type="convergence_failed",
+        message="Logistic MLE did not converge.",
+        hint=(
+            "The optimizer did not converge, but without the coefficient/SE blow-up "
+            "of perfect separation. Check for near-collinear predictors or rescale "
+            "numeric covariates."
+        ),
+    )
+
+
 # Separation magnitude ceilings for the logistic returned-but-degenerate check.
 # Measured on statsmodels 0.14.6: a well-behaved logit's max |SE| was ~0.87,
 # while perfectly/quasi-separated fits returned |SE| >= 1e5. 1e3 sits in the
@@ -467,7 +481,7 @@ def _detect_logistic_separation(m: Any) -> dict[str, Any] | None:
     )
     if nonfinite or huge:
         return _perfect_separation_error()
-    return None
+    return _logistic_convergence_error()
 
 
 def _fit_logistic_or_error(smf: Any, payload: FitModelInput, df: Any) -> Any:
