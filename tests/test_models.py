@@ -984,3 +984,55 @@ def test_fit_model_logistic_missing_column_stays_formula_error(call_tool, load_d
     result = call_tool("fit_model", {"name": "logi", "formula": "y ~ nope", "kind": "logistic"})
     assert result["ok"] is False, result
     assert result["error"]["type"] == "formula_error"
+
+
+def _logistic_quasi_sep_df() -> pd.DataFrame:
+    """Quasi-complete separation: one overlapping point at x=4. fit() RETURNS
+    converged=False with max|SE| ~ 2.7e5."""
+    return pd.DataFrame(
+        {"y": [0, 0, 0, 1, 0, 1, 1, 1], "x": [1, 2, 3, 4, 4, 5, 6, 7]}
+    )
+
+
+def _logistic_categorical_sep_df() -> pd.DataFrame:
+    """A categorical level perfectly predicts the outcome. fit() RETURNS
+    converged=False with max|SE| ~ 4.6e6."""
+    return pd.DataFrame(
+        {"y": [0, 0, 1, 1, 1, 1], "g": ["a", "a", "a", "b", "b", "b"]}
+    )
+
+
+def test_fit_model_logistic_quasi_separation_returns_perfect_separation(
+    call_tool, load_df_into_session
+):
+    load_df_into_session("quasi", _logistic_quasi_sep_df())
+    result = call_tool("fit_model", {"name": "quasi", "formula": "y ~ x", "kind": "logistic"})
+    assert result["ok"] is False, result
+    assert result["error"]["type"] == "perfect_separation"
+
+
+def test_fit_model_logistic_categorical_perfect_predictor_returns_perfect_separation(
+    call_tool, load_df_into_session
+):
+    load_df_into_session("cat", _logistic_categorical_sep_df())
+    result = call_tool("fit_model", {"name": "cat", "formula": "y ~ C(g)", "kind": "logistic"})
+    assert result["ok"] is False, result
+    assert result["error"]["type"] == "perfect_separation"
+
+
+def test_fit_model_logistic_separation_skips_registration_and_recorder(
+    call_tool, load_df_into_session
+):
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("quasi", _logistic_quasi_sep_df())
+    result = call_tool(
+        "fit_model",
+        {"name": "quasi", "formula": "y ~ x", "kind": "logistic", "model_name": "m_sep"},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "perfect_separation"
+    # A separated fit must not be registered and must not emit a notebook cell.
+    assert "m_sep" not in session.get_models()
+    assert get_recorder().cells == []
