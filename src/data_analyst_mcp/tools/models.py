@@ -438,7 +438,7 @@ def _perfect_separation_error() -> dict[str, Any]:
     )
 
 
-def _fit_logistic_or_error(smf: Any, payload: Any, df: Any) -> Any:
+def _fit_logistic_or_error(smf: Any, payload: FitModelInput, df: Any) -> Any:
     """Fit a logistic model, returning the fitted Results OR a ``build_error`` dict.
 
     Two stages with distinct guards:
@@ -505,7 +505,7 @@ def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
     elif payload.kind == "logistic":
         logit_result = _fit_logistic_or_error(smf, payload, df)
         if isinstance(logit_result, dict):
-            return logit_result
+            return logit_result  # type: ignore[reportUnknownVariableType]
         m = logit_result
     else:
         try:
