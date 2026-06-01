@@ -938,3 +938,58 @@ def test_fit_model_negbin_matches_reference_suite(call_tool, load_df_into_sessio
                 key,
                 name,
             )
+
+
+# === Logistic perfect separation ===========================================
+# Fixtures + signatures verified on statsmodels 0.14.6; see
+# docs/superpowers/specs/2026-06-01-logistic-separation-design.md §5.0.
+
+
+def _logistic_complete_sep_df() -> pd.DataFrame:
+    """Complete separation: y is exactly determined by x. fit() RAISES LinAlgError."""
+    return pd.DataFrame(
+        {"y": [0, 0, 0, 0, 1, 1, 1, 1], "x": [1, 2, 3, 4, 5, 6, 7, 8]}
+    )
+
+
+def _logistic_perfect_collinear_df() -> pd.DataFrame:
+    """Perfectly collinear design (x2 == 2*x1), outcome NOT separated.
+
+    fit() RAISES LinAlgError too, but the design is rank-deficient (rank 2 of 3),
+    so it must be reported as formula_error, NOT perfect_separation.
+    """
+    rng = list(range(12))
+    return pd.DataFrame({"y": [0, 1] * 6, "x1": rng, "x2": [2 * v for v in rng]})
+
+
+def test_fit_model_logistic_complete_separation_returns_perfect_separation(
+    call_tool, load_df_into_session
+):
+    load_df_into_session("sep", _logistic_complete_sep_df())
+    result = call_tool("fit_model", {"name": "sep", "formula": "y ~ x", "kind": "logistic"})
+    assert result["ok"] is False, result
+    assert result["error"]["type"] == "perfect_separation"
+
+
+def test_fit_model_logistic_perfect_collinearity_is_formula_error_not_separation(
+    call_tool, load_df_into_session
+):
+    load_df_into_session("coll", _logistic_perfect_collinear_df())
+    result = call_tool(
+        "fit_model", {"name": "coll", "formula": "y ~ x1 + x2", "kind": "logistic"}
+    )
+    assert result["ok"] is False, result
+    # Rank-deficient design ⇒ collinearity, routed to formula_error.
+    assert result["error"]["type"] == "formula_error"
+    assert result["error"]["type"] != "perfect_separation"
+
+
+def test_fit_model_logistic_missing_column_stays_formula_error(
+    call_tool, load_df_into_session
+):
+    load_df_into_session("logi", _logistic_df())
+    result = call_tool(
+        "fit_model", {"name": "logi", "formula": "y ~ nope", "kind": "logistic"}
+    )
+    assert result["ok"] is False, result
+    assert result["error"]["type"] == "formula_error"
