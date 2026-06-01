@@ -474,11 +474,14 @@ def _detect_logistic_separation(m: Any) -> dict[str, Any] | None:
         return None
     bse: Any = np.asarray(m.bse, dtype=float)
     params: Any = np.asarray(m.params, dtype=float)
-    nonfinite = not bool(np.all(np.isfinite(bse)))
+    # Check non-finite first and short-circuit, so the magnitude test never
+    # runs ``np.nanmax`` on an all-NaN slice (which would emit a RuntimeWarning).
+    if not bool(np.all(np.isfinite(bse))):
+        return _perfect_separation_error()
     huge = bool(
         np.nanmax(np.abs(params)) > _SEP_COEF_CEILING or np.nanmax(np.abs(bse)) > _SEP_SE_CEILING
     )
-    if nonfinite or huge:
+    if huge:
         return _perfect_separation_error()
     return _logistic_convergence_error()
 
