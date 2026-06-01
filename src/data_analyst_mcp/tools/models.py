@@ -438,6 +438,38 @@ def _perfect_separation_error() -> dict[str, Any]:
     )
 
 
+# Separation magnitude ceilings for the logistic returned-but-degenerate check.
+# Measured on statsmodels 0.14.6: a well-behaved logit's max |SE| was ~0.87,
+# while perfectly/quasi-separated fits returned |SE| >= 1e5. 1e3 sits in the
+# wide empty gap between the two regimes.
+_SEP_SE_CEILING = 1e3
+_SEP_COEF_CEILING = 1e3
+
+
+def _detect_logistic_separation(m: Any) -> dict[str, Any] | None:
+    """Classify a *returned* logistic fit.
+
+    A logit that fails to converge AND shows the separation magnitude signature
+    (non-finite, or astronomically large, standard errors / coefficients) is
+    reported as ``perfect_separation``. A converged fit is clean (``None``).
+    """
+    import numpy as np
+
+    converged = bool(m.mle_retvals.get("converged", True))
+    if converged:
+        return None
+    bse: Any = np.asarray(m.bse, dtype=float)
+    params: Any = np.asarray(m.params, dtype=float)
+    nonfinite = not bool(np.all(np.isfinite(bse)))
+    huge = bool(
+        np.nanmax(np.abs(params)) > _SEP_COEF_CEILING
+        or np.nanmax(np.abs(bse)) > _SEP_SE_CEILING
+    )
+    if nonfinite or huge:
+        return _perfect_separation_error()
+    return None
+
+
 def _fit_logistic_or_error(smf: Any, payload: FitModelInput, df: Any) -> Any:
     """Fit a logistic model, returning the fitted Results OR a ``build_error`` dict.
 
@@ -472,6 +504,9 @@ def _fit_logistic_or_error(smf: Any, payload: FitModelInput, df: Any) -> Any:
         raise _FormulaError(f"perfectly collinear predictors: {exc}") from exc
     except Exception as exc:  # pragma: no cover - defensive: unexpected logit fit failure
         raise _FormulaError(str(exc)) from exc
+    degenerate = _detect_logistic_separation(m)
+    if degenerate is not None:
+        return degenerate
     return m
 
 
