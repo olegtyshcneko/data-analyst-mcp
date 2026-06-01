@@ -476,8 +476,7 @@ def _detect_logistic_separation(m: Any) -> dict[str, Any] | None:
     params: Any = np.asarray(m.params, dtype=float)
     nonfinite = not bool(np.all(np.isfinite(bse)))
     huge = bool(
-        np.nanmax(np.abs(params)) > _SEP_COEF_CEILING
-        or np.nanmax(np.abs(bse)) > _SEP_SE_CEILING
+        np.nanmax(np.abs(params)) > _SEP_COEF_CEILING or np.nanmax(np.abs(bse)) > _SEP_SE_CEILING
     )
     if nonfinite or huge:
         return _perfect_separation_error()

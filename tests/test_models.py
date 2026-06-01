@@ -989,17 +989,13 @@ def test_fit_model_logistic_missing_column_stays_formula_error(call_tool, load_d
 def _logistic_quasi_sep_df() -> pd.DataFrame:
     """Quasi-complete separation: one overlapping point at x=4. fit() RETURNS
     converged=False with max|SE| ~ 2.7e5."""
-    return pd.DataFrame(
-        {"y": [0, 0, 0, 1, 0, 1, 1, 1], "x": [1, 2, 3, 4, 4, 5, 6, 7]}
-    )
+    return pd.DataFrame({"y": [0, 0, 0, 1, 0, 1, 1, 1], "x": [1, 2, 3, 4, 4, 5, 6, 7]})
 
 
 def _logistic_categorical_sep_df() -> pd.DataFrame:
     """A categorical level perfectly predicts the outcome. fit() RETURNS
     converged=False with max|SE| ~ 4.6e6."""
-    return pd.DataFrame(
-        {"y": [0, 0, 1, 1, 1, 1], "g": ["a", "a", "a", "b", "b", "b"]}
-    )
+    return pd.DataFrame({"y": [0, 0, 1, 1, 1, 1], "g": ["a", "a", "a", "b", "b", "b"]})
 
 
 def test_fit_model_logistic_quasi_separation_returns_perfect_separation(
