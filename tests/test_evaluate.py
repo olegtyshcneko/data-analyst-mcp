@@ -132,11 +132,12 @@ def test_evaluate_brier_hand_computed(call_tool, load_df_into_session):
 
 def test_evaluate_confusion_matrix_at_threshold_05_hand_fixture(call_tool, load_df_into_session):
     """Slice 4: confusion matrix at threshold 0.5 on a 10-row hand fixture."""
-    # Build a logistic where predicted probabilities are deterministic given
-    # x. Use a clear linear separator so probabilities cluster at the ends.
+    # Strong (but not perfect) separator: the two innermost points overlap so
+    # the logit converges rather than diverging on perfect separation, while
+    # probabilities still cluster at the ends — most points classified correctly.
     df = pd.DataFrame(
         {
-            "y": [0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+            "y": [0, 0, 0, 0, 1, 0, 1, 1, 1, 1],
             "x": [-3.0, -2.0, -1.0, -0.5, -0.1, 0.1, 0.5, 1.0, 2.0, 3.0],
         }
     )
@@ -149,7 +150,7 @@ def test_evaluate_confusion_matrix_at_threshold_05_hand_fixture(call_tool, load_
     r = call_tool("evaluate_model", {"model_name": "m", "dataset": "ds"})
     assert r["ok"]
     cm = r["confusion_matrix"]
-    # Sanity: counts add up to 10, and the model is well separated.
+    # Sanity: counts add up to 10, and most points are classified correctly.
     assert cm["tp"] + cm["tn"] + cm["fp"] + cm["fn"] == 10
     assert cm["tp"] >= 4  # most positives correctly classified
     assert cm["tn"] >= 4  # most negatives correctly classified
@@ -233,7 +234,12 @@ def test_evaluate_logistic_with_continuous_outcome_returns_dtype_mismatch(
     """Slice 9: logistic with continuous outcome → outcome_dtype_mismatch."""
     train = pd.DataFrame({"y": [0.1, 0.2, 0.7, 0.9, 0.5], "x": [-1.0, -0.5, 0.5, 1.0, 0.0]})
     # Build a model on a binary dataset, then evaluate on this continuous one.
-    binary = pd.DataFrame({"y": [0, 0, 1, 1, 0], "x": [-1.0, -0.5, 0.5, 1.0, 0.0]})
+    # The binary set must overlap (not be perfectly separated) so the logit
+    # converges and the model registers — only then can the continuous-outcome
+    # evaluate reach the dtype-mismatch check.
+    binary = pd.DataFrame(
+        {"y": [0, 1, 0, 1, 0, 1, 0, 1], "x": [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0]}
+    )
     load_df_into_session("binary", binary)
     load_df_into_session("cont", train)
     call_tool(
@@ -326,7 +332,9 @@ def test_evaluate_tiny_dataset_auto_reduces_to_null_calibration(call_tool, load_
     rng = np.random.default_rng(0)
     n = 15  # too small for any bins
     x = rng.normal(0, 1, n)
-    y = (x > 0).astype(int)
+    # Add noise so y is not a deterministic step function of x (which would be
+    # perfectly separated and rejected); the logit must converge to register.
+    y = (x + rng.normal(0, 1, n) > 0).astype(int)
     df = pd.DataFrame({"y": y, "x": x})
     load_df_into_session("tiny", df)
     call_tool(

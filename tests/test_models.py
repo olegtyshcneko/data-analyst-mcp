@@ -938,3 +938,127 @@ def test_fit_model_negbin_matches_reference_suite(call_tool, load_df_into_sessio
                 key,
                 name,
             )
+
+
+# === Logistic perfect separation ===========================================
+# Fixtures + signatures verified on statsmodels 0.14.6; see
+# docs/superpowers/specs/2026-06-01-logistic-separation-design.md §5.0.
+
+
+def _logistic_complete_sep_df() -> pd.DataFrame:
+    """Complete separation: y is exactly determined by x. fit() RAISES LinAlgError."""
+    return pd.DataFrame({"y": [0, 0, 0, 0, 1, 1, 1, 1], "x": [1, 2, 3, 4, 5, 6, 7, 8]})
+
+
+def _logistic_perfect_collinear_df() -> pd.DataFrame:
+    """Perfectly collinear design (x2 == 2*x1), outcome NOT separated.
+
+    fit() RAISES LinAlgError too, but the design is rank-deficient (rank 2 of 3),
+    so it must be reported as formula_error, NOT perfect_separation.
+    """
+    rng = list(range(12))
+    return pd.DataFrame({"y": [0, 1] * 6, "x1": rng, "x2": [2 * v for v in rng]})
+
+
+def test_fit_model_logistic_complete_separation_returns_perfect_separation(
+    call_tool, load_df_into_session
+):
+    load_df_into_session("sep", _logistic_complete_sep_df())
+    result = call_tool("fit_model", {"name": "sep", "formula": "y ~ x", "kind": "logistic"})
+    assert result["ok"] is False, result
+    assert result["error"]["type"] == "perfect_separation"
+
+
+def test_fit_model_logistic_perfect_collinearity_is_formula_error_not_separation(
+    call_tool, load_df_into_session
+):
+    load_df_into_session("coll", _logistic_perfect_collinear_df())
+    result = call_tool("fit_model", {"name": "coll", "formula": "y ~ x1 + x2", "kind": "logistic"})
+    assert result["ok"] is False, result
+    # Rank-deficient design ⇒ collinearity, routed to formula_error (not perfect_separation).
+    assert result["error"]["type"] == "formula_error"
+
+
+def test_fit_model_logistic_missing_column_stays_formula_error(call_tool, load_df_into_session):
+    load_df_into_session("logi", _logistic_df())
+    result = call_tool("fit_model", {"name": "logi", "formula": "y ~ nope", "kind": "logistic"})
+    assert result["ok"] is False, result
+    assert result["error"]["type"] == "formula_error"
+
+
+def _logistic_quasi_sep_df() -> pd.DataFrame:
+    """Quasi-complete separation: one overlapping point at x=4. fit() RETURNS
+    converged=False with max|SE| ~ 2.7e5."""
+    return pd.DataFrame({"y": [0, 0, 0, 1, 0, 1, 1, 1], "x": [1, 2, 3, 4, 4, 5, 6, 7]})
+
+
+def _logistic_categorical_sep_df() -> pd.DataFrame:
+    """A categorical level perfectly predicts the outcome. fit() RETURNS
+    converged=False with max|SE| ~ 4.6e6."""
+    return pd.DataFrame({"y": [0, 0, 1, 1, 1, 1], "g": ["a", "a", "a", "b", "b", "b"]})
+
+
+def test_fit_model_logistic_quasi_separation_returns_perfect_separation(
+    call_tool, load_df_into_session
+):
+    load_df_into_session("quasi", _logistic_quasi_sep_df())
+    result = call_tool("fit_model", {"name": "quasi", "formula": "y ~ x", "kind": "logistic"})
+    assert result["ok"] is False, result
+    assert result["error"]["type"] == "perfect_separation"
+
+
+def test_fit_model_logistic_categorical_perfect_predictor_returns_perfect_separation(
+    call_tool, load_df_into_session
+):
+    load_df_into_session("cat", _logistic_categorical_sep_df())
+    result = call_tool("fit_model", {"name": "cat", "formula": "y ~ C(g)", "kind": "logistic"})
+    assert result["ok"] is False, result
+    assert result["error"]["type"] == "perfect_separation"
+
+
+def test_fit_model_logistic_separation_skips_registration_and_recorder(
+    call_tool, load_df_into_session
+):
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("quasi", _logistic_quasi_sep_df())
+    result = call_tool(
+        "fit_model",
+        {"name": "quasi", "formula": "y ~ x", "kind": "logistic", "model_name": "m_sep"},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "perfect_separation"
+    # A separated fit must not be registered and must not emit a notebook cell.
+    assert "m_sep" not in session.get_models()
+    assert get_recorder().cells == []
+
+
+class _StubLogitResult:
+    """Minimal stand-in for a statsmodels Logit Results, for _detect_logistic_separation.
+
+    The public fit_model API exposes no maxiter, and every natural non-converged
+    logistic fixture also exhibits the separation blow-up — so the convergence_failed
+    branch (and the non-finite-SE branch) are exercised here with constructed inputs.
+    """
+
+    def __init__(self, converged: bool, bse: Any, params: Any) -> None:
+        self.mle_retvals = {"converged": converged}
+        self.bse = np.asarray(bse, dtype=float)
+        self.params = np.asarray(params, dtype=float)
+
+
+def test_detect_logistic_separation_classifies_each_regime():
+    from data_analyst_mcp.tools.models import _detect_logistic_separation
+
+    # Converged → clean fit, no error.
+    assert _detect_logistic_separation(_StubLogitResult(True, [0.3, 0.4], [0.5, -0.2])) is None
+    # Not converged + blown-up SE → perfect_separation.
+    huge = _detect_logistic_separation(_StubLogitResult(False, [0.3, 5e5], [1.0, 90.0]))
+    assert huge is not None and huge["error"]["type"] == "perfect_separation"
+    # Not converged + non-finite SE → perfect_separation.
+    inf = _detect_logistic_separation(_StubLogitResult(False, [0.3, np.inf], [1.0, 2.0]))
+    assert inf is not None and inf["error"]["type"] == "perfect_separation"
+    # Not converged + small finite SE (no separation signature) → convergence_failed.
+    conv = _detect_logistic_separation(_StubLogitResult(False, [0.3, 0.4], [0.5, -0.2]))
+    assert conv is not None and conv["error"]["type"] == "convergence_failed"

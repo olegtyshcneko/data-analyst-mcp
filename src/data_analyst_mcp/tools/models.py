@@ -418,6 +418,113 @@ _NEGBIN_CONVERGENCE_HINT = (
     "fit; (3) numerical scale — center/scale numerics."
 )
 
+_PERFECT_SEPARATION_HINT = (
+    "Drop or collapse the predictor/level that perfectly predicts the outcome; "
+    "cross-tab the outcome against each categorical predictor to find it. "
+    "Penalized (Firth/L2) logistic — not yet offered by this server — is the "
+    "standard remedy."
+)
+
+
+def _perfect_separation_error() -> dict[str, Any]:
+    """Structured error for a logistic fit defeated by (quasi-)perfect separation."""
+    return build_error(
+        type="perfect_separation",
+        message=(
+            "Logistic fit failed: the outcome is perfectly (or quasi-perfectly) "
+            "separated by the predictors, so the maximum-likelihood estimates diverge."
+        ),
+        hint=_PERFECT_SEPARATION_HINT,
+    )
+
+
+def _logistic_convergence_error() -> dict[str, Any]:
+    """Structured error for a logistic MLE that failed to converge *without* the
+    coefficient/SE divergence signature of perfect separation."""
+    return build_error(
+        type="convergence_failed",
+        message="Logistic MLE did not converge.",
+        hint=(
+            "The optimizer did not converge, but without the coefficient/SE blow-up "
+            "of perfect separation. Check for near-collinear predictors or rescale "
+            "numeric covariates."
+        ),
+    )
+
+
+# Separation magnitude ceilings for the logistic returned-but-degenerate check.
+# Measured on statsmodels 0.14.6: a well-behaved logit's max |SE| was ~0.87,
+# while perfectly/quasi-separated fits returned |SE| >= 1e5. 1e3 sits in the
+# wide empty gap between the two regimes.
+_SEP_SE_CEILING = 1e3
+_SEP_COEF_CEILING = 1e3
+
+
+def _detect_logistic_separation(m: Any) -> dict[str, Any] | None:
+    """Classify a *returned* logistic fit.
+
+    A logit that fails to converge AND shows the separation magnitude signature
+    (non-finite, or astronomically large, standard errors / coefficients) is
+    reported as ``perfect_separation``. A converged fit is clean (``None``).
+    """
+    import numpy as np
+
+    converged = bool(m.mle_retvals.get("converged", True))
+    if converged:
+        return None
+    bse: Any = np.asarray(m.bse, dtype=float)
+    params: Any = np.asarray(m.params, dtype=float)
+    # Check non-finite first and short-circuit, so the magnitude test never
+    # runs ``np.nanmax`` on an all-NaN slice (which would emit a RuntimeWarning).
+    if not bool(np.all(np.isfinite(bse))):
+        return _perfect_separation_error()
+    huge = bool(
+        np.nanmax(np.abs(params)) > _SEP_COEF_CEILING or np.nanmax(np.abs(bse)) > _SEP_SE_CEILING
+    )
+    if huge:
+        return _perfect_separation_error()
+    return _logistic_convergence_error()
+
+
+def _fit_logistic_or_error(smf: Any, payload: FitModelInput, df: Any) -> Any:
+    """Fit a logistic model, returning the fitted Results OR a ``build_error`` dict.
+
+    Two stages with distinct guards:
+      * construction (``smf.logit``) — patsy builds the design matrix eagerly, so
+        formula / missing-column errors raise here as ``PatsyError`` / ``NameError``
+        and become ``formula_error``;
+      * fit (``.fit``) — a degenerate logit raises ``PerfectSeparationError`` or
+        ``LinAlgError``. A full-rank design means the MLE diverged → ``perfect_separation``;
+        a rank-deficient design means perfect collinearity → ``formula_error`` (so it is
+        not mislabeled).
+    """
+    import numpy as np
+    import patsy  # type: ignore[reportMissingTypeStubs]
+    from numpy.linalg import LinAlgError
+    from statsmodels.tools.sm_exceptions import (  # type: ignore[reportMissingTypeStubs]
+        PerfectSeparationError,
+    )
+
+    try:
+        model = smf.logit(payload.formula, data=df)
+    except (patsy.PatsyError, NameError) as exc:
+        raise _FormulaError(str(exc)) from exc
+    try:
+        m = model.fit(disp=0)
+    except (PerfectSeparationError, LinAlgError) as exc:
+        # Both signal a degenerate logit. Full-rank design ⇒ true separation;
+        # rank-deficient design ⇒ perfect collinearity (a formula problem).
+        exog: Any = np.asarray(model.exog)
+        if int(np.linalg.matrix_rank(exog)) == exog.shape[1]:
+            return _perfect_separation_error()
+        raise _FormulaError(f"perfectly collinear predictors: {exc}") from exc
+    except Exception as exc:  # pragma: no cover - defensive: unexpected logit fit failure
+        raise _FormulaError(str(exc)) from exc
+    degenerate = _detect_logistic_separation(m)
+    if degenerate is not None:
+        return degenerate
+    return m
+
 
 def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
     """Pick the right statsmodels entry point and translate failures."""
@@ -446,13 +553,16 @@ def _fit_dispatch(payload: FitModelInput, df: Any) -> dict[str, Any]:
                 message=f"Negative binomial MLE did not converge: {exc}",
                 hint=_NEGBIN_CONVERGENCE_HINT,
             )
+    elif payload.kind == "logistic":
+        logit_result = _fit_logistic_or_error(smf, payload, df)
+        if isinstance(logit_result, dict):
+            return logit_result  # type: ignore[reportUnknownVariableType]
+        m = logit_result
     else:
         try:
             if payload.kind == "ols":
                 cov_type = "HC3" if payload.robust else "nonrobust"
                 m = smf.ols(payload.formula, data=df).fit(cov_type=cov_type)
-            elif payload.kind == "logistic":
-                m = smf.logit(payload.formula, data=df).fit(disp=0)
             else:  # poisson
                 m = smf.poisson(payload.formula, data=df).fit(disp=0)
         except Exception as exc:

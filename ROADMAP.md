@@ -16,7 +16,6 @@ No active proposals (the tier-1 bundle closed the current cohort; see `docs/prop
 
 ## Statistics & modeling
 
-- **Logistic-separation handling.** `fit_model(kind="logistic")` currently emits a statsmodels warning when `PerfectSeparationError` is raised, and the response carries on with `NaN` standard errors. Should translate to a structured `{"error": {"type": "perfect_separation", "hint": "..."}}` and skip the diagnostic block. Surfaced in Phase 7.
 - **Mixed-effects models** (`MixedLM`). Currently only OLS / logistic / Poisson / negbin are supported. (The Poisson `overdispersion` warning now has an in-server remedy: `fit_model(kind="negbin")`.)
 - **Bayesian alternatives.** A `fit_bayesian` tool over a thin PyMC wrapper, for the cases where p-values aren't the right deliverable.
 - **Bootstrap CIs everywhere.** `compare_groups` and `correlate` could return bootstrap CIs alongside the parametric ones, with a `bootstrap_iters` knob.
