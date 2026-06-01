@@ -407,7 +407,7 @@ Single process, single DuckDB connection, single recorder. No network calls. No 
 ## Known gotchas
 
 - **`query` is read-only.** It accepts `SELECT` / `WITH` / `DESCRIBE` / `SHOW` / `EXPLAIN` / `PRAGMA show_tables` and rejects writes with `error.type = "write_not_allowed"`. To persist a join-derived table, use `materialize_query(sql=..., name=...)` — it registers the result as a first-class derived dataset that every other tool can target by name.
-- **Logistic regression with perfectly-separating predictors** raises a `statsmodels` warning rather than a structured error today. The fit still returns, but standard errors will be `NaN`. Tracked in `ROADMAP.md`.
+- **Logistic regression with (quasi-)perfectly-separating predictors** returns a structured `error.type = "perfect_separation"` instead of a fit: the maximum-likelihood estimates diverge, so no coefficients/diagnostics are produced and the model is not registered even if `model_name` was supplied. Perfect collinearity in the design is reported as `formula_error`; a non-converged logit without the divergence signature returns `convergence_failed`.
 - **Boolean response columns in `fit_model`.** Pandas' nullable `BooleanDtype` is coerced to `{0, 1}` numeric before being handed to statsmodels' `Logit`; plain Python booleans work too. Mixed `True` / `"yes"` strings are not.
 - **Datasets are in-process state.** Restarting Claude Desktop drops the registry. Re-`load_dataset` after a restart, or run the emitted notebook to rehydrate.
 - **Stdio only in v1.** No SSE, no HTTP. If you want to share one server across multiple clients, that's on the roadmap.
