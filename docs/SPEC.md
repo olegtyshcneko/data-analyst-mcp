@@ -434,6 +434,7 @@ Every tool follows this contract:
 - `kind: Literal["ols", "logistic", "poisson", "negbin"] = "ols"` — `negbin` is NB2 (variance = μ + α·μ²), the canonical remedy when a Poisson fit emits `overdispersion`.
 - `robust: bool = False` — for OLS, use HC3 standard errors. Rejected for `negbin` (`robust_not_supported`).
 - `model_name: str | None = None` — optional registry handle. Non-empty, no whitespace. When provided, the fitted result is stored in the session model registry for downstream `predict` / `evaluate_model` / `list_models` calls; duplicates → `model_name_collision`, invalid → `model_name_invalid`. When stored, the response echoes `"model_name": "..."`.
+- **Logistic separation/convergence:** for `kind="logistic"`, a perfectly or quasi-perfectly separated outcome returns `{"ok": false, "error": {"type": "perfect_separation", ...}}` — no `coefficients`/`fit`/`diagnostics`, and the model is not registered even if `model_name` was supplied. A logit that fails to converge *without* that coefficient/SE divergence signature returns `convergence_failed`. Perfect collinearity in the design is reported as `formula_error`, not separation.
 
 **Output**:
 - `coefficients`: list of `{name, estimate, std_err, t, p_value, ci_low, ci_high}`.
