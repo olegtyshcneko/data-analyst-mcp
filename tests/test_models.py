@@ -1062,3 +1062,30 @@ def test_detect_logistic_separation_classifies_each_regime():
     # Not converged + small finite SE (no separation signature) → convergence_failed.
     conv = _detect_logistic_separation(_StubLogitResult(False, [0.3, 0.4], [0.5, -0.2]))
     assert conv is not None and conv["error"]["type"] == "convergence_failed"
+    # Missing ``converged`` key → fail closed (treated as not converged); with
+    # clean small SEs that yields convergence_failed, matching the negbin gate.
+    missing = _StubLogitResult(True, [0.3, 0.4], [0.5, -0.2])
+    del missing.mle_retvals["converged"]
+    missing_result = _detect_logistic_separation(missing)
+    assert missing_result is not None and missing_result["error"]["type"] == "convergence_failed"
+
+
+def test_fit_logistic_unexpected_fit_error_returns_convergence_failed():
+    """A fit-stage exception that is neither separation nor collinearity is a
+    numerical problem → convergence_failed, never mislabeled formula_error."""
+    from data_analyst_mcp.tools.models import FitModelInput, _fit_logistic_or_error
+
+    class _BoomModel:
+        def fit(self, **_kwargs: Any) -> Any:
+            raise RuntimeError("unexpected solver explosion")
+
+    class _BoomSmf:
+        def logit(self, formula: str, data: Any) -> Any:
+            return _BoomModel()
+
+    payload = FitModelInput(name="ds", formula="y ~ x", kind="logistic")
+    result = _fit_logistic_or_error(
+        _BoomSmf(), payload, pd.DataFrame({"y": [0, 1], "x": [1.0, 2.0]})
+    )
+    assert isinstance(result, dict)
+    assert result["error"]["type"] == "convergence_failed"

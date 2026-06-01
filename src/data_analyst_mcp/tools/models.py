@@ -469,19 +469,19 @@ def _detect_logistic_separation(m: Any) -> dict[str, Any] | None:
     """
     import numpy as np
 
-    converged = bool(m.mle_retvals.get("converged", True))
+    # Fail closed on a missing ``converged`` key (matching the negbin gate in
+    # ``_fit_dispatch``): treat unknown convergence as not-converged so the
+    # magnitude check below still runs, rather than passing the fit as clean.
+    converged = bool(m.mle_retvals.get("converged", False))
     if converged:
         return None
     bse: Any = np.asarray(m.bse, dtype=float)
     params: Any = np.asarray(m.params, dtype=float)
     # Check non-finite first and short-circuit, so the magnitude test never
     # runs ``np.nanmax`` on an all-NaN slice (which would emit a RuntimeWarning).
-    if not bool(np.all(np.isfinite(bse))):
+    if not np.all(np.isfinite(bse)):
         return _perfect_separation_error()
-    huge = bool(
-        np.nanmax(np.abs(params)) > _SEP_COEF_CEILING or np.nanmax(np.abs(bse)) > _SEP_SE_CEILING
-    )
-    if huge:
+    if np.nanmax(np.abs(params)) > _SEP_COEF_CEILING or np.nanmax(np.abs(bse)) > _SEP_SE_CEILING:
         return _perfect_separation_error()
     return _logistic_convergence_error()
 
@@ -496,7 +496,8 @@ def _fit_logistic_or_error(smf: Any, payload: FitModelInput, df: Any) -> Any:
       * fit (``.fit``) — a degenerate logit raises ``PerfectSeparationError`` or
         ``LinAlgError``. A full-rank design means the MLE diverged → ``perfect_separation``;
         a rank-deficient design means perfect collinearity → ``formula_error`` (so it is
-        not mislabeled).
+        not mislabeled). Any other unexpected fit failure is a numerical problem →
+        ``convergence_failed`` (never ``formula_error``).
     """
     import numpy as np
     import patsy  # type: ignore[reportMissingTypeStubs]
@@ -518,8 +519,19 @@ def _fit_logistic_or_error(smf: Any, payload: FitModelInput, df: Any) -> Any:
         if int(np.linalg.matrix_rank(exog)) == exog.shape[1]:
             return _perfect_separation_error()
         raise _FormulaError(f"perfectly collinear predictors: {exc}") from exc
-    except Exception as exc:  # pragma: no cover - defensive: unexpected logit fit failure
-        raise _FormulaError(str(exc)) from exc
+    except Exception as exc:
+        # An unexpected statsmodels/scipy failure at the fit stage is a numerical
+        # problem, not a formula one (patsy already validated the formula at
+        # construction above). Mirror the negbin precedent and report
+        # convergence_failed rather than mislabeling it formula_error.
+        return build_error(
+            type="convergence_failed",
+            message=f"Logistic MLE did not converge: {exc}",
+            hint=(
+                "The optimizer raised an unexpected error. Check for near-collinear "
+                "predictors or rescale numeric covariates."
+            ),
+        )
     degenerate = _detect_logistic_separation(m)
     if degenerate is not None:
         return degenerate
