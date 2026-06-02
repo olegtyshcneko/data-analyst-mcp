@@ -10,12 +10,14 @@ artifacts) and must be byte-identical on every re-run.
 | `_build_messy.py` | `messy.csv` | `20260511` (single `random.Random`) |
 | `generate_synthetic_crm.py` | `synthetic_crm/{accounts,contacts,opportunities}.csv` | `20260511` (Python `random`, NumPy, and `Faker.seed`) |
 | Stanford CS109 public mirror | `titanic.csv` | downloaded once from `web.stanford.edu/class/archive/cs/cs109/cs109.1166/stuff/titanic.csv`; md5 `d288eb65a7142ed81be1fed8cca9d947` |
+| `_build_breast_cancer.py` | `breast_cancer.csv` | scikit-learn bundled WDBC (`sklearn.datasets.load_breast_cancer`) — static data, deterministic export |
 
-Run either generator directly to regenerate:
+Run any generator directly to regenerate:
 
 ```bash
 uv run python fixtures/_build_messy.py
 uv run python fixtures/generate_synthetic_crm.py
+uv run python fixtures/_build_breast_cancer.py
 ```
 
 ---
@@ -147,3 +149,65 @@ the SQL-quoting path in `query`.)
 - **Non-trivial column names.** Spaces and slashes force the `query`
   tool's identifier-quoting path to actually be exercised.
 - **Public domain.** Historical record; no licensing constraints.
+
+---
+
+## `breast_cancer.csv` — wide real-world reference dataset
+
+569 data rows + 1 header. 32 columns (30 numeric features + integer
+`target` + string `diagnosis`). The Wisconsin Diagnostic Breast Cancer
+(WDBC) set, exported verbatim from scikit-learn's bundled copy. It is the
+**high-dimensional counterpart to `titanic.csv`**: where titanic is a small
+real dataset with textbook-known univariate/bivariate answers, this one
+gives the multivariate tools a genuinely high-`k` manifold. The synthetic
+fixtures top out at 3 numeric columns, which never exercises the `k ≫ 2`
+covariance path in `find_outliers` (`mahalanobis` / `isolation_forest`).
+
+### Provenance
+
+scikit-learn is already a runtime dependency (Isolation Forest), so no new
+dependency is introduced. `load_breast_cancer` reads a static CSV shipped
+inside the wheel, so the export is fully deterministic given a fixed
+scikit-learn build. Originally the UCI WDBC dataset (Wolberg, Street,
+Mangasarian); BSD-compatible, no licensing constraints.
+
+### Columns
+
+10 `mean_*`, 10 `*_error`, and 10 `worst_*` features (radius, texture,
+perimeter, area, smoothness, compactness, concavity, concave_points,
+symmetry, fractal_dimension), plus:
+
+| Column | Type | Notes |
+|---|---|---|
+| `target` | int | scikit-learn label — **0 = malignant, 1 = benign** (counter-intuitive; spelled out in the generator's `TARGET_LABELS`) |
+| `diagnosis` | str | `"malignant"` / `"benign"`, derived from `target` for categorical group tests |
+
+### Transforms (deterministic)
+
+- Feature names sanitized: spaces → underscores (`mean radius` →
+  `mean_radius`) so each is a clean SQL identifier / patsy term.
+- `diagnosis` appended next to `target`.
+- Written with `DataFrame.to_csv(index=False, lineterminator="\n")` at full
+  float precision — byte-identical on every re-run (verified by the build
+  script's `_verify` shape/balance asserts; class balance is exactly
+  357 benign / 212 malignant).
+
+### Known facts (asserted by `evals/eval_outliers.py`)
+
+| Property | Value |
+|---|---|
+| Rows × cols | 569 × 32 |
+| Class balance | 357 benign (`target=1`) / 212 malignant (`target=0`) |
+| Max `mean_area` | 2501.0 (largest tumor — every outlier method surfaces it) |
+| Mahalanobis cutoff over the 10 `mean_*` features | χ²(df=10, 0.975) ≈ 20.48 |
+| Exactly-collinear column under `mahalanobis` | emits `covariance_singular`, falls back to the Moore-Penrose pseudoinverse |
+
+### Why this dataset
+
+- **High-`k` outlier coverage.** Mahalanobis over 10 columns and the
+  singular-covariance pseudoinverse fallback have no other fixture.
+- **Real, static, deterministic.** Bundled in scikit-learn; no download, no
+  seed, no drift.
+- **Strongly separable binary target.** A clean home for logistic fits that
+  actually converge with high pseudo-R² (contrast with the perfect-
+  separation guard exercised elsewhere).

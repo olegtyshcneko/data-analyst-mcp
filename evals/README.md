@@ -32,9 +32,13 @@ them as a separate step.
 | `eval_messy_csv.py` | 8 | one eval per planted issue in `fixtures/messy.csv` (BOM, header whitespace, mixed date formats, "N/A" revenue, duplicates, 78%-null email, IQR outliers, case-inconsistent country) |
 | `eval_stats.py` | 6 | `compare_groups` test selection (ANOVA/Kruskal/Mann-Whitney), `correlate`, `test_hypothesis` chi-square, `fit_model` logistic, assumption_checks always populated |
 | `eval_titanic.py` | 8 | real-world reference dataset (`fixtures/titanic.csv`): survival rate by Sex / Pclass, χ² Sex × Survived, Kruskal Fare ~ Pclass, logit `Survived ~ Sex + Age + C(Pclass)`, slash-in-column-name SQL quoting |
+| `eval_materialize.py` | 3 | `materialize_query` persists a derived dataset; downstream tools target it by name; notebook round-trip rehydrates it |
+| `eval_outliers.py` | 7 | `find_outliers` all four methods surface the planted `messy.csv` extreme (≤2-D), plus high-`k` paths on `fixtures/breast_cancer.csv`: Mahalanobis over 10 features (χ²(df=10) cutoff + largest tumor), Isolation Forest over 10 features, and the singular-covariance pseudoinverse fallback |
+| `eval_power.py` | 3 | `power_analysis` solves for `n`/MDE across the test families and echoes the effect-size metric |
+| `eval_diagnostic_plots.py` | 2 | `regression_line` + `residual_diagnostic` return valid PNGs for an OLS model and reject non-OLS with `regression_diagnostics_ols_only` |
 | `eval_full_workflow.py` | 4 | six-step recorded session → emit → `jupyter nbconvert --execute` exit 0; emitted setup-cell contents; session-reset isolation; determinism across two runs |
 
-Total: 32 evals (24 spec floor + 8 reference-dataset).
+Total: 47 evals.
 
 ## Conventions
 

@@ -417,7 +417,7 @@ Single process, single DuckDB connection, single recorder. No network calls. No 
 ```bash
 uv sync --dev                    # install runtime + dev deps
 uv run pytest tests/             # 362 unit tests
-uv run pytest evals/             # 44 integration evals via mcp.client.stdio (~30s)
+uv run pytest evals/             # 47 integration evals via mcp.client.stdio (~30s)
 uv run ruff format --check .     # formatter gate
 uv run ruff check .              # linter gate
 uv run pyright src/              # strict type-check on src/
