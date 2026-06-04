@@ -266,6 +266,35 @@ def test_two_sample_t_ratio_respected(call_tool: Any) -> None:
     assert result["n_total"] == 144
 
 
+def test_two_sample_t_unequal_ratio_interpretation_names_both_groups(call_tool: Any) -> None:
+    """With ratio != 1 the interpretation must reflect the unbalanced design.
+
+    Regression: the prose hardcoded "n={nobs1} per group" and ignored
+    ``ratio``, so a ratio=2 design (n1=100, n2=200) was described as
+    "100 per group" while n_total correctly reported 300 — a self-
+    contradiction. The fix must name both group sizes and drop the
+    misleading balanced "per group" claim.
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_sample_t",
+            "effect_size": 0.5,
+            "n": 100,
+            "ratio": 2.0,
+            "alpha": 0.05,
+            # power omitted → solve for power
+        },
+    )
+    assert result["ok"] is True
+    assert result["solved_for"] == "power"
+    assert result["n_total"] == 300  # ceil(100) + ceil(200)
+    interp = result["interpretation"]
+    assert "100" in interp  # n1
+    assert "200" in interp  # n2 = 2 * n1
+    assert "per group" not in interp  # the misleading balanced claim is gone
+
+
 # === two_proportion_z ===
 
 
@@ -410,6 +439,33 @@ def test_two_proportion_z_alternative_respected(call_tool: Any) -> None:
     assert larger["ok"] is True
     assert larger["alternative"] == "larger"
     assert larger["n"] == pytest.approx(3020.5159, abs=1e-3)
+
+
+def test_two_proportion_z_unequal_ratio_interpretation_names_both_groups(call_tool: Any) -> None:
+    """two_proportion_z shares the ratio-ignoring interpretation bug.
+
+    With ratio=2 (n1=1000, n2=2000) the prose must name both group sizes
+    instead of claiming "1000 per group" while n_total says 3000.
+    """
+    result = call_tool(
+        "power_analysis",
+        {
+            "test": "two_proportion_z",
+            "p1": 0.10,
+            "p2": 0.12,
+            "n": 1000,
+            "ratio": 2.0,
+            "alpha": 0.05,
+            # power omitted → solve for power
+        },
+    )
+    assert result["ok"] is True
+    assert result["solved_for"] == "power"
+    assert result["n_total"] == 3000  # ceil(1000) + ceil(2000)
+    interp = result["interpretation"]
+    assert "1000" in interp  # n1
+    assert "2000" in interp  # n2 = 2 * n1
+    assert "per group" not in interp
 
 
 # === anova_oneway ===
