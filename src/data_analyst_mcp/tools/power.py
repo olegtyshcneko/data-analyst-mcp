@@ -470,6 +470,7 @@ def _solve_two_proportion_z(payload: PowerAnalysisInput, solved_for: str) -> dic
             pw=pw,
             alpha=payload.alpha,
             n_total=n_total,
+            ratio=payload.ratio,
             alternative=payload.alternative,
         ),
     }
@@ -483,25 +484,41 @@ def _interpret_two_proportion_z(
     pw: float,
     alpha: float,
     n_total: int,
+    ratio: float,
     alternative: str,
 ) -> str:
-    """Plain-English interpretation for the two-proportion-z family."""
+    """Plain-English interpretation for the two-proportion-z family.
+
+    Honors an unequal allocation ``ratio`` the same way the two-sample-t
+    interpretation does (see its docstring) so the prose never contradicts
+    ``n_total`` for an unbalanced design.
+    """
     import math
 
     if solved_for == "n":
+        sizes = (
+            f"{math.ceil(n1)} per group ({n_total} total)"
+            if ratio == 1.0
+            else f"n1={math.ceil(n1)}, n2={math.ceil(n1 * ratio)} ({n_total} total)"
+        )
         return (
-            f"Need {math.ceil(n1)} per group ({n_total} total) at α={alpha} "
+            f"Need {sizes} at α={alpha} "
             f"to detect h={es:.4g} with {pw * 100:.0f}% power "
             f"(two-proportion z, alternative={alternative})."
         )
+    sizes = (
+        f"n={int(n1)} per group"
+        if ratio == 1.0
+        else f"n1={int(n1)}, n2={math.ceil(n1 * ratio)} ({n_total} total)"
+    )
     if solved_for == "effect_size":
         return (
-            f"With n={int(n1)} per group at α={alpha} and {pw * 100:.0f}% power, "
+            f"With {sizes} at α={alpha} and {pw * 100:.0f}% power, "
             f"the minimum detectable Cohen's h is {es:.4g} "
             f"(two-proportion z, alternative={alternative})."
         )
     return (
-        f"Achieved power = {pw:.4g} (i.e. {pw * 100:.1f}%) with n={int(n1)} per group, "
+        f"Achieved power = {pw:.4g} (i.e. {pw * 100:.1f}%) with {sizes}, "
         f"h={es:.4g}, α={alpha} (two-proportion z, alternative={alternative})."
     )
 
@@ -544,6 +561,7 @@ def _build_two_sample_t_result(
         pw=pw,
         alpha=payload.alpha,
         n_total=n_total,
+        ratio=payload.ratio,
         alternative=payload.alternative,
     )
     return result
@@ -557,25 +575,42 @@ def _interpret_two_sample_t(
     pw: float,
     alpha: float,
     n_total: int,
+    ratio: float,
     alternative: str,
 ) -> str:
-    """Compose a plain-English interpretation that names the solved-for quantity."""
+    """Compose a plain-English interpretation that names the solved-for quantity.
+
+    Honors an unequal allocation ``ratio``: a balanced design reads "N per
+    group (T total)", an unbalanced one reads "n1=A, n2=B (T total)".
+    Hardcoding "per group" off ``n1`` alone would contradict ``n_total``
+    whenever ratio != 1.
+    """
     import math
 
     if solved_for == "n":
+        sizes = (
+            f"{math.ceil(n1)} per group ({n_total} total)"
+            if ratio == 1.0
+            else f"n1={math.ceil(n1)}, n2={math.ceil(n1 * ratio)} ({n_total} total)"
+        )
         return (
-            f"Need {math.ceil(n1)} per group ({n_total} total) at α={alpha} "
+            f"Need {sizes} at α={alpha} "
             f"to detect d={es:.4g} with {pw * 100:.0f}% power "
             f"(two-sample t, alternative={alternative})."
         )
+    sizes = (
+        f"n={int(n1)} per group"
+        if ratio == 1.0
+        else f"n1={int(n1)}, n2={math.ceil(n1 * ratio)} ({n_total} total)"
+    )
     if solved_for == "effect_size":
         return (
-            f"With n={int(n1)} per group at α={alpha} and {pw * 100:.0f}% power, "
+            f"With {sizes} at α={alpha} and {pw * 100:.0f}% power, "
             f"the minimum detectable effect is d={es:.4g} "
             f"(two-sample t, alternative={alternative})."
         )
     # power
     return (
-        f"Achieved power = {pw:.4g} (i.e. {pw * 100:.1f}%) with n={int(n1)} per group, "
+        f"Achieved power = {pw:.4g} (i.e. {pw * 100:.1f}%) with {sizes}, "
         f"d={es:.4g}, α={alpha} (two-sample t, alternative={alternative})."
     )
