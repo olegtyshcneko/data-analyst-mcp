@@ -12,6 +12,7 @@ returns a deterministic ``internal`` stub until then.
 
 from __future__ import annotations
 
+import itertools
 import logging
 from typing import Any, Literal
 
@@ -22,12 +23,27 @@ from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.tools.stats import (
     _all_labels,  # type: ignore[reportPrivateUsage]
     _is_numeric_dtype,  # type: ignore[reportPrivateUsage]
+    _levene_p,  # type: ignore[reportPrivateUsage]
     _quote,  # type: ignore[reportPrivateUsage]
+    _scipy_stats,  # type: ignore[reportPrivateUsage]
+    _shapiro_p,  # type: ignore[reportPrivateUsage]
 )
 
 logger = logging.getLogger(__name__)
 
 _MAX_GROUPS = 20
+
+
+def _sm_multicomp() -> Any:
+    """Return ``statsmodels.stats.multicomp`` as an untyped module.
+
+    Mirrors ``multitest._sm_multitest``: an ``Any`` annotation keeps strict
+    pyright quiet without an inline ignore at every ``pairwise_tukeyhsd``
+    call site.
+    """
+    import statsmodels.stats.multicomp as _mc  # type: ignore[reportMissingTypeStubs]
+
+    return _mc
 
 
 def _materialize_group_nonnull(name: str, group_col: str, metric_col: str, label: str) -> Any:
@@ -176,6 +192,10 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
             hint="Drop p_adjust for Tukey, or use method='dunn' to apply a correction.",
         )
 
+    # Sort resolved labels ascending before materialization and pairing, so
+    # pairs enumerate in itertools.combinations order (which matches
+    # statsmodels' own Tukey table order) even when `groups` was unsorted.
+    labels = sorted(labels)
     arrays: list[Any] = []
     for lab in labels:
         arr = _materialize_group_nonnull(
@@ -189,5 +209,165 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
             )
         arrays.append(arr)
 
-    # All validations passed — the Tukey / Dunn engines land in T3.
-    return build_error(type="internal", message="pairwise engines land in T3")
+    if payload.method == "tukey":
+        return _run_tukey(labels, arrays, payload)
+    # Dunn and the auto Shapiro gate land in later slices.
+    return build_error(type="internal", message="auto method resolution lands in T4")
+
+
+def _run_tukey(
+    labels: list[str], arrays: list[Any], payload: PairwiseComparisonsInput
+) -> dict[str, Any]:
+    """Tukey HSD engine: statsmodels ``pairwise_tukeyhsd`` behind ``_sm_multicomp``.
+
+    Tukey controls the family-wise error rate internally via the
+    studentized-range distribution, so each row's ``statistic`` and ``p_raw``
+    are null and ``p_adjust`` is echoed null. The omnibus is one-way ANOVA.
+    """
+    import numpy as np
+
+    endog = np.concatenate(arrays)
+    group_labels: list[str] = []
+    for lab, arr in zip(labels, arrays, strict=True):
+        group_labels.extend([lab] * len(arr))
+
+    res = _sm_multicomp().pairwise_tukeyhsd(endog, group_labels, payload.alpha)
+    n_by = {lab: len(arr) for lab, arr in zip(labels, arrays, strict=True)}
+
+    comparisons: list[dict[str, Any]] = []
+    # statsmodels orders its rows by itertools.combinations over the sorted
+    # unique labels, which is exactly `labels` here — so row i aligns.
+    for i, (a, b) in enumerate(itertools.combinations(labels, 2)):
+        comparisons.append(
+            {
+                "group_a": a,
+                "group_b": b,
+                "n_a": n_by[a],
+                "n_b": n_by[b],
+                "estimate": float(res.meandiffs[i]),  # group_b - group_a
+                "statistic": None,
+                "p_raw": None,
+                "p_adj": float(res.pvalues[i]),
+                "reject": bool(res.reject[i]),
+                "ci_low": float(res.confint[i][0]),
+                "ci_high": float(res.confint[i][1]),
+            }
+        )
+
+    omni = _scipy_stats().f_oneway(*arrays)
+    omnibus = {
+        "test": "anova",
+        "statistic": float(omni.statistic),
+        "p_value": float(omni.pvalue),
+        "significant": float(omni.pvalue) < payload.alpha,
+    }
+    return _build_response(
+        engine="tukey",
+        payload=payload,
+        p_adjust=None,
+        estimate_name="mean_diff",
+        omnibus=omnibus,
+        comparisons=comparisons,
+        labels=labels,
+        arrays=arrays,
+    )
+
+
+def _build_response(
+    *,
+    engine: str,
+    payload: PairwiseComparisonsInput,
+    p_adjust: str | None,
+    estimate_name: str,
+    omnibus: dict[str, Any],
+    comparisons: list[dict[str, Any]],
+    labels: list[str],
+    arrays: list[Any],
+) -> dict[str, Any]:
+    """Assemble the stable pairwise-comparisons envelope shared by both engines."""
+    n_rejected = sum(1 for c in comparisons if c["reject"])
+    p_norm = [_shapiro_p(a) for a in arrays]
+    p_lev = _levene_p(*arrays)
+    return {
+        "ok": True,
+        "method": engine,
+        "method_requested": payload.method,
+        "p_adjust": p_adjust,
+        "alpha": payload.alpha,
+        "estimate_name": estimate_name,
+        "omnibus": omnibus,
+        "comparisons": comparisons,
+        "n_comparisons": len(comparisons),
+        "n_rejected": n_rejected,
+        "groups": [{"name": lab, "n": len(arr)} for lab, arr in zip(labels, arrays, strict=True)],
+        "assumption_checks": _assumption_checks(engine, p_norm, p_lev),
+        "interpretation": _interpretation(
+            engine=engine,
+            p_adjust=p_adjust,
+            estimate_name=estimate_name,
+            comparisons=comparisons,
+            alpha=payload.alpha,
+            omnibus=omnibus,
+        ),
+    }
+
+
+def _assumption_checks(
+    engine: str, p_norm: list[float | None], p_lev: float
+) -> list[dict[str, Any]]:
+    """compare_groups-style shapiro + levene blocks, narrated for the engine."""
+    p_norm_min = min((p for p in p_norm if p is not None), default=None)
+    norm_violated = any(p is not None and p < 0.05 for p in p_norm)
+    var_violated = p_lev < 0.05
+    if engine == "tukey":
+        norm_consequence = "Normality holds; Tukey HSD applies."
+        var_consequence = "Levene's test informs the equal-variance assumption Tukey relies on."
+    else:
+        norm_consequence = "Non-normal residuals — switched to Dunn's test."
+        var_consequence = "Rank-based Dunn's test handles unequal variances."
+    return [
+        {
+            "name": "shapiro",
+            "p": p_norm_min,
+            "violated": norm_violated,
+            "consequence": norm_consequence,
+        },
+        {
+            "name": "levene",
+            "p": p_lev,
+            "violated": var_violated,
+            "consequence": var_consequence,
+        },
+    ]
+
+
+def _interpretation(
+    *,
+    engine: str,
+    p_adjust: str | None,
+    estimate_name: str,
+    comparisons: list[dict[str, Any]],
+    alpha: float,
+    omnibus: dict[str, Any],
+) -> str:
+    """Plain-English summary: engine, adjustment, N-of-M pairs, largest difference."""
+    n = len(comparisons)
+    n_rejected = sum(1 for c in comparisons if c["reject"])
+    if engine == "tukey":
+        engine_name = "Tukey HSD"
+        adjustment = "controls the family-wise error rate internally"
+    else:
+        engine_name = "Dunn's test"
+        adjustment = f"{(p_adjust or 'holm').capitalize()}-adjusted"
+    largest = max(comparisons, key=lambda c: abs(c["estimate"]))
+    text = (
+        f"{engine_name} ({adjustment}): {n_rejected} of {n} pairs differ at "
+        f"α={alpha:g}. Largest difference: {largest['group_a']} vs "
+        f"{largest['group_b']} ({estimate_name}={largest['estimate']:.4f})."
+    )
+    if not omnibus["significant"]:
+        text += (
+            f" Note: the omnibus {omnibus['test']} is not significant "
+            f"(p={omnibus['p_value']:.4f}), so treat the pairwise findings cautiously."
+        )
+    return text
