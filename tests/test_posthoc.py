@@ -721,6 +721,8 @@ def test_slice19_single_quote_label_is_escaped_in_code(call_tool, load_df_into_s
     import pandas as pd
 
     from data_analyst_mcp.recorder import get_recorder
+    from data_analyst_mcp.tools.posthoc import _sql_in_list  # type: ignore[reportPrivateUsage]
+    from data_analyst_mcp.tools.stats import _quote  # type: ignore[reportPrivateUsage]
 
     # A label carrying an apostrophe must be ''-doubled for the SQL IN-list —
     # not backslash-escaped, which would break (or inject into) the query.
@@ -738,8 +740,19 @@ def test_slice19_single_quote_label_is_escaped_in_code(call_tool, load_df_into_s
     assert result["ok"] is True
 
     code = get_recorder().cells[1]["source"]
-    # Single quote doubled inside the SQL IN-list.
-    assert "O''Brien" in code
+    # Two layers compose: the SQL IN-list ''-doubles the apostrophe, then the
+    # whole SELECT is repr-embedded for the host literal. Rebuild the SQL from
+    # the same helpers/inputs and assert both — the SQL string doubles the
+    # quote, and its repr is embedded verbatim (repr escapes the single quotes
+    # for Python source, so the runtime SQL still carries the doubled form).
+    labels = ["A", "B", "O'Brien"]  # resolved labels sorted ascending
+    in_list = _sql_in_list(labels)
+    sql = (
+        f"SELECT {_quote('grp')}, {_quote('val')} FROM {_quote('ds')} "
+        f"WHERE {_quote('grp')} IN ({in_list}) AND {_quote('val')} IS NOT NULL"
+    )
+    assert "O''Brien" in sql  # SQL layer doubles the single quote
+    assert repr(sql) in code  # host layer repr-embeds the doubled SQL verbatim
     # And the cell still compiles as Python.
     compile(code, "<pairwise_quote_cell>", "exec")
 

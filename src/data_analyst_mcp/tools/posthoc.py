@@ -510,19 +510,21 @@ def _sql_in_list(labels: list[str]) -> str:
 
 
 def _rehydrate_sql_src(name: str, group_col: str, metric_col: str, labels: list[str]) -> str:
-    """A Python double-quoted string literal holding the NULL-filtered SELECT.
+    """A Python string literal (via ``repr``) holding the NULL-filtered SELECT.
 
-    Identifiers are ``"``-quoted (then ``\\"``-escaped for the host literal);
-    labels are single-quoted with ``''`` doubling. Returning the whole thing
-    as a ready-to-embed source fragment keeps the emitted cell compiling
-    regardless of what characters the labels/columns contain.
+    Identifiers are ``"``-quoted at the SQL level; labels are single-quoted
+    with ``''`` doubling. The whole SELECT is then handed to ``repr`` — the
+    v1.0.1 precedent (see ``query.py`` / ``materialize.py``) — so every host
+    character, backslashes included, is escaped for the emitted cell. A naive
+    ``"``-only escape leaves a backslash raw, and Python then reinterprets
+    ``\\U`` etc. as a unicode escape: silent label corruption or a SyntaxError.
     """
     in_list = _sql_in_list(labels)
     sql = (
         f"SELECT {_quote(group_col)}, {_quote(metric_col)} FROM {_quote(name)} "
         f"WHERE {_quote(group_col)} IN ({in_list}) AND {_quote(metric_col)} IS NOT NULL"
     )
-    return '"' + sql.replace('"', '\\"') + '"'
+    return repr(sql)
 
 
 def _pairwise_code_snippet(result: dict[str, Any], payload: PairwiseComparisonsInput) -> str:
