@@ -22,11 +22,32 @@ from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.tools.stats import (
     _all_labels,  # type: ignore[reportPrivateUsage]
     _is_numeric_dtype,  # type: ignore[reportPrivateUsage]
+    _quote,  # type: ignore[reportPrivateUsage]
 )
 
 logger = logging.getLogger(__name__)
 
 _MAX_GROUPS = 20
+
+
+def _materialize_group_nonnull(name: str, group_col: str, metric_col: str, label: str) -> Any:
+    """Metric array for ``group_col == label`` rows whose metric is non-null.
+
+    Deliberately diverges from ``stats._materialize_group`` by adding
+    ``AND <metric> IS NOT NULL``: Tukey and Dunn both require complete
+    numeric vectors, and a silent NaN would corrupt the rank pooling. This
+    divergence is documented in ``docs/proposals/pairwise_comparisons.md``
+    (behavior step 6) so it is not "fixed" back to match the shared helper.
+    """
+    con = session.get_connection()
+    table = _quote(name)
+    rel = con.execute(
+        f"SELECT {_quote(metric_col)} FROM {table} "
+        f"WHERE {_quote(group_col)} = ? AND {_quote(metric_col)} IS NOT NULL",
+        [label],
+    )
+    df: Any = rel.df()
+    return df[metric_col].to_numpy()
 
 
 class PairwiseComparisonsInput(BaseModel):
@@ -135,6 +156,19 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
             message=f"Need at least 3 groups; resolved {len(labels)}.",
             hint="Use compare_groups for a two-group comparison.",
         )
+
+    arrays: list[Any] = []
+    for lab in labels:
+        arr = _materialize_group_nonnull(
+            payload.name, payload.group_column, payload.metric_column, lab
+        )
+        if len(arr) == 0:
+            return build_error(
+                type="group_not_found",
+                message=f"Group label {lab!r} matched no rows in {payload.name!r}.",
+                hint="Check the label spelling, or omit `groups` to use every label.",
+            )
+        arrays.append(arr)
 
     # All validations passed — the Tukey / Dunn engines land in T3.
     return build_error(type="internal", message="pairwise engines land in T3")
