@@ -305,3 +305,69 @@ def test_extra_insufficient_group_size_for_single_row_group(call_tool, load_df_i
     assert result["ok"] is False
     assert result["error"]["type"] == "insufficient_group_size"
     assert "C" in result["error"]["message"]
+
+
+# === slice 11: pairwise_comparisons dunn matches hand-computed ranks on untied data ===
+
+
+def _dunn_untied_frame():
+    import pandas as pd
+
+    # A=[1,2,3], B=[4,5,6], C=[7,8,9] — no ties, so the tie term T=0.
+    return pd.DataFrame(
+        {
+            "grp": ["A"] * 3 + ["B"] * 3 + ["C"] * 3,
+            "val": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+        }
+    )
+
+
+def test_slice11_dunn_untied_hand_computed_ranks(call_tool, load_df_into_session):
+    load_df_into_session("ds", _dunn_untied_frame())
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "dunn"},
+    )
+    assert result["ok"] is True
+    assert result["method"] == "dunn"
+    assert result["method_requested"] == "dunn"
+    # Dunn with p_adjust omitted resolves to Holm.
+    assert result["p_adjust"] == "holm"
+    assert result["estimate_name"] == "mean_rank_diff"
+    assert result["n_comparisons"] == 3
+
+    by = {(c["group_a"], c["group_b"]): c for c in result["comparisons"]}
+    ab, ac, bc = by[("A", "B")], by[("A", "C")], by[("B", "C")]
+
+    # Vendored Dunn on pooled scipy.stats.rankdata: mean ranks A=2, B=5, C=8;
+    # T=0; var=N(N+1)/12=7.5; SE=sqrt(7.5*(1/3+1/3))=sqrt(5)=2.2360679775.
+    # z is SIGNED (b - a): z(A,B)=(5-2)/sqrt(5)=+1.3416407865.  A flipped
+    # orientation (a - b) would give -1.3416... and fail this assertion.
+    assert ab["statistic"] == pytest.approx(1.3416407865, abs=1e-4)
+    assert ab["estimate"] == pytest.approx(3.0, abs=1e-4)  # mean_rank_diff = 5 - 2
+    # p_raw = 2*norm.sf(|z|) = 0.1797124949
+    assert ab["p_raw"] == pytest.approx(0.1797124949, abs=1e-4)
+    # z(A,C)=(8-2)/sqrt(5)=+2.6832815730; p_raw=0.0072903581
+    assert ac["statistic"] == pytest.approx(2.6832815730, abs=1e-4)
+    assert ac["estimate"] == pytest.approx(6.0, abs=1e-4)
+    assert ac["p_raw"] == pytest.approx(0.0072903581, abs=1e-4)
+    assert bc["statistic"] == pytest.approx(1.3416407865, abs=1e-4)
+    assert bc["p_raw"] == pytest.approx(0.1797124949, abs=1e-4)
+
+    # Holm on [0.1797124949, 0.0072903581, 0.1797124949] via statsmodels
+    # multipletests(method="holm"): p_adj=[0.3594249898, 0.0218710743,
+    # 0.3594249898], reject=[False, True, False].
+    assert ab["p_adj"] == pytest.approx(0.3594249898, abs=1e-4)
+    assert ac["p_adj"] == pytest.approx(0.0218710743, abs=1e-4)
+    assert bc["p_adj"] == pytest.approx(0.3594249898, abs=1e-4)
+    assert [ab["reject"], ac["reject"], bc["reject"]] == [False, True, False]
+    assert result["n_rejected"] == 1
+
+    # Tukey-only fields are null on the Dunn engine.
+    assert ab["ci_low"] is None and ab["ci_high"] is None
+
+    # Omnibus: scipy.stats.kruskal([1,2,3],[4,5,6],[7,8,9]) -> H=7.2, p=0.0273237224
+    assert result["omnibus"]["test"] == "kruskal_wallis"
+    assert result["omnibus"]["statistic"] == pytest.approx(7.2, abs=1e-4)
+    assert result["omnibus"]["p_value"] == pytest.approx(0.0273237224, abs=1e-4)
+    assert result["omnibus"]["significant"] is True
