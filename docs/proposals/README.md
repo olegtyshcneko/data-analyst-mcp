@@ -11,9 +11,6 @@ acceptance criteria, ROADMAP impact).
 
 ## Current proposals
 
-- [`pairwise_comparisons`](pairwise_comparisons.md) — post-hoc pairwise
-  follow-up to `compare_groups`: Tukey HSD after ANOVA, vendored
-  tie-corrected Dunn after Kruskal–Wallis, with the same auto-selection
-  gate. Grows the tool surface 21 → 22.
+No active proposals.
 
-The tier-1 feature bundle (`materialize_query`, `find_outliers`, `power_analysis`, `regression_line` + `residual_diagnostic`) shipped and was folded into `docs/SPEC.md` §5 (entries 5.5a, 5.6a, 5.10a, 5.12a, 5.12b). Per the convention above, the proposal files themselves were deleted once folded; the git history retains the design context.
+The tier-1 feature bundle (`materialize_query`, `find_outliers`, `power_analysis`, `regression_line` + `residual_diagnostic`) shipped and was folded into `docs/SPEC.md` §5 (entries 5.5a, 5.6a, 5.10a, 5.12a, 5.12b); `pairwise_comparisons` shipped next and was folded into §5.9a (the post-hoc follow-up to `compare_groups`, growing the tool surface 21 → 22). Per the convention above, the proposal files themselves were deleted once folded; the git history retains the design context.

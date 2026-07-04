@@ -1,6 +1,6 @@
 [project]
 name = "data-analyst-mcp"
-version = "1.0.2"
+version = "1.1.0"
 description = "Reproducible data-analyst MCP server — DuckDB + pandas + scipy/statsmodels, emits sessions as runnable Jupyter notebooks."
 readme = "README.md"
 license = { text = "MIT" }

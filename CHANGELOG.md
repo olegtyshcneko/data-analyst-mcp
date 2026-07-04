@@ -5,6 +5,33 @@ All notable changes to **data-analyst-mcp** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-07-04
+
+Post-hoc pairwise comparisons — the follow-up to `compare_groups`. Tool surface **21 → 22**.
+
+### Added
+- **`pairwise_comparisons`** — post-hoc answer to *which pairs differ* after a
+  significant omnibus test, over all `n·(n−1)/2` pairs of up to 20 groups:
+  - **Tukey HSD** (via statsmodels `pairwise_tukeyhsd`) after one-way ANOVA, with
+    confidence intervals; controls the family-wise error rate internally.
+  - **Dunn's test** — a **vendored**, tie-corrected rank statistic (no new
+    dependency; the §5.4 Little's-MCAR vendoring precedent) after Kruskal–Wallis,
+    Holm-adjusted by default (`p_adjust` selects Bonferroni / Šidák / BH / BY).
+  - `method="auto"` reuses `compare_groups`' Shapiro normality gate to pick the
+    engine (normality holds → Tukey, violated → Dunn); the omnibus is recomputed
+    inline so a non-significant family is caveated in the interpretation.
+  - A 20-group cap bounds the quadratic comparison output, and every group is
+    NULL-filtered so a leaked NaN can't corrupt the rank pooling.
+  - Fully-runnable recorder cells: the emitted code rehydrates the group vectors
+    from the notebook's DuckDB connection (single quotes `''`-doubled for the SQL
+    `IN (...)` list), imports its own `pairwise_tukeyhsd` / `multipletests`, and
+    reproduces the reported table.
+
+### Documentation
+- `docs/SPEC.md` §5.9a specifies `pairwise_comparisons`; the accepted proposal was
+  folded in and `docs/proposals/pairwise_comparisons.md` deleted per the
+  contributing convention.
+
 ## [1.0.2] - 2026-06-02
 
 Feature set 2 — robust logistic separation handling (PR #2), plus follow-up polish.
@@ -85,6 +112,7 @@ with **16 tools** over a DuckDB session.
   violin/heatmap), `emit_notebook` — every tool call records a markdown+code
   cell pair so a session replays as an executable Jupyter notebook.
 
+[1.1.0]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.1.0
 [1.0.2]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.0.2
 [1.0.1]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.0.1
 [1.0.0]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.0.0

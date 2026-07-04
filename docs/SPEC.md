@@ -396,6 +396,78 @@ Every tool follows this contract:
 
 **Hard requirement**: explicitly state assumption-check results in the output. E.g. `"normality_test": {"name": "shapiro", "p": 0.003, "violated": true, "consequence": "Switched from t-test to Mann–Whitney U."}`.
 
+### 5.9a `pairwise_comparisons`
+
+**Purpose**: the post-hoc follow-up to `compare_groups`. Once the omnibus test reports that groups differ, this answers *which pairs differ* — **Tukey HSD** after one-way ANOVA, **Dunn's test** (tie-corrected) after Kruskal–Wallis — gated by the same Shapiro normality auto-selection `compare_groups` uses. Stateful: it reads a registered dataset by `name`, materializes the requested groups, and recomputes the omnibus inline on the filtered groups so the interpretation can caveat a non-significant family. Dunn's test is **vendored** as hand-rolled rank arithmetic (`scipy.stats.rankdata` plus a normal tail) rather than pulled from `scikit-posthocs`, keeping the runtime dependency set frozen — the same closed-form-vendoring precedent as the Little's-MCAR test in §5.4. Tukey ships in statsmodels; the pinned Tukey p-values assume `statsmodels >= 0.14`, which uses the exact studentized-range distribution.
+
+**Input**:
+- `name: str` — registered dataset name.
+- `group_column: str` — column holding the group labels.
+- `metric_column: str` — numeric metric to compare; non-numeric → `metric_not_numeric`.
+- `groups: list[str] | None = None` — subset of labels to compare (≥ 3 labels, no duplicates, ≤ 20). When omitted, every distinct label in `group_column` is used.
+- `method: Literal["auto", "tukey", "dunn"] = "auto"` — `auto` mirrors `compare_groups`' Shapiro gate (normality holds → Tukey, violated → Dunn); `tukey` / `dunn` force the engine.
+- `p_adjust: Literal["holm", "bonferroni", "sidak", "bh", "by"] | None = None` — family-wise correction applied to Dunn's raw p-values only. Tukey controls FWER internally, so an explicit `p_adjust` with `method="tukey"` is rejected. When Dunn runs and `p_adjust is None`, it resolves to `"holm"`.
+- `alpha: float = 0.05` — significance threshold in the open interval `(0, 1)`. The bound is enforced in the impl (deterministic `invalid_alpha`), not via a pydantic `Field` constraint — matching the `adjust_pvalues` precedent (§5.8).
+
+**Behavior**:
+1. Resolve the dataset by `name`; missing → `not_found`.
+2. Validate `group_column` and `metric_column` both exist; first miss → `column_not_found`.
+3. Validate `metric_column` is numeric (`_is_numeric_dtype`); non-numeric → `metric_not_numeric`.
+4. Validate `alpha` in `(0, 1)` → `invalid_alpha` (deterministic in-impl check, per the `adjust_pvalues` precedent).
+5. **Label resolution.** `groups` omitted → every distinct label via `_all_labels` (imported from `tools.stats`). Provided → reject duplicates (`duplicate_groups`). After resolution, `< 3` labels → `too_few_groups` (hint: use `compare_groups` for the two-group case); `> 20` labels → `too_many_groups` (the cap bounds the quadratic `n·(n−1)/2` comparison output).
+6. **`p_adjust_not_applicable` guard.** Error **only** when `method="tukey"` *and* an explicit `p_adjust` was supplied. Under `auto` an explicit `p_adjust` is never an error (echoed `null` if Tukey wins the gate).
+7. **Group materialization.** Sort resolved labels ascending, then materialize each via `_materialize_group_nonnull`: the same bound-parameter SQL as `stats._materialize_group` **plus `AND <metric> IS NOT NULL`**. This NULL filter is a **deliberate divergence** from the shared helper — Tukey and Dunn both need complete numeric vectors, and a silent NaN would corrupt the rank pooling — documented here so it is not "fixed" back. A label matching no rows → `group_not_found` (names it); any group with `n < 2` after the filter → `insufficient_group_size` (guarded *before* any scipy/statsmodels call, since Tukey needs within-group variance and Dunn's rank pooling degenerates on a singleton).
+8. **Auto gate.** For `method="auto"`, compute `_shapiro_p` per group and `_levene_p` across groups, then `_select_test`: `"anova"` (normality holds) → Tukey, `"kruskal_wallis"` (violated) → Dunn.
+9. **Engine dispatch** (pairs enumerated in `itertools.combinations` order over the sorted labels, matching statsmodels' own Tukey table order; `estimate` reported in **b − a** orientation):
+   - **Tukey** — `statsmodels.stats.multicomp.pairwise_tukeyhsd(endog, groups, alpha)` behind an `Any`-returning `_sm_multicomp()` wrapper (pyright-strict pattern). `estimate_name = "mean_diff"`; each row carries `statistic=null`, `p_raw=null`, `p_adj` = Tukey's adjusted p, and `ci_low`/`ci_high` from the confint. Omnibus = `scipy.stats.f_oneway`, reported as `test: "anova"`.
+   - **Dunn** (vendored) — pooled average ranks via `scipy.stats.rankdata`; tie term `T = Σ(t³ − t)` over pooled tie-group sizes `t`; `var = N(N+1)/12 − T/(12(N−1))`; `SE_ij = sqrt(var·(1/nᵢ + 1/nⱼ))`; `z = (R̄ⱼ − R̄ᵢ)/SE_ij` (signed, **b − a**); `p_raw = 2·norm.sf(|z|)`. Family correction via statsmodels `multipletests` through `_METHOD_TO_STATSMODELS` (imported from `tools.multitest`, never re-declared); `p_adjust` resolves to `"holm"` when `None`, else passes through. `estimate_name = "mean_rank_diff"`; `estimate = R̄_b − R̄_a`; `statistic = z`; `ci_low`/`ci_high = null`. Omnibus = `scipy.stats.kruskal`, reported as `test: "kruskal_wallis"`.
+10. Recompute the omnibus inline on the filtered groups; a non-significant omnibus (`p ≥ alpha`) drives a caveat in the `interpretation`.
+11. Emit the recorder cell pair on success only, then return. The code cell is **fully runnable** (the `adjust_pvalues` precedent, not the `compare_groups` stub): it rehydrates the group vectors from the notebook's `con` DuckDB connection via a NULL-filtered `IN (...)` list with every single quote `''`-doubled (mandatory — a label like `O'Brien` becomes `'O''Brien'`), imports its own `pairwise_tukeyhsd` / `multipletests`, and reproduces the reported table.
+
+**Output**:
+```python
+{
+    "ok": True,
+    "method": "dunn",                   # engine actually run: "tukey" | "dunn"
+    "method_requested": "auto",         # echoes payload.method
+    "p_adjust": "holm",                 # resolved correction; null when Tukey ran
+    "alpha": 0.05,
+    "estimate_name": "mean_rank_diff",  # "mean_diff" (tukey) | "mean_rank_diff" (dunn)
+    "omnibus": {                        # recomputed inline on the filtered groups
+        "test": "kruskal_wallis",       # "anova" | "kruskal_wallis"
+        "statistic": 0.3239344262,
+        "p_value": 0.8504690883,
+        "significant": False,           # p < alpha
+    },
+    "comparisons": [                    # sorted labels, itertools.combinations order
+        {
+            "group_a": "A", "group_b": "B",
+            "n_a": 20, "n_b": 20,
+            "estimate": 1.34,           # b − a (mean_diff or mean_rank_diff)
+            "statistic": 1.3416407865,  # dunn z; null for tukey
+            "p_raw": 0.1797124949,      # dunn raw; null for tukey
+            "p_adj": 0.3594249898,
+            "reject": False,
+            "ci_low": None,             # tukey confint; null for dunn
+            "ci_high": None,
+        },
+        # ...
+    ],
+    "n_comparisons": int,               # n·(n−1)/2
+    "n_rejected": int,
+    "groups": [{"name": "A", "n": 20}, ...],  # post-NULL-filter counts
+    "assumption_checks": [              # compare_groups envelope
+        {"name": "shapiro", "p": 0.01, "violated": True,
+         "consequence": "Non-normal residuals — switched to Dunn's test."},
+        {"name": "levene", "p": 0.44, "violated": False, "consequence": "..."},
+    ],
+    "interpretation": "…",              # plain-English; caveats a non-significant omnibus
+}
+```
+Every comparison row carries the **same keys** regardless of engine — `statistic`, `p_raw`, `ci_low`, `ci_high` are present as `null` on the engine that does not produce them.
+
+**Errors**: `not_found`, `column_not_found` (names the first miss), `metric_not_numeric`, `invalid_alpha`, `duplicate_groups`, `too_few_groups` (hint names `compare_groups`), `too_many_groups` (hint to pass a `groups` subset), `p_adjust_not_applicable` (`method="tukey"` + explicit `p_adjust`; never raised under `auto`), `group_not_found` (names the first missing label), `insufficient_group_size` (a group has `n < 2` after the NULL filter).
+
 ### 5.10 `test_hypothesis`
 
 **Input** (discriminated union via `kind` field):
@@ -750,7 +822,7 @@ README with worked example, `DEPS.md`, LICENSE, ROADMAP, tag `v0.1.0`, `uv build
 - Loading entire datasets into pandas at tool-call time.
 - Adding `plotly`, `seaborn`, `altair`, `bokeh`, `dash`, `streamlit`, `polars`, `dask`, `ray`.
 - Adding `Anthropic`/`OpenAI` clients to call an LLM from inside the server.
-- Adding tools beyond the 21 in §5 (park in `ROADMAP.md`).
+- Adding tools beyond the 22 in §5 (park in `ROADMAP.md`).
 - Silently coercing data types in `load_dataset`.
 - Making the recorder optional/feature-flagged.
 - `emit_notebook` depending on internet, API key, or anything non-local.
