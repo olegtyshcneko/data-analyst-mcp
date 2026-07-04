@@ -166,6 +166,16 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
             ),
         )
 
+    if payload.method == "tukey" and payload.p_adjust is not None:
+        return build_error(
+            type="p_adjust_not_applicable",
+            message=(
+                "method='tukey' controls the family-wise error rate internally, "
+                "so an explicit p_adjust does not apply."
+            ),
+            hint="Drop p_adjust for Tukey, or use method='dunn' to apply a correction.",
+        )
+
     arrays: list[Any] = []
     for lab in labels:
         arr = _materialize_group_nonnull(
