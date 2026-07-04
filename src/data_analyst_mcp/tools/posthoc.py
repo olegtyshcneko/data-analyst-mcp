@@ -229,6 +229,20 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
             )
         arrays.append(arr)
 
+    if len({float(v) for arr in arrays for v in arr}) == 1:
+        # Every engine degenerates on a constant metric: Dunn's variance term
+        # (and thus its z-denominator) collapses to 0 → ZeroDivisionError, while
+        # Kruskal/ANOVA return NaNs. Intercept before dispatch — the guard is
+        # engine-independent — with a structured, actionable error.
+        return build_error(
+            type="constant_metric",
+            message=(
+                f"Metric column {payload.metric_column!r} is constant across the resolved "
+                "groups; pairwise comparisons are undefined."
+            ),
+            hint="Pick a metric with variation, or check the groups filter.",
+        )
+
     if payload.method == "tukey":
         return _run_tukey(labels, arrays, payload)
     if payload.method == "dunn":
