@@ -824,9 +824,7 @@ def test_recorded_notebook_round_trips_through_nbconvert(call_tool, tmp_path):
     # The executed Dunn cell must print one line per pair (3 pairs -> 3 lines),
     # each carrying the reject decision.
     nb = nbf.read(str(nb_path), as_version=4)
-    dunn_cells = [
-        c for c in nb.cells if c.cell_type == "code" and "multipletests" in c.source
-    ]
+    dunn_cells = [c for c in nb.cells if c.cell_type == "code" and "multipletests" in c.source]
     assert len(dunn_cells) == 1
     stdout = "".join(
         o.get("text", "")
