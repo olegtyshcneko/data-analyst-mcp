@@ -19,7 +19,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
-from data_analyst_mcp.tools.stats import _is_numeric_dtype  # type: ignore[reportPrivateUsage]
+from data_analyst_mcp.tools.stats import (
+    _all_labels,  # type: ignore[reportPrivateUsage]
+    _is_numeric_dtype,  # type: ignore[reportPrivateUsage]
+)
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +104,14 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
                 f"Metric column {payload.metric_column!r} has non-numeric dtype {metric_dtype!r}."
             ),
             hint="Tukey and Dunn need a numeric metric; pick a numeric column.",
+        )
+
+    labels = _all_labels(payload.name, payload.group_column)
+    if len(labels) < 3:
+        return build_error(
+            type="too_few_groups",
+            message=f"Need at least 3 groups; resolved {len(labels)}.",
+            hint="Use compare_groups for a two-group comparison.",
         )
 
     # All validations passed — the Tukey / Dunn engines land in T3.
