@@ -473,14 +473,8 @@ def _interpretation(
         engine_name = "Dunn's test"
         adjustment = f"{(p_adjust or 'holm').capitalize()}-adjusted"
     largest = max(comparisons, key=lambda c: abs(c["estimate"]))
-    text = (
+    return (
         f"{engine_name} ({adjustment}): {n_rejected} of {n} pairs differ at "
         f"α={alpha:g}. Largest difference: {largest['group_a']} vs "
         f"{largest['group_b']} ({estimate_name}={largest['estimate']:.4f})."
     )
-    if not omnibus["significant"]:
-        text += (
-            f" Note: the omnibus {omnibus['test']} is not significant "
-            f"(p={omnibus['p_value']:.4f}), so treat the pairwise findings cautiously."
-        )
-    return text
