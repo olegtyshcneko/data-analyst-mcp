@@ -46,3 +46,20 @@ def test_slice02_column_not_found_for_missing_column(call_tool, load_df_into_ses
     )
     assert missing_metric["ok"] is False
     assert missing_metric["error"]["type"] == "column_not_found"
+
+
+# === slice 3: pairwise_comparisons returns metric_not_numeric for a VARCHAR metric column ===
+
+
+def test_slice03_metric_not_numeric_for_varchar_metric(call_tool, load_df_into_session):
+    import pandas as pd
+
+    df = pd.DataFrame({"grp": ["A", "B", "C"], "val": ["x", "y", "z"]})
+    load_df_into_session("ds", df)
+
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val"},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "metric_not_numeric"
