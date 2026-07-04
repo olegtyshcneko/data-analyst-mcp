@@ -280,3 +280,28 @@ def test_slice10_tukey_matches_statsmodels(call_tool, load_df_into_session):
     assert result["omnibus"]["statistic"] == pytest.approx(8.0, abs=1e-4)
     assert result["omnibus"]["p_value"] == pytest.approx(0.0061963978, abs=1e-4)
     assert result["omnibus"]["significant"] is True
+
+
+# === extra: pairwise_comparisons returns insufficient_group_size for a group with one row ===
+
+
+def test_extra_insufficient_group_size_for_single_row_group(call_tool, load_df_into_session):
+    import pandas as pd
+
+    # Group C has a single non-null row. Tukey needs within-group variance, so
+    # the n<2 guard must fire BEFORE any statsmodels/scipy call and name C.
+    df = pd.DataFrame(
+        {
+            "grp": ["A", "A", "B", "B", "C"],
+            "val": [1.0, 2.0, 3.0, 4.0, 5.0],
+        }
+    )
+    load_df_into_session("ds", df)
+
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "tukey"},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "insufficient_group_size"
+    assert "C" in result["error"]["message"]
