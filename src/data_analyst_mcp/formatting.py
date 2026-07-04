@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     import duckdb
 
+    from data_analyst_mcp.tools.posthoc import PairwiseComparisonsInput
+
 
 _METHOD_PRETTY: dict[str, str] = {
     "bonferroni": "Bonferroni",
@@ -79,6 +81,62 @@ def format_adjust_pvalues_markdown(
         if extra > 0:
             suffix = f" and {extra} more"
         lines.append(f"- Not rejected: {', '.join(named)}{suffix}")
+
+    return "\n".join(lines)
+
+
+def format_pairwise_comparisons_markdown(
+    output: dict[str, Any],
+    *,
+    payload: PairwiseComparisonsInput,
+) -> str:
+    """Render the recorder markdown summary for ``pairwise_comparisons``.
+
+    Rules (see proposal §Recorder cells):
+
+    - Title names the engine and the metric/group columns.
+    - "Engine: **<engine>** (<adjustment note>)" — Tukey controls FWER
+      internally; Dunn reuses ``_METHOD_PRETTY`` for the correction name.
+    - "N / M pairs differ at α=…" — the rejected-pair ratio.
+    - "Omnibus <test>: statistic=…, p=… (significant | not significant)".
+    - "Largest difference: A vs B (<estimate_name>=…)" — the widest-estimate
+      pair, skipped when there are no comparisons.
+    """
+    method = output.get("method")
+    alpha = float(output.get("alpha", 0.05))
+    comparisons: list[dict[str, Any]] = list(output.get("comparisons", []))
+    n_comparisons = int(output.get("n_comparisons", len(comparisons)))
+    n_rejected = int(output.get("n_rejected", 0))
+    estimate_name = str(output.get("estimate_name", "estimate"))
+    omnibus: dict[str, Any] = dict(output.get("omnibus", {}))
+
+    if method == "tukey":
+        engine = "Tukey HSD"
+        adjust_note = "controls the family-wise error rate internally"
+    else:
+        engine = "Dunn's test"
+        p_adjust = str(output.get("p_adjust") or "holm")
+        adjust_note = f"{_METHOD_PRETTY.get(p_adjust, p_adjust)}-adjusted"
+
+    lines: list[str] = [
+        f"### Pairwise comparisons — {engine} "
+        f"(`{payload.metric_column}` across `{payload.group_column}`)",
+        f"- Engine: **{engine}** ({adjust_note})",
+        f"- {n_rejected} / {n_comparisons} pairs differ at α={alpha:g}",
+    ]
+
+    significance = "significant" if omnibus.get("significant") else "not significant"
+    lines.append(
+        f"- Omnibus {omnibus.get('test')}: statistic={float(omnibus.get('statistic', 0.0)):.4f}, "
+        f"p={float(omnibus.get('p_value', 0.0)):.4f} ({significance})"
+    )
+
+    if comparisons:
+        largest = max(comparisons, key=lambda c: abs(float(c["estimate"])))
+        lines.append(
+            f"- Largest difference: {largest['group_a']} vs {largest['group_b']} "
+            f"({estimate_name}={float(largest['estimate']):.4f})"
+        )
 
     return "\n".join(lines)
 

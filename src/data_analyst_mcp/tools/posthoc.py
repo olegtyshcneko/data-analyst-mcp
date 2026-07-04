@@ -21,6 +21,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
+from data_analyst_mcp.formatting import format_pairwise_comparisons_markdown
+from data_analyst_mcp.recorder import get_recorder
 from data_analyst_mcp.tools.multitest import (
     _METHOD_TO_STATSMODELS,  # type: ignore[reportPrivateUsage]
     _sm_multitest,  # type: ignore[reportPrivateUsage]
@@ -114,9 +116,11 @@ def pairwise_comparisons(payload: PairwiseComparisonsInput) -> dict[str, Any]:
     """Post-hoc pairwise comparisons after a significant omnibus test.
 
     Thin entry point: validation + dispatch live in the impl, recording is
-    attached at this wrapper after a successful result (T5).
+    attached at this wrapper after a successful result.
     """
-    return _pairwise_comparisons_impl(payload)
+    result = _pairwise_comparisons_impl(payload)
+    _record_pairwise(payload, result)
+    return result
 
 
 def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, Any]:
@@ -484,3 +488,108 @@ def _interpretation(
             f"(p={omnibus['p_value']:.4f}), so treat the pairwise findings cautiously."
         )
     return text
+
+
+def _record_pairwise(payload: PairwiseComparisonsInput, result: dict[str, Any]) -> None:
+    """Append the markdown+code cell pair for a successful pairwise_comparisons call."""
+    if not result.get("ok"):
+        return
+    md = format_pairwise_comparisons_markdown(result, payload=payload)
+    code = _pairwise_code_snippet(result, payload)
+    get_recorder().record(markdown=md, code=code, tool_name="pairwise_comparisons")
+
+
+def _sql_in_list(labels: list[str]) -> str:
+    """Comma-joined SQL string literals with every single quote ''-doubled.
+
+    The doubling is mandatory: a label like ``O'Brien`` must become
+    ``'O''Brien'`` so it neither breaks nor injects into the IN-list. Do NOT
+    copy ``stats._code_for_kind``'s unescaped interpolation here.
+    """
+    return ", ".join("'" + lab.replace("'", "''") + "'" for lab in labels)
+
+
+def _rehydrate_sql_src(name: str, group_col: str, metric_col: str, labels: list[str]) -> str:
+    """A Python double-quoted string literal holding the NULL-filtered SELECT.
+
+    Identifiers are ``"``-quoted (then ``\\"``-escaped for the host literal);
+    labels are single-quoted with ``''`` doubling. Returning the whole thing
+    as a ready-to-embed source fragment keeps the emitted cell compiling
+    regardless of what characters the labels/columns contain.
+    """
+    in_list = _sql_in_list(labels)
+    sql = (
+        f"SELECT {_quote(group_col)}, {_quote(metric_col)} FROM {_quote(name)} "
+        f"WHERE {_quote(group_col)} IN ({in_list}) AND {_quote(metric_col)} IS NOT NULL"
+    )
+    return '"' + sql.replace('"', '\\"') + '"'
+
+
+def _pairwise_code_snippet(result: dict[str, Any], payload: PairwiseComparisonsInput) -> str:
+    """Build the fully-runnable reproducer cell for the resolved engine.
+
+    Both branches rehydrate the group vectors from the notebook's ``con``
+    DuckDB connection (NULL-filtered, quote-escaped IN-list) and import what
+    they need. The chosen engine and resolved labels/alpha/p_adjust are
+    hard-coded for replay determinism — the cell never re-runs Shapiro.
+    """
+    labels = [g["name"] for g in result["groups"]]  # already sorted ascending
+    sql_src = _rehydrate_sql_src(payload.name, payload.group_column, payload.metric_column, labels)
+    if result["method"] == "tukey":
+        return (
+            "import pandas as pd\n"
+            "from statsmodels.stats.multicomp import pairwise_tukeyhsd\n"
+            "\n"
+            "# Labels escaped for the SQL IN-list — single quotes doubled.\n"
+            f"df = con.execute(\n    {sql_src}\n).df()\n"
+            f"res = pairwise_tukeyhsd(df[{payload.metric_column!r}], "
+            f"df[{payload.group_column!r}], alpha={payload.alpha!r})\n"
+            "print(res.summary())\n"
+        )
+
+    sm_method = _METHOD_TO_STATSMODELS[str(result.get("p_adjust") or "holm")]
+    header = (
+        "import itertools\n"
+        "\n"
+        "import numpy as np\n"
+        "from scipy import stats\n"
+        "from statsmodels.stats.multitest import multipletests\n"
+        "\n"
+        "# Labels escaped for the SQL IN-list — single quotes doubled.\n"
+    )
+    config = (
+        f"labels = {labels!r}\n"
+        f"alpha = {payload.alpha!r}\n"
+        f"df = con.execute(\n    {sql_src}\n).df()\n"
+        f"arrays = [df.loc[df[{payload.group_column!r}] == lab, "
+        f"{payload.metric_column!r}].to_numpy() for lab in labels]\n"
+    )
+    body = (
+        "pooled = np.concatenate(arrays)\n"
+        "n_total = len(pooled)\n"
+        "ranks = stats.rankdata(pooled)\n"
+        "mean_ranks = {}\n"
+        "n_by = {}\n"
+        "offset = 0\n"
+        "for lab, arr in zip(labels, arrays):\n"
+        "    mean_ranks[lab] = ranks[offset:offset + len(arr)].mean()\n"
+        "    n_by[lab] = len(arr)\n"
+        "    offset += len(arr)\n"
+        "_vals, counts = np.unique(pooled, return_counts=True)\n"
+        "tie_term = float(sum(int(t) ** 3 - int(t) for t in counts))\n"
+        "var = n_total * (n_total + 1) / 12.0 - tie_term / (12.0 * (n_total - 1))\n"
+        "pairs = list(itertools.combinations(labels, 2))\n"
+        "z_scores = []\n"
+        "p_raw = []\n"
+        "for a, b in pairs:\n"
+        "    se = np.sqrt(var * (1.0 / n_by[a] + 1.0 / n_by[b]))\n"
+        "    z = (mean_ranks[b] - mean_ranks[a]) / se\n"
+        "    z_scores.append(z)\n"
+        "    p_raw.append(2.0 * stats.norm.sf(abs(z)))\n"
+    )
+    correction = f"reject, p_adj, _, _ = multipletests(p_raw, alpha=alpha, method={sm_method!r})\n"
+    report = (
+        "for (a, b), z, raw, adj in zip(pairs, z_scores, p_raw, p_adj):\n"
+        '    print(f"{a} vs {b}  z={z:.4g}  p_raw={raw:.4g}  p_adj={adj:.4g}")\n'
+    )
+    return header + config + body + correction + report
