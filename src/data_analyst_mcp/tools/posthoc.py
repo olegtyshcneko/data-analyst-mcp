@@ -559,7 +559,7 @@ def _pairwise_code_snippet(result: dict[str, Any], payload: PairwiseComparisonsI
             "# Labels escaped for the SQL IN-list — single quotes doubled.\n"
             f"df = con.execute(\n    {sql_src}\n).df()\n"
             f"res = pairwise_tukeyhsd(df[{payload.metric_column!r}], "
-            f"df[{payload.group_column!r}], alpha={payload.alpha!r})\n"
+            f"df[{payload.group_column!r}].astype(str), alpha={payload.alpha!r})\n"
             "print(res.summary())\n"
         )
 
@@ -577,7 +577,7 @@ def _pairwise_code_snippet(result: dict[str, Any], payload: PairwiseComparisonsI
         f"labels = {labels!r}\n"
         f"alpha = {payload.alpha!r}\n"
         f"df = con.execute(\n    {sql_src}\n).df()\n"
-        f"arrays = [df.loc[df[{payload.group_column!r}] == lab, "
+        f"arrays = [df.loc[df[{payload.group_column!r}].astype(str) == lab, "
         f"{payload.metric_column!r}].to_numpy() for lab in labels]\n"
     )
     body = (
