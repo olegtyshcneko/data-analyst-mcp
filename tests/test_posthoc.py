@@ -584,3 +584,48 @@ def test_slice16_restricts_pairs_to_requested_subset(call_tool, load_df_into_ses
     # statsmodels pin (0.0046340806) verbatim despite the junk D group.
     by = {(c["group_a"], c["group_b"]): c for c in result["comparisons"]}
     assert by[("A", "C")]["p_adj"] == pytest.approx(0.0046340806, abs=1e-4)
+
+
+# === slice 17: pairwise_comparisons excludes null metric rows from group counts ===
+
+
+def _tukey_frame_with_null_rows():
+    import numpy as np
+    import pandas as pd
+
+    # The slice-10 Tukey fixture with two extra null-metric rows planted in A.
+    # After the NOT NULL filter, A must count 5 (not 7) and the pooled vector
+    # must be free of NaN so the engine reproduces the slice-10 pins.
+    return pd.DataFrame(
+        {
+            "grp": ["A"] * 5 + ["A"] * 2 + ["B"] * 5 + ["C"] * 5,
+            "val": [
+                1.0, 2.0, 3.0, 4.0, 5.0,
+                np.nan, np.nan,
+                3.0, 4.0, 5.0, 6.0, 7.0,
+                5.0, 6.0, 7.0, 8.0, 9.0,
+            ],
+        }
+    )
+
+
+def test_slice17_excludes_null_metric_rows(call_tool, load_df_into_session):
+    load_df_into_session("ds", _tukey_frame_with_null_rows())
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "tukey"},
+    )
+    assert result["ok"] is True
+
+    # Group A has 7 rows but 2 carry a null metric; both must be excluded so
+    # the reported count is 5 in every A-facing comparison and the groups array.
+    by = {(c["group_a"], c["group_b"]): c for c in result["comparisons"]}
+    assert by[("A", "B")]["n_a"] == 5
+    assert by[("A", "C")]["n_a"] == 5
+    groups = {g["name"]: g["n"] for g in result["groups"]}
+    assert groups["A"] == 5
+
+    # The engine computed on the non-null subset (== the slice-10 fixture), so
+    # A-C p_adj reproduces the statsmodels pin (0.0046340806) exactly. A leaked
+    # NaN would corrupt the pooled endog and shift this value.
+    assert by[("A", "C")]["p_adj"] == pytest.approx(0.0046340806, abs=1e-4)
