@@ -133,3 +133,22 @@ def test_slice06_duplicate_groups_for_repeated_labels(call_tool, load_df_into_se
     )
     assert result["ok"] is False
     assert result["error"]["type"] == "duplicate_groups"
+
+
+# === slice 7: pairwise_comparisons returns group_not_found for a label with no rows ===
+
+
+def test_slice07_group_not_found_for_label_with_no_rows(call_tool, load_df_into_session):
+    load_df_into_session("ds", _three_group_frame())
+    result = call_tool(
+        "pairwise_comparisons",
+        {
+            "name": "ds",
+            "group_column": "grp",
+            "metric_column": "val",
+            "groups": ["A", "B", "Z"],
+        },
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "group_not_found"
+    assert "Z" in result["error"]["message"]
