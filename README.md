@@ -216,7 +216,7 @@ For OpenCode (single command array):
 
 </details>
 
-After restarting (or reloading MCP servers in) your client, all 21 tools become available in any new conversation: the original 11 (`load_dataset`, `list_datasets`, `profile_dataset`, `describe_column`, `query`, `correlate`, `compare_groups`, `test_hypothesis`, `fit_model`, `plot`, `emit_notebook`), the v1.x additions (`adjust_pvalues`, `analyze_missingness`, `list_models`, `predict`, `evaluate_model`), and the tier-1 bundle (`materialize_query`, `find_outliers`, `power_analysis`, `regression_line`, `residual_diagnostic`).
+After restarting (or reloading MCP servers in) your client, all 22 tools become available in any new conversation: the original 11 (`load_dataset`, `list_datasets`, `profile_dataset`, `describe_column`, `query`, `correlate`, `compare_groups`, `test_hypothesis`, `fit_model`, `plot`, `emit_notebook`), the v1.x additions (`adjust_pvalues`, `analyze_missingness`, `list_models`, `predict`, `evaluate_model`), the tier-1 bundle (`materialize_query`, `find_outliers`, `power_analysis`, `regression_line`, `residual_diagnostic`), and the post-tier-1 addition `pairwise_comparisons` (post-hoc pairs after `compare_groups`).
 
 ## Worked example
 
@@ -361,6 +361,20 @@ residual_diagnostic(model_name="opp_amount", kind="all")
 
 Both diagnostic tools are OLS-only — logistic / Poisson / negbin return `regression_diagnostics_ols_only`.
 
+## Post-hoc pairwise comparisons
+
+`compare_groups` runs the omnibus test and stops at "the groups differ." `pairwise_comparisons` is the follow-up — *which pairs differ* — over all `n·(n−1)/2` pairs, gated by the same Shapiro auto-selection: **Tukey HSD** after ANOVA, a vendored tie-corrected **Dunn's test** (Holm-adjusted by default) after Kruskal–Wallis.
+
+```python
+pairwise_comparisons(name="opps", group_column="stage", metric_column="amount")
+# → {"ok": true, "method": "dunn", "p_adjust": "holm",
+#    "comparisons": [{"group_a": "Closed Lost", "group_b": "Closed Won",
+#                     "estimate": 812.4, "p_adj": 0.031, "reject": true}, ...],
+#    "n_comparisons": 15, "n_rejected": 3, "omnibus": {"test": "kruskal_wallis", ...}}
+```
+
+It recomputes the omnibus inline and caveats the interpretation when the family is not significant. The emitted code cell is fully runnable — it rehydrates the groups from the notebook's DuckDB connection and reproduces the table.
+
 ## Compose with MotherDuck MCP
 
 This server gives the agent the **analytical reasoning** layer; [`mcp-server-motherduck`](https://github.com/motherduckdb/mcp-server-motherduck) gives it the **raw-SQL-against-a-warehouse** layer. They are complementary, not competing — run both in the same `claude_desktop_config.json`:
@@ -392,7 +406,7 @@ The agent will reach for MotherDuck when the task is "query the warehouse" and f
             │
    ┌────────┴────────────────────────────────┐
    ▼                                         ▼
- 21 tools (datasets / query / stats /     NotebookRecorder
+ 22 tools (datasets / query / stats /     NotebookRecorder
  models / registry / plots / notebook)    (markdown + code cells)
             │                                         │
             ▼                                         ▼
@@ -428,7 +442,7 @@ The implementation spec is `docs/SPEC.md`. It is the source of truth — when in
 
 ## Contributing
 
-Issues and PRs are welcome. **Open an issue first for any new tool**: the 21-tool surface is intentionally closed at the v2 boundary (spec §5, §11, ROADMAP), and tool ideas are parked in `ROADMAP.md` until they're either promoted to v3 or explicitly declined. Bug fixes, doc improvements, and test additions are easier to land — just open a PR. Every change in `src/` must come with a failing test first (`red:` then `green:`); the `check_tdd_commits.py` script enforces this on the commit log.
+Issues and PRs are welcome. **Open an issue first for any new tool**: the 22-tool surface is intentionally closed at the v2 boundary (spec §5, §11, ROADMAP), and tool ideas are parked in `ROADMAP.md` until they're either promoted to v3 or explicitly declined. `pairwise_comparisons` is the reference example of that flow working end to end — issue → `docs/proposals/` draft → design conversation → fold into SPEC §5.9a. Bug fixes, doc improvements, and test additions are easier to land — just open a PR. Every change in `src/` must come with a failing test first (`red:` then `green:`); the `check_tdd_commits.py` script enforces this on the commit log.
 
 ## License
 
