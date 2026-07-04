@@ -71,9 +71,7 @@ def test_slice03_metric_not_numeric_for_varchar_metric(call_tool, load_df_into_s
 def test_slice04_too_few_groups_hints_compare_groups(call_tool, load_df_into_session):
     import pandas as pd
 
-    df = pd.DataFrame(
-        {"grp": ["A", "A", "B", "B"], "val": [1.0, 2.0, 3.0, 4.0]}
-    )
+    df = pd.DataFrame({"grp": ["A", "A", "B", "B"], "val": [1.0, 2.0, 3.0, 4.0]})
     load_df_into_session("ds", df)
 
     result = call_tool(
@@ -83,3 +81,37 @@ def test_slice04_too_few_groups_hints_compare_groups(call_tool, load_df_into_ses
     assert result["ok"] is False
     assert result["error"]["type"] == "too_few_groups"
     assert "compare_groups" in result["error"]["hint"]
+
+
+# === slice 5: pairwise_comparisons returns invalid_alpha outside the open unit interval ===
+
+
+def _three_group_frame():
+    import pandas as pd
+
+    return pd.DataFrame(
+        {
+            "grp": ["A", "A", "B", "B", "C", "C"],
+            "val": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        }
+    )
+
+
+def test_slice05_alpha_zero_returns_invalid_alpha(call_tool, load_df_into_session):
+    load_df_into_session("ds", _three_group_frame())
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "alpha": 0.0},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "invalid_alpha"
+
+
+def test_slice05_alpha_one_returns_invalid_alpha(call_tool, load_df_into_session):
+    load_df_into_session("ds", _three_group_frame())
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "alpha": 1.0},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "invalid_alpha"
