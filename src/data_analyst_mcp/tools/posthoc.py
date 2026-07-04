@@ -198,6 +198,10 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
             hint="Drop p_adjust for Tukey, or use method='dunn' to apply a correction.",
         )
 
+    # Sort resolved labels ascending before materialization and pairing, so
+    # pairs enumerate in itertools.combinations order (which matches
+    # statsmodels' own Tukey table order) even when `groups` was unsorted.
+    labels = sorted(labels)
     arrays: list[Any] = []
     for lab in labels:
         arr = _materialize_group_nonnull(
