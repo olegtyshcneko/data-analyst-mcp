@@ -14,12 +14,16 @@ from __future__ import annotations
 
 import itertools
 import logging
+import math
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
+from data_analyst_mcp.tools.multitest import (
+    _sm_multitest,  # type: ignore[reportPrivateUsage]
+)
 from data_analyst_mcp.tools.stats import (
     _all_labels,  # type: ignore[reportPrivateUsage]
     _is_numeric_dtype,  # type: ignore[reportPrivateUsage]
@@ -221,8 +225,91 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
 
     if payload.method == "tukey":
         return _run_tukey(labels, arrays, payload)
-    # Dunn and the auto Shapiro gate land in later slices.
+    if payload.method == "dunn":
+        return _run_dunn(labels, arrays, payload)
+    # The auto Shapiro gate lands in a later slice.
     return build_error(type="internal", message="auto method resolution lands in T4")
+
+
+def _run_dunn(
+    labels: list[str], arrays: list[Any], payload: PairwiseComparisonsInput
+) -> dict[str, Any]:
+    """Vendored Dunn's test: pooled average ranks + a normal-tail z per pair.
+
+    Pools every group's values, ranks them with ``scipy.stats.rankdata``
+    (average ranks), and compares each pair's mean ranks with a normal
+    approximation. The z is signed in ``b - a`` orientation. The raw p-value
+    family is corrected with statsmodels ``multipletests`` (Holm). The
+    omnibus is Kruskal-Wallis.
+    """
+    import numpy as np
+
+    sps = _scipy_stats()
+    pooled = np.concatenate(arrays)
+    n_total = len(pooled)
+    ranks = sps.rankdata(pooled)
+
+    mean_ranks: dict[str, float] = {}
+    n_by: dict[str, int] = {}
+    offset = 0
+    for lab, arr in zip(labels, arrays, strict=True):
+        block = ranks[offset : offset + len(arr)]
+        mean_ranks[lab] = float(block.mean())
+        n_by[lab] = len(arr)
+        offset += len(arr)
+
+    var = n_total * (n_total + 1) / 12.0
+
+    pairs = list(itertools.combinations(labels, 2))
+    p_raw: list[float] = []
+    stats_z: list[float] = []
+    estimates: list[float] = []
+    for a, b in pairs:
+        se = math.sqrt(var * (1.0 / n_by[a] + 1.0 / n_by[b]))
+        z = (mean_ranks[b] - mean_ranks[a]) / se
+        estimates.append(mean_ranks[b] - mean_ranks[a])
+        stats_z.append(z)
+        p_raw.append(2.0 * float(sps.norm.sf(abs(z))))
+
+    rejected, p_adj, _acs, _acb = _sm_multitest().multipletests(
+        p_raw, alpha=payload.alpha, method="holm"
+    )
+
+    comparisons: list[dict[str, Any]] = []
+    for i, (a, b) in enumerate(pairs):
+        comparisons.append(
+            {
+                "group_a": a,
+                "group_b": b,
+                "n_a": n_by[a],
+                "n_b": n_by[b],
+                "estimate": float(estimates[i]),  # mean_rank_diff, b - a
+                "statistic": float(stats_z[i]),
+                "p_raw": float(p_raw[i]),
+                "p_adj": float(p_adj[i]),
+                "reject": bool(rejected[i]),
+                "ci_low": None,
+                "ci_high": None,
+            }
+        )
+
+    omni = sps.kruskal(*arrays)
+    omnibus = {
+        "test": "kruskal_wallis",
+        "statistic": float(omni.statistic),
+        "p_value": float(omni.pvalue),
+        "significant": float(omni.pvalue) < payload.alpha,
+    }
+    return _build_response(
+        engine="dunn",
+        payload=payload,
+        p_adjust="holm",
+        estimate_name="mean_rank_diff",
+        omnibus=omnibus,
+        comparisons=comparisons,
+        labels=labels,
+        arrays=arrays,
+    )
 
 
 def _run_tukey(
