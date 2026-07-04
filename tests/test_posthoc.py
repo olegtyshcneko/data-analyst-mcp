@@ -480,3 +480,57 @@ def test_slice14_auto_selects_tukey_when_normal(call_tool, load_df_into_session)
     # 0.0046340806.
     by = {(c["group_a"], c["group_b"]): c for c in result["comparisons"]}
     assert by[("A", "C")]["p_adj"] == pytest.approx(0.0046340806, abs=1e-4)
+
+
+# === slice 15: pairwise_comparisons auto selects dunn when normality is violated ===
+
+
+def _cauchy_frame():
+    import numpy as np
+    import pandas as pd
+
+    # Same construction as test_stats.py's non-normal fixture: heavy-tailed
+    # Cauchy draws whose per-group Shapiro p all fall well below 0.05.
+    g1 = np.random.RandomState(10).standard_cauchy(20)
+    g2 = np.random.RandomState(11).standard_cauchy(20)
+    g3 = np.random.RandomState(12).standard_cauchy(20)
+    return pd.DataFrame(
+        {
+            "grp": ["A"] * 20 + ["B"] * 20 + ["C"] * 20,
+            "val": list(g1) + list(g2) + list(g3),
+        }
+    )
+
+
+def test_slice15_auto_selects_dunn_when_non_normal(call_tool, load_df_into_session):
+    load_df_into_session("ds", _cauchy_frame())
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "auto"},
+    )
+    assert result["ok"] is True
+    # Per-group Shapiro p = 6.04546e-09 / 0.00124572 / 0.000295286 (all < 0.05),
+    # so _select_test violates normality and switches to Kruskal -> Dunn's test.
+    assert result["method"] == "dunn"
+    assert result["method_requested"] == "auto"
+    # Dunn with p_adjust omitted resolves to Holm.
+    assert result["p_adjust"] == "holm"
+
+    shapiro = next(a for a in result["assumption_checks"] if a["name"] == "shapiro")
+    assert shapiro["violated"] is True
+    assert shapiro["consequence"] == "Non-normal residuals — switched to Dunn's test."
+
+    # Omnibus recomputed inline on the filtered groups:
+    # scipy.stats.kruskal(g1, g2, g3) -> H=0.3239344262, p=0.8504690883.
+    assert result["omnibus"]["test"] == "kruskal_wallis"
+    assert result["omnibus"]["statistic"] == pytest.approx(0.3239344262, abs=1e-4)
+    assert result["omnibus"]["p_value"] == pytest.approx(0.8504690883, abs=1e-4)
+
+    # z is SIGNED (b - a): vendored Dunn on the pooled ranks gives
+    # z(A,B)=+0.0724285968, p_raw(A,B)=0.9422608276. Every Holm p_adj
+    # collapses to 1.0, so nothing rejects.
+    by = {(c["group_a"], c["group_b"]): c for c in result["comparisons"]}
+    assert by[("A", "B")]["statistic"] == pytest.approx(0.0724285968, abs=1e-4)
+    assert by[("A", "B")]["p_raw"] == pytest.approx(0.9422608276, abs=1e-4)
+    assert all(c["p_adj"] == pytest.approx(1.0, abs=1e-4) for c in result["comparisons"])
+    assert result["n_rejected"] == 0
