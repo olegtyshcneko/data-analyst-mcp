@@ -891,3 +891,46 @@ def test_backslash_label_repr_quoted_in_rehydration_sql(call_tool, load_df_into_
         f"WHERE {_quote('grp')} IN ({in_list}) AND {_quote('val')} IS NOT NULL"
     )
     assert repr(sql) in code
+
+
+# === review-fix: pairwise_comparisons returns constant_metric for an all-tied metric column ===
+
+
+def _constant_metric_frame():
+    import pandas as pd
+
+    # Three groups whose metric values are all the same constant. Pooled
+    # variance is zero, so Dunn's tie term (T = N³−N) drives var=0 and the
+    # z-denominator to 0 → ZeroDivisionError, while Kruskal/ANOVA degenerate
+    # to NaNs. The guard must intercept before any engine runs.
+    return pd.DataFrame(
+        {
+            "grp": ["A"] * 3 + ["B"] * 3 + ["C"] * 3,
+            "val": [7.0] * 9,
+        }
+    )
+
+
+def test_constant_metric_returns_constant_metric_error(call_tool, load_df_into_session):
+    load_df_into_session("ds", _constant_metric_frame())
+
+    # method="dunn": an all-tied metric makes var=0, so the z-denominator is 0
+    # and the engine raises ZeroDivisionError — today surfaced as an
+    # uninformative internal error rather than a structured, actionable one.
+    dunn = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "dunn"},
+    )
+    assert dunn["ok"] is False
+    assert dunn["error"]["type"] == "constant_metric"
+    assert dunn["error"]["hint"]
+
+    # The guard is engine-independent: Tukey/ANOVA degenerate to NaNs on the
+    # same constant column and must return the identical structured error.
+    tukey = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "tukey"},
+    )
+    assert tukey["ok"] is False
+    assert tukey["error"]["type"] == "constant_metric"
+    assert tukey["error"]["hint"]
