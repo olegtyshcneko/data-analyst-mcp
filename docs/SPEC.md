@@ -211,9 +211,9 @@ Every tool follows this contract:
 - `read_options: dict | None` — passed through to DuckDB's `read_*` function (e.g. `{"header": false, "delim": ";"}`).
 
 **Behavior**:
-- Uses DuckDB `CREATE OR REPLACE TABLE <name> AS SELECT * FROM read_csv(...)` / `read_parquet(...)` / etc.
+- Reads the file on a **separate short-lived DuckDB connection that has filesystem access**, then hands the rows to the sandboxed session connection in memory (register DataFrame → `CREATE OR REPLACE TABLE <name>`). The session connection itself runs with `enable_external_access=false` (see §5.6) so untrusted `query` SQL can never touch the filesystem; loading is the one place disk/URL access is allowed, and it only ever executes the trusted, server-built `read_*` call — never agent SQL.
 - Auto-detects format from extension; falls back to `read_csv_auto` for ambiguous text.
-- Stores file path and read_options in session for the recorder.
+- Stores file path and read_options in session for the recorder (the recorder still emits a direct `read_csv_auto(...)` line, since the exported notebook runs standalone with normal file access).
 
 **Output**:
 ```json
@@ -330,6 +330,8 @@ Every tool follows this contract:
 - Reject statements that aren't `SELECT`, `WITH`, `DESCRIBE`, `SHOW`, `EXPLAIN`, `PRAGMA show_tables`. (`SET`, `CREATE`, `DROP`, `INSERT`, `UPDATE`, `DELETE` → rejected with `error.type = "write_not_allowed"`.)
 - Apply `LIMIT` if not already present.
 - Return rows, columns, total_rows (separate `COUNT(*)` over a subquery), execution_time_ms.
+
+**Filesystem isolation (issue #4)**: `query` and `materialize_query` execute agent-supplied SQL, so the session's DuckDB connection is created with `enable_external_access=false`. This blocks **every** DuckDB file-read vector at once — `read_csv('/etc/passwd')` and other `read_*` functions, the `SELECT * FROM '/etc/passwd.csv'` *replacement scan* (no function name — which a per-function denylist would miss), `glob(...)`, `COPY`, `ATTACH`, extension installs. The setting is a one-way latch (DuckDB refuses to re-enable it while the database is running), so no agent SQL can undo it. A blocked read surfaces as `error.type = "query_error"`, not a leak. File loading runs on a separate connection (see §5.1). Operators should still run the server unprivileged (defence in depth) — the sandbox protects the query path, not the process's own file permissions.
 
 ### 5.6a `materialize_query`
 

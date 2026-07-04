@@ -5,6 +5,29 @@ All notable changes to **data-analyst-mcp** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-07-04
+
+### Security
+- **Fix arbitrary host-file read via DuckDB file functions ([#4]).** The `query`
+  and `materialize_query` tools execute agent-supplied SQL, which could reach the
+  host filesystem — `SELECT * FROM read_csv('/etc/passwd')`, the
+  `SELECT * FROM '/etc/passwd.csv'` replacement scan (no function name), or
+  `glob('/etc/*')`. The session's DuckDB connection now runs with
+  `enable_external_access=false`, a one-way latch that blocks every file-read
+  vector at once and cannot be re-enabled by agent SQL. A blocked read returns a
+  structured `query_error` instead of leaking file contents.
+- **`load_dataset` is unaffected.** File reading now happens on a separate
+  short-lived connection with filesystem access; the loaded rows are handed to
+  the sandboxed session connection in memory, so local paths, `s3://`, and
+  `http(s)://` sources all keep working. The exported notebook still reproduces
+  the load from the original file.
+
+### Changed
+- `query` now wraps execution errors (previously an unhandled path) in the
+  structured `query_error` envelope, matching `materialize_query`.
+
+[#4]: https://github.com/olegtyshcneko/data-analyst-mcp/issues/4
+
 ## [1.1.0] - 2026-07-04
 
 Post-hoc pairwise comparisons — the follow-up to `compare_groups`. Tool surface **21 → 22**.
