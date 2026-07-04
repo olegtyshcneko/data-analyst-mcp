@@ -629,3 +629,36 @@ def test_slice17_excludes_null_metric_rows(call_tool, load_df_into_session):
     # A-C p_adj reproduces the statsmodels pin (0.0046340806) exactly. A leaked
     # NaN would corrupt the pooled endog and shift this value.
     assert by[("A", "C")]["p_adj"] == pytest.approx(0.0046340806, abs=1e-4)
+
+
+# === slice 18: pairwise_comparisons flags a non-significant omnibus in the interpretation ===
+
+
+def test_slice18_flags_non_significant_omnibus(call_tool, load_df_into_session):
+    load_df_into_session("ds", _cauchy_frame())
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "dunn"},
+    )
+    assert result["ok"] is True
+    # Kruskal omnibus p=0.8504690883 >= alpha=0.05, so the family is not
+    # significant and the interpretation must caveat it.
+    assert result["omnibus"]["significant"] is False
+    interp = result["interpretation"]
+    assert "not significant" in interp
+    assert "cautiously" in interp
+
+
+def test_slice18_no_caveat_when_omnibus_significant(call_tool, load_df_into_session):
+    load_df_into_session("ds", _tukey_frame())
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "tukey"},
+    )
+    assert result["ok"] is True
+    # f_oneway p=0.0061963978 < alpha, so the omnibus IS significant and the
+    # interpretation carries no caveat.
+    assert result["omnibus"]["significant"] is True
+    interp = result["interpretation"]
+    assert "not significant" not in interp
+    assert "cautiously" not in interp
