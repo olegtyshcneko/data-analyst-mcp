@@ -443,10 +443,14 @@ def _build_response(
     }
 
 
-def _assumption_checks(
-    engine: str, p_norm: list[float | None], p_lev: float
-) -> list[dict[str, Any]]:
-    """compare_groups-style shapiro + levene blocks, narrated for the engine."""
+def _assumption_checks(engine: str, p_norm: list[float | None], p_lev: float) -> dict[str, Any]:
+    """compare_groups-style shapiro + levene blocks, narrated for the engine.
+
+    Returns the same dict shape as compare_groups' >2-sample envelope
+    (stats._build_many_sample_response): the Shapiro block under
+    ``normality_test`` and the Levene block under ``equal_variances_test`` so a
+    client rendering compare_groups' assumption block can reuse the path.
+    """
     p_norm_min = min((p for p in p_norm if p is not None), default=None)
     norm_violated = any(p is not None and p < 0.05 for p in p_norm)
     var_violated = p_lev < 0.05
@@ -456,20 +460,20 @@ def _assumption_checks(
     else:
         norm_consequence = "Non-normal residuals — switched to Dunn's test."
         var_consequence = "Rank-based Dunn's test handles unequal variances."
-    return [
-        {
+    return {
+        "normality_test": {
             "name": "shapiro",
             "p": p_norm_min,
             "violated": norm_violated,
             "consequence": norm_consequence,
         },
-        {
+        "equal_variances_test": {
             "name": "levene",
             "p": p_lev,
             "violated": var_violated,
             "consequence": var_consequence,
         },
-    ]
+    }
 
 
 def _interpretation(
