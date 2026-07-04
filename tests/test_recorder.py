@@ -134,8 +134,14 @@ def test_setup_cell_emits_hash_assert_for_registered_model(tmp_path) -> None:
         rows=5,
         columns=[{"name": "y", "dtype": "DOUBLE"}, {"name": "x", "dtype": "DOUBLE"}],
     )
+    # Materialize the table from the in-memory frame (same rows as the CSV).
+    # The session connection is sandboxed (enable_external_access=false), so a
+    # direct read_csv_auto('...') here would (correctly) be blocked; the file
+    # still exists on disk for the recorder's hash assertion below.
     con = session.get_connection()
-    con.execute(f"CREATE OR REPLACE TABLE train AS SELECT * FROM read_csv_auto('{csv}')")
+    con.register("__train_df", df)
+    con.execute("CREATE OR REPLACE TABLE train AS SELECT * FROM __train_df")
+    con.unregister("__train_df")
 
     # Register a model whose training_dataset_hash matches the file.
     payload = _models.FitModelInput(

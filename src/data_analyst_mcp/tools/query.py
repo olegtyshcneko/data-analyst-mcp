@@ -99,14 +99,30 @@ def query(payload: QueryInput) -> dict[str, Any]:
     auto_limited = not _has_explicit_limit(payload.sql)
     final_sql = _apply_limit(payload.sql, payload.limit) if auto_limited else payload.sql
 
-    started = time.perf_counter()
-    cursor = con.execute(final_sql)
-    rows_raw = cursor.fetchall()
-    elapsed_ms = (time.perf_counter() - started) * 1000.0
-    columns = [d[0] for d in cursor.description] if cursor.description else []
-    rows = [dict(zip(columns, row, strict=True)) for row in rows_raw]
+    # The connection runs with enable_external_access=false, so any attempt to
+    # reach the host filesystem (read_csv('/etc/passwd'), the `FROM '/file.csv'`
+    # replacement scan, glob(...), COPY, ATTACH, ...) raises a DuckDB
+    # PermissionException here. That — along with ordinary syntax / catalog
+    # errors — surfaces as a structured query_error rather than an internal 500.
+    try:
+        started = time.perf_counter()
+        cursor = con.execute(final_sql)
+        rows_raw = cursor.fetchall()
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        columns = [d[0] for d in cursor.description] if cursor.description else []
+        rows = [dict(zip(columns, row, strict=True)) for row in rows_raw]
 
-    total = _total_rows(con, payload.sql)
+        total = _total_rows(con, payload.sql)
+    except Exception as exc:
+        return build_error(
+            type="query_error",
+            message=str(exc),
+            hint=(
+                "Check the SQL — verify referenced tables/columns exist and the "
+                "syntax is valid. Reading host files is disabled; load data with "
+                "load_dataset instead."
+            ),
+        )
 
     md = f"### Query\n\n```\n{payload.sql.strip()}\n```\n\n- {len(rows)} rows returned"
     code = f"con.sql({final_sql!r}).df()"

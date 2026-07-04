@@ -626,7 +626,23 @@ def load_dataset(payload: LoadDatasetInput) -> dict[str, Any]:
                 "bool / int / float / str / list of those."
             ),
         )
-    con.execute(f'CREATE OR REPLACE TABLE "{name}" AS SELECT * FROM {read_call}')
+    # The file read happens on a separate short-lived connection with
+    # filesystem access; the main `con` is sandboxed (enable_external_access
+    # off) so untrusted query SQL cannot read host files. The loaded rows cross
+    # into `con` in memory as a DataFrame — see session.read_file_as_df.
+    try:
+        loaded_df = session.read_file_as_df(read_call)
+    except Exception as exc:
+        return build_error(
+            type="query_error",
+            message=str(exc),
+            hint="Check the file is readable and matches the expected format / read_options.",
+        )
+    con.register("__dam_load_view", loaded_df)
+    try:
+        con.execute(f'CREATE OR REPLACE TABLE "{name}" AS SELECT * FROM __dam_load_view')
+    finally:
+        con.unregister("__dam_load_view")
 
     describe_rows = con.execute(f'DESCRIBE "{name}"').fetchall()
     columns = [{"name": str(row[0]), "dtype": str(row[1])} for row in describe_rows]

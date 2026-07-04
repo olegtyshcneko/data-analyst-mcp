@@ -59,13 +59,55 @@ _connection: duckdb.DuckDBPyConnection | None = None
 
 
 def get_connection() -> duckdb.DuckDBPyConnection:
-    """Return the per-process DuckDB connection, creating it on first use."""
+    """Return the per-process DuckDB connection, creating it on first use.
+
+    The connection is created with filesystem access disabled
+    (``enable_external_access=false``). This is the security boundary for the
+    ``query`` / ``materialize_query`` tools, which execute agent-supplied SQL:
+    it blocks *every* DuckDB file-read vector at once — ``read_csv('/etc/passwd')``
+    and friends, the ``SELECT * FROM '/etc/passwd.csv'`` replacement scan,
+    ``glob('/etc/*')``, ``COPY``, ``ATTACH``, extension installs — rather than
+    chasing a per-function denylist (which replacement scans defeat outright).
+
+    The setting is a one-way latch in DuckDB: once off it cannot be re-enabled
+    while the database is running, so no agent-supplied SQL can turn it back on
+    (verified: ``SET``/``PRAGMA enable_external_access=true`` both raise). File
+    loading, which legitimately needs disk access, runs on a separate
+    short-lived connection instead — see :func:`read_file_as_df`.
+    """
     global _connection
     if _connection is None:
         import duckdb as _duckdb
 
         _connection = _duckdb.connect()
+        # Must be set before any query runs; it can never be re-enabled after.
+        _connection.execute("SET enable_external_access=false")
     return _connection
+
+
+def read_file_as_df(read_call: str) -> Any:
+    """Read a file via a throwaway connection *with* filesystem access and
+    return the rows as a pandas DataFrame.
+
+    File loading is deliberately isolated from :func:`get_connection`: the main
+    connection has ``enable_external_access=false`` so untrusted query SQL can
+    never touch the host filesystem. This short-lived connection is the only
+    place disk (or ``s3://`` / ``http`` — ``httpfs`` auto-loads here) access
+    happens. The caller registers the returned DataFrame into the main
+    connection in memory, so the loaded data ends up queryable there without
+    ever exposing the filesystem to the query path.
+
+    ``read_call`` is a fully-rendered DuckDB ``read_*`` table-function call
+    built by the trusted loader (``tools.datasets._build_read_call``) — never
+    agent-supplied SQL.
+    """
+    import duckdb as _duckdb
+
+    loader = _duckdb.connect()
+    try:
+        return loader.execute(f"SELECT * FROM {read_call}").df()
+    finally:
+        loader.close()
 
 
 def register(
