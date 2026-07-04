@@ -258,7 +258,10 @@ def _run_dunn(
         n_by[lab] = len(arr)
         offset += len(arr)
 
-    var = n_total * (n_total + 1) / 12.0
+    # Tie correction: T = Σ(t³ − t) over the pooled tie-group sizes t.
+    _vals, counts = np.unique(pooled, return_counts=True)
+    tie_term = float(sum(int(t) ** 3 - int(t) for t in counts))
+    var = n_total * (n_total + 1) / 12.0 - tie_term / (12.0 * (n_total - 1))
 
     pairs = list(itertools.combinations(labels, 2))
     p_raw: list[float] = []
