@@ -472,7 +472,7 @@ def test_slice14_auto_selects_tukey_when_normal(call_tool, load_df_into_session)
     # Tukey controls FWER internally, so p_adjust is echoed null even under auto.
     assert result["p_adjust"] is None
 
-    shapiro = next(a for a in result["assumption_checks"] if a["name"] == "shapiro")
+    shapiro = result["assumption_checks"]["normality_test"]
     assert shapiro["violated"] is False
 
     # The full Tukey engine ran on the resolved groups: A-C p_adj reproduces the
@@ -516,7 +516,7 @@ def test_slice15_auto_selects_dunn_when_non_normal(call_tool, load_df_into_sessi
     # Dunn with p_adjust omitted resolves to Holm.
     assert result["p_adjust"] == "holm"
 
-    shapiro = next(a for a in result["assumption_checks"] if a["name"] == "shapiro")
+    shapiro = result["assumption_checks"]["normality_test"]
     assert shapiro["violated"] is True
     assert shapiro["consequence"] == "Non-normal residuals — switched to Dunn's test."
 
@@ -1014,3 +1014,28 @@ def test_emitted_cells_replay_integer_group_labels(call_tool, load_df_into_sessi
     tukey_out = _exec_recorded_cell(tukey_code, df)
     for lab in ("1", "2", "3"):
         assert lab in tukey_out
+
+
+# === review-fix: pairwise_comparisons returns assumption_checks keyed like compare_groups ===
+
+
+def test_assumption_checks_keyed_like_compare_groups(call_tool, load_df_into_session):
+    load_df_into_session("ds", _tukey_frame())
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "tukey"},
+    )
+    assert result["ok"] is True
+
+    # compare_groups returns assumption_checks as a DICT keyed by test role
+    # (stats.py:_build_many_sample_response). pairwise_comparisons must match
+    # that shape so a client's compare_groups renderer can reuse the path:
+    # a Shapiro block under "normality_test", a Levene block under
+    # "equal_variances_test", each carrying p / violated / consequence.
+    checks = result["assumption_checks"]
+    assert checks["normality_test"]["name"] == "shapiro"
+    assert checks["equal_variances_test"]["name"] == "levene"
+    for block in (checks["normality_test"], checks["equal_variances_test"]):
+        assert "p" in block
+        assert "violated" in block
+        assert "consequence" in block
