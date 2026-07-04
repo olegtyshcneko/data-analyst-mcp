@@ -82,5 +82,15 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
             hint="Call list_datasets to see what is available.",
         )
 
+    entry = entries[payload.name]
+    available = {c["name"]: c["dtype"] for c in entry.columns}
+    for col in (payload.group_column, payload.metric_column):
+        if col not in available:
+            return build_error(
+                type="column_not_found",
+                message=f"Column {col!r} is not in dataset {payload.name!r}.",
+                hint=f"Available columns: {', '.join(sorted(available))}",
+            )
+
     # All validations passed — the Tukey / Dunn engines land in T3.
     return build_error(type="internal", message="pairwise engines land in T3")
