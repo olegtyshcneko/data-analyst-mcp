@@ -934,3 +934,83 @@ def test_constant_metric_returns_constant_metric_error(call_tool, load_df_into_s
     assert tukey["ok"] is False
     assert tukey["error"]["type"] == "constant_metric"
     assert tukey["error"]["hint"]
+
+
+# === review-fix: pairwise_comparisons emitted cells replay integer group labels ===
+
+
+def _integer_group_frame():
+    import pandas as pd
+
+    # Group column is INTEGER (BIGINT once in DuckDB). Reuse the slice-11 no-ties
+    # metric [1,2,3],[4,5,6],[7,8,9] so the Dunn z pins hold: mean ranks 2/5/8,
+    # T=0, SE=sqrt(5), z(1,2)=(5-2)/sqrt(5)=1.3416407865 -> ".4g" renders "1.342".
+    return pd.DataFrame(
+        {
+            "grp": [1, 1, 1, 2, 2, 2, 3, 3, 3],
+            "val": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+        }
+    )
+
+
+def _exec_recorded_cell(code_src: str, df) -> str:
+    """Replay an emitted reproducer cell against a FRESH DuckDB connection.
+
+    Mirrors the recorder setup cell: a brand-new duckdb connection with the
+    dataset re-created via ``CREATE OR REPLACE TABLE ... AS SELECT * FROM df``,
+    then ``exec`` the cell with that ``con`` bound. Returns everything the cell
+    printed to stdout so the caller can assert on the per-pair replay output.
+    """
+    import contextlib
+    import io
+
+    import duckdb
+
+    con = duckdb.connect()
+    con.register("__df_ds", df)
+    con.execute('CREATE OR REPLACE TABLE "ds" AS SELECT * FROM __df_ds')
+    con.unregister("__df_ds")
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        exec(code_src, {"con": con})
+    return buf.getvalue()
+
+
+def test_emitted_cells_replay_integer_group_labels(call_tool, load_df_into_session):
+    from data_analyst_mcp.recorder import get_recorder
+
+    df = _integer_group_frame()
+    load_df_into_session("ds", df)
+
+    # --- Dunn cell: labels resolve via _all_labels -> ['1','2','3'] (strings),
+    # but the replayed DuckDB SELECT returns an int64 'grp' column. The emitted
+    # `df['grp'] == lab` compares int64 against a str -> all-False -> empty
+    # arrays, so the cell raises ZeroDivisionError instead of printing one line
+    # per pair. The astype(str) fix makes the arrays map to the right groups.
+    dunn = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "dunn"},
+    )
+    assert dunn["ok"] is True
+    dunn_code = get_recorder().cells[1]["source"]
+    dunn_out = _exec_recorded_cell(dunn_code, df)
+    reject_lines = [ln for ln in dunn_out.splitlines() if "reject=" in ln]
+    assert len(reject_lines) == 3, f"expected 3 per-pair lines, got:\n{dunn_out}"
+    # z(1,2)=1.3416407865 renders ".4g" as 1.342 — proves the arrays mapped to
+    # the right groups (empty arrays would print z=nan or never print at all).
+    assert "1.342" in dunn_out
+
+    # --- Tukey cell on the same integer-group data: it must still replay and
+    # its summary must mention all three group labels. The buggy cell passes the
+    # native int64 column straight to pairwise_tukeyhsd (its group set/order can
+    # diverge from the tool's sorted-string labels); astype(str) keeps them aligned.
+    get_recorder().reset()
+    tukey = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "tukey"},
+    )
+    assert tukey["ok"] is True
+    tukey_code = get_recorder().cells[1]["source"]
+    tukey_out = _exec_recorded_cell(tukey_code, df)
+    for lab in ("1", "2", "3"):
+        assert lab in tukey_out
