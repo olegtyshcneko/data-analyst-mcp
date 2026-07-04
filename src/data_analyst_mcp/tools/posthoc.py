@@ -106,6 +106,13 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
             hint="Tukey and Dunn need a numeric metric; pick a numeric column.",
         )
 
+    if not (0.0 < payload.alpha < 1.0):
+        return build_error(
+            type="invalid_alpha",
+            message=f"alpha must be in (0, 1); got {payload.alpha}.",
+            hint="Use 0.05 (default), 0.01, or any value strictly between 0 and 1.",
+        )
+
     labels = _all_labels(payload.name, payload.group_column)
     if len(labels) < 3:
         return build_error(
