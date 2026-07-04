@@ -207,6 +207,16 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
                 message=f"Group label {lab!r} matched no rows in {payload.name!r}.",
                 hint="Check the label spelling, or omit `groups` to use every label.",
             )
+        if len(arr) < 2:
+            # Guard BEFORE any scipy/statsmodels call: Tukey needs within-group
+            # variance and Dunn's rank pooling degenerates on a singleton group.
+            return build_error(
+                type="insufficient_group_size",
+                message=(
+                    f"Group {lab!r} has only {len(arr)} non-null row(s); at least 2 are required."
+                ),
+                hint="Every group needs >=2 non-null metric values to compare.",
+            )
         arrays.append(arr)
 
     if payload.method == "tukey":
