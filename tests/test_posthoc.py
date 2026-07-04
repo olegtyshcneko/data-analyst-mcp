@@ -22,3 +22,27 @@ def test_slice01_not_found_for_unregistered_dataset(call_tool):
     )
     assert result["ok"] is False
     assert result["error"]["type"] == "not_found"
+
+
+# === slice 2: pairwise_comparisons returns column_not_found for missing group or metric column ===
+
+
+def test_slice02_column_not_found_for_missing_column(call_tool, load_df_into_session):
+    import pandas as pd
+
+    df = pd.DataFrame({"grp": ["A", "B", "C"], "val": [1.0, 2.0, 3.0]})
+    load_df_into_session("ds", df)
+
+    missing_group = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "nope", "metric_column": "val"},
+    )
+    assert missing_group["ok"] is False
+    assert missing_group["error"]["type"] == "column_not_found"
+
+    missing_metric = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "nope"},
+    )
+    assert missing_metric["ok"] is False
+    assert missing_metric["error"]["type"] == "column_not_found"
