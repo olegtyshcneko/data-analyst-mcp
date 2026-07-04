@@ -589,7 +589,7 @@ def _pairwise_code_snippet(result: dict[str, Any], payload: PairwiseComparisonsI
     )
     correction = f"reject, p_adj, _, _ = multipletests(p_raw, alpha=alpha, method={sm_method!r})\n"
     report = (
-        "for (a, b), z, raw, adj in zip(pairs, z_scores, p_raw, p_adj):\n"
-        '    print(f"{a} vs {b}  z={z:.4g}  p_raw={raw:.4g}  p_adj={adj:.4g}")\n'
+        "for (a, b), z, raw, adj, rej in zip(pairs, z_scores, p_raw, p_adj, reject):\n"
+        '    print(f"{a} vs {b}  z={z:.4g}  p_raw={raw:.4g}  p_adj={adj:.4g}  reject={rej}")\n'
     )
     return header + config + body + correction + report
