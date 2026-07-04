@@ -63,3 +63,23 @@ def test_slice03_metric_not_numeric_for_varchar_metric(call_tool, load_df_into_s
     )
     assert result["ok"] is False
     assert result["error"]["type"] == "metric_not_numeric"
+
+
+# === slice 4: pairwise_comparisons returns too_few_groups below three groups and hints at compare_groups ===
+
+
+def test_slice04_too_few_groups_hints_compare_groups(call_tool, load_df_into_session):
+    import pandas as pd
+
+    df = pd.DataFrame(
+        {"grp": ["A", "A", "B", "B"], "val": [1.0, 2.0, 3.0, 4.0]}
+    )
+    load_df_into_session("ds", df)
+
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val"},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "too_few_groups"
+    assert "compare_groups" in result["error"]["hint"]
