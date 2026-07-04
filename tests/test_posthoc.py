@@ -152,3 +152,23 @@ def test_slice07_group_not_found_for_label_with_no_rows(call_tool, load_df_into_
     assert result["ok"] is False
     assert result["error"]["type"] == "group_not_found"
     assert "Z" in result["error"]["message"]
+
+
+# === slice 8: pairwise_comparisons returns too_many_groups above twenty labels ===
+
+
+def test_slice08_too_many_groups_above_twenty(call_tool, load_df_into_session):
+    import pandas as pd
+
+    # 21 distinct labels (> the 20-group cap), one row each.
+    labels = [f"g{i:02d}" for i in range(21)]
+    df = pd.DataFrame({"grp": labels, "val": [float(i) for i in range(21)]})
+    load_df_into_session("ds", df)
+
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val"},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "too_many_groups"
+    assert "groups" in result["error"]["hint"]
