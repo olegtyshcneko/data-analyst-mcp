@@ -156,6 +156,15 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
             message=f"Need at least 3 groups; resolved {len(labels)}.",
             hint="Use compare_groups for a two-group comparison.",
         )
+    if len(labels) > _MAX_GROUPS:
+        return build_error(
+            type="too_many_groups",
+            message=f"Resolved {len(labels)} groups; the cap is {_MAX_GROUPS}.",
+            hint=(
+                "Pass a `groups` subset of at most 20 labels — the cap bounds "
+                "the quadratic n·(n−1)/2 comparison output."
+            ),
+        )
 
     arrays: list[Any] = []
     for lab in labels:
