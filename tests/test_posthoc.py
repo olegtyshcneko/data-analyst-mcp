@@ -833,3 +833,48 @@ def test_recorded_notebook_round_trips_through_nbconvert(call_tool, tmp_path):
     )
     reject_lines = [ln for ln in stdout.splitlines() if "reject=" in ln]
     assert len(reject_lines) == 3, f"expected 3 per-pair reject lines, got:\n{stdout}"
+
+
+# === review-fix: pairwise_comparisons emits repr-quoted rehydration sql for backslash labels ===
+
+
+def test_backslash_label_repr_quoted_in_rehydration_sql(call_tool, load_df_into_session):
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+    from data_analyst_mcp.tools.posthoc import _sql_in_list  # type: ignore[reportPrivateUsage]
+    from data_analyst_mcp.tools.stats import _quote  # type: ignore[reportPrivateUsage]
+
+    # A group label carrying a backslash (Python source ``"Q1\\Update"`` == the
+    # literal ``Q1\Update``) must be embedded into the emitted cell via ``repr``.
+    # The raw backslash flowing into a double-quoted host literal makes Python
+    # reinterpret ``\U`` as a (truncated) unicode escape — silent label
+    # corruption or a hard SyntaxError at nbconvert time.
+    df = pd.DataFrame(
+        {
+            "grp": ["A"] * 3 + ["B"] * 3 + ["Q1\\Update"] * 3,
+            "val": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+        }
+    )
+    load_df_into_session("ds", df)
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "dunn"},
+    )
+    assert result["ok"] is True
+
+    code = get_recorder().cells[1]["source"]
+    # (a) The emitted cell must still be valid Python — a raw ``\U`` raises
+    # "truncated \UXXXXXXXX escape" here under the buggy backslash handling.
+    compile(code, "<pairwise_backslash_cell>", "exec")
+
+    # (b) The rehydration SELECT must appear repr-escaped. Rebuild the exact SQL
+    # from the same helpers/inputs, then assert its ``repr`` is embedded verbatim
+    # (a repr-roundtrip) — the buggy ``"``-only escaping leaves the backslash raw.
+    labels = ["A", "B", "Q1\\Update"]  # resolved labels sorted ascending
+    in_list = _sql_in_list(labels)
+    sql = (
+        f"SELECT {_quote('grp')}, {_quote('val')} FROM {_quote('ds')} "
+        f"WHERE {_quote('grp')} IN ({in_list}) AND {_quote('val')} IS NOT NULL"
+    )
+    assert repr(sql) in code
