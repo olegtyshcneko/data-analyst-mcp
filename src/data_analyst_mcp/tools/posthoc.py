@@ -64,7 +64,8 @@ def _materialize_group_nonnull(name: str, group_col: str, metric_col: str, label
     con = session.get_connection()
     table = _quote(name)
     rel = con.execute(
-        f"SELECT {_quote(metric_col)} FROM {table} WHERE {_quote(group_col)} = ?",
+        f"SELECT {_quote(metric_col)} FROM {table} "
+        f"WHERE {_quote(group_col)} = ? AND {_quote(metric_col)} IS NOT NULL",
         [label],
     )
     df: Any = rel.df()
