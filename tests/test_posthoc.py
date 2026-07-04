@@ -371,3 +371,51 @@ def test_slice11_dunn_untied_hand_computed_ranks(call_tool, load_df_into_session
     assert result["omnibus"]["statistic"] == pytest.approx(7.2, abs=1e-4)
     assert result["omnibus"]["p_value"] == pytest.approx(0.0273237224, abs=1e-4)
     assert result["omnibus"]["significant"] is True
+
+
+# === slice 12: pairwise_comparisons dunn applies the tie correction ===
+
+
+def _dunn_tied_frame():
+    import pandas as pd
+
+    # A=[1,2,2], B=[2,3,4], C=[5,5,6] — pooled ties drive the T tie term.
+    return pd.DataFrame(
+        {
+            "grp": ["A"] * 3 + ["B"] * 3 + ["C"] * 3,
+            "val": [1.0, 2.0, 2.0, 2.0, 3.0, 4.0, 5.0, 5.0, 6.0],
+        }
+    )
+
+
+def test_slice12_dunn_tie_correction(call_tool, load_df_into_session):
+    load_df_into_session("ds", _dunn_tied_frame())
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "dunn"},
+    )
+    assert result["ok"] is True
+    # Default correction when p_adjust is omitted under method="dunn".
+    assert result["p_adjust"] == "holm"
+
+    by = {(c["group_a"], c["group_b"]): c for c in result["comparisons"]}
+    ab, ac, bc = by[("A", "B")], by[("A", "C")], by[("B", "C")]
+
+    # Tie-corrected vendored Dunn: pooled counts give T=Σ(t³−t)=30, so
+    # var=N(N+1)/12 − T/(12(N−1)) = 7.5 − 30/96 = 7.1875 and
+    # SE=sqrt(7.1875*(1/3+1/3))=2.1889875894. Mean ranks A=7/3, B=14/3, C=8.
+    # Without the tie term SE would be sqrt(5)=2.236 and these z's would be
+    # smaller — this asserts the correction is applied.
+    # z = [1.0659417827, 2.5887157579, 1.5227739753]
+    assert ab["statistic"] == pytest.approx(1.0659417827, abs=1e-4)
+    assert ac["statistic"] == pytest.approx(2.5887157579, abs=1e-4)
+    assert bc["statistic"] == pytest.approx(1.5227739753, abs=1e-4)
+    # p_raw = [0.2864499597, 0.0096334576, 0.1278152631]
+    assert ab["p_raw"] == pytest.approx(0.2864499597, abs=1e-4)
+    assert ac["p_raw"] == pytest.approx(0.0096334576, abs=1e-4)
+    assert bc["p_raw"] == pytest.approx(0.1278152631, abs=1e-4)
+    # Holm p_adj = [0.2864499597, 0.0289003729, 0.2556305262]; reject [F, T, F]
+    assert ab["p_adj"] == pytest.approx(0.2864499597, abs=1e-4)
+    assert ac["p_adj"] == pytest.approx(0.0289003729, abs=1e-4)
+    assert bc["p_adj"] == pytest.approx(0.2556305262, abs=1e-4)
+    assert [ab["reject"], ac["reject"], bc["reject"]] == [False, True, False]
