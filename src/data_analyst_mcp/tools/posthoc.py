@@ -1,0 +1,86 @@
+"""Post-hoc pairwise comparisons — ``pairwise_comparisons``.
+
+The follow-up to ``compare_groups``: once the omnibus test (one-way ANOVA
+or Kruskal–Wallis) reports that groups differ, this tool answers *which
+pairs differ* — Tukey HSD after ANOVA, Dunn's test (tie-corrected) after
+Kruskal–Wallis, gated by the same Shapiro normality auto-selection.
+
+This module (task T2) implements the validation surface only; the Tukey /
+Dunn engines land in a later task. A payload that clears every validation
+returns a deterministic ``internal`` stub until then.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from data_analyst_mcp import session
+from data_analyst_mcp.errors import build_error
+
+logger = logging.getLogger(__name__)
+
+_MAX_GROUPS = 20
+
+
+class PairwiseComparisonsInput(BaseModel):
+    """Inputs for ``pairwise_comparisons``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(..., description="Registered dataset name.")
+    group_column: str = Field(..., description="Column holding the group labels.")
+    metric_column: str = Field(..., description="Numeric metric column to compare across groups.")
+    groups: list[str] | None = Field(
+        default=None,
+        description=(
+            "Subset of group labels to compare (>=3 labels, no duplicates). "
+            "When omitted, every distinct label in group_column is used."
+        ),
+    )
+    method: Literal["auto", "tukey", "dunn"] = Field(
+        default="auto",
+        description=(
+            "Post-hoc engine. 'auto' mirrors compare_groups' Shapiro gate "
+            "(normality holds -> Tukey HSD, violated -> Dunn's test); "
+            "'tukey' / 'dunn' force the engine."
+        ),
+    )
+    p_adjust: Literal["holm", "bonferroni", "sidak", "bh", "by"] | None = Field(
+        default=None,
+        description=(
+            "Family-wise correction applied to Dunn's raw p-values only. "
+            "Tukey controls FWER internally, so a correction is meaningless "
+            "there — an explicit p_adjust with method='tukey' is rejected. "
+            "When Dunn runs and p_adjust is None it resolves to 'holm'."
+        ),
+    )
+    alpha: float = Field(
+        default=0.05,
+        description="Significance threshold in the open interval (0, 1).",
+    )
+
+
+def pairwise_comparisons(payload: PairwiseComparisonsInput) -> dict[str, Any]:
+    """Post-hoc pairwise comparisons after a significant omnibus test.
+
+    Thin entry point: validation + dispatch live in the impl, recording is
+    attached at this wrapper after a successful result (T5).
+    """
+    return _pairwise_comparisons_impl(payload)
+
+
+def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, Any]:
+    """Validate the request, then dispatch to the engine (engines land in T3)."""
+    entries = session.get_datasets()
+    if payload.name not in entries:
+        return build_error(
+            type="not_found",
+            message=f"No dataset named {payload.name!r} registered.",
+            hint="Call list_datasets to see what is available.",
+        )
+
+    # All validations passed — the Tukey / Dunn engines land in T3.
+    return build_error(type="internal", message="pairwise engines land in T3")

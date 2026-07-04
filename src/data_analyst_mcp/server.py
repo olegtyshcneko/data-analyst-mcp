@@ -22,6 +22,7 @@ from data_analyst_mcp.tools import multitest as _multitest
 from data_analyst_mcp.tools import notebook as _notebook
 from data_analyst_mcp.tools import outliers as _outliers
 from data_analyst_mcp.tools import plots as _plots
+from data_analyst_mcp.tools import posthoc as _posthoc
 from data_analyst_mcp.tools import power as _power
 from data_analyst_mcp.tools import predict as _predict
 from data_analyst_mcp.tools import query as _query
@@ -259,6 +260,70 @@ def compare_groups(
         return _stats.compare_groups(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("compare_groups failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def pairwise_comparisons(
+    name: str,
+    group_column: str,
+    metric_column: str,
+    groups: list[str] | None = None,
+    method: str = "auto",
+    p_adjust: str | None = None,
+    alpha: float = 0.05,
+) -> dict[str, Any]:
+    """Find *which* groups differ after a significant omnibus test.
+
+    Use this after ``compare_groups`` reports a significant ANOVA or
+    Kruskal-Wallis result (>2 groups): the omnibus says "at least one group
+    differs" but not which pairs. ``method`` picks the post-hoc engine —
+    ``auto`` (default) mirrors ``compare_groups``' Shapiro-Wilk normality
+    gate (normality holds → Tukey HSD, violated → Dunn's test), while
+    ``tukey`` / ``dunn`` force the engine. ``groups`` restricts the
+    comparison to a subset of labels (≥3, no duplicates); omit it to use
+    every distinct label. ``p_adjust`` (Dunn only — ``holm`` / ``bonferroni``
+    / ``sidak`` / ``bh`` / ``by``) controls the family-wise correction on
+    Dunn's raw p-values; it resolves to ``holm`` when Dunn runs and is
+    rejected with ``method="tukey"`` (Tukey controls FWER internally).
+    ``alpha`` is the significance threshold in (0, 1). Returns the engine
+    run, the omnibus recomputed on the filtered groups, one row per pair
+    (estimate, p_raw, p_adj, reject, CI), assumption checks, and a
+    plain-English interpretation that caveats a non-significant omnibus.
+    """
+    try:
+        from pydantic import ValidationError
+
+        try:
+            payload = _posthoc.PairwiseComparisonsInput.model_validate(
+                {
+                    "name": name,
+                    "group_column": group_column,
+                    "metric_column": metric_column,
+                    "groups": groups,
+                    "method": method,
+                    "p_adjust": p_adjust,
+                    "alpha": alpha,
+                }
+            )
+        except ValidationError as ve:
+            for err in ve.errors():
+                if err.get("loc") == ("method",):
+                    return build_error(
+                        type="invalid_method",
+                        message=f"Unknown method {method!r}.",
+                        hint="Allowed methods: ['auto', 'dunn', 'tukey'].",
+                    )
+                if err.get("loc") == ("p_adjust",):
+                    return build_error(
+                        type="invalid_p_adjust",
+                        message=f"Unknown p_adjust {p_adjust!r}.",
+                        hint="Allowed: ['bh', 'bonferroni', 'by', 'holm', 'sidak'].",
+                    )
+            raise
+        return _posthoc.pairwise_comparisons(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("pairwise_comparisons failed")
         return build_error(type="internal", message=str(exc))
 
 
