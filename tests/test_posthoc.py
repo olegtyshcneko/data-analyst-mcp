@@ -210,7 +210,9 @@ def test_slice09_tukey_with_explicit_p_adjust_is_not_applicable(call_tool, load_
             "p_adjust": "holm",
         },
     )
-    assert allowed["error"]["type"] != "p_adjust_not_applicable"
+    # Once the auto gate lands (slice 14) this request SUCCEEDS and carries no
+    # "error" key, so the lookup must tolerate its absence rather than KeyError.
+    assert allowed.get("error", {}).get("type") != "p_adjust_not_applicable"
 
 
 # === slice 10: pairwise_comparisons tukey matches statsmodels known answer with confidence intervals ===
@@ -451,3 +453,30 @@ def test_slice13_dunn_p_adjust_passthrough_bonferroni(call_tool, load_df_into_se
     assert ac["p_adj"] == pytest.approx(0.0289003729, abs=1e-4)
     assert bc["p_adj"] == pytest.approx(0.3834457893, abs=1e-4)
     assert [ab["reject"], ac["reject"], bc["reject"]] == [False, True, False]
+
+
+# === slice 14: pairwise_comparisons auto selects tukey when normality holds ===
+
+
+def test_slice14_auto_selects_tukey_when_normal(call_tool, load_df_into_session):
+    load_df_into_session("ds", _tukey_frame())
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "auto"},
+    )
+    assert result["ok"] is True
+    # A=[1..5], B=[3..7], C=[5..9]: per-group Shapiro p=0.967174 (> 0.05), so the
+    # _select_test gate holds normality and picks ANOVA -> Tukey HSD.
+    assert result["method"] == "tukey"
+    assert result["method_requested"] == "auto"
+    # Tukey controls FWER internally, so p_adjust is echoed null even under auto.
+    assert result["p_adjust"] is None
+
+    shapiro = next(a for a in result["assumption_checks"] if a["name"] == "shapiro")
+    assert shapiro["violated"] is False
+
+    # The full Tukey engine ran on the resolved groups: A-C p_adj reproduces the
+    # slice-10 statsmodels pin, pairwise_tukeyhsd(vals, grps, alpha=0.05) ->
+    # 0.0046340806.
+    by = {(c["group_a"], c["group_b"]): c for c in result["comparisons"]}
+    assert by[("A", "C")]["p_adj"] == pytest.approx(0.0046340806, abs=1e-4)
