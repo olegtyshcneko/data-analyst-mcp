@@ -12,6 +12,8 @@ stub, so error-type assertions here never rely on ``ok is True``.
 
 from __future__ import annotations
 
+import pytest
+
 # === slice 1: pairwise_comparisons returns not_found for unregistered dataset ===
 
 
@@ -209,3 +211,72 @@ def test_slice09_tukey_with_explicit_p_adjust_is_not_applicable(call_tool, load_
         },
     )
     assert allowed["error"]["type"] != "p_adjust_not_applicable"
+
+
+# === slice 10: pairwise_comparisons tukey matches statsmodels known answer with confidence intervals ===
+
+
+def _tukey_frame():
+    import pandas as pd
+
+    # A=[1..5], B=[3..7], C=[5..9] — the pinned Tukey fixture.
+    return pd.DataFrame(
+        {
+            "grp": ["A"] * 5 + ["B"] * 5 + ["C"] * 5,
+            "val": [1.0, 2.0, 3.0, 4.0, 5.0, 3.0, 4.0, 5.0, 6.0, 7.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+        }
+    )
+
+
+def test_slice10_tukey_matches_statsmodels(call_tool, load_df_into_session):
+    load_df_into_session("ds", _tukey_frame())
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "tukey"},
+    )
+    assert result["ok"] is True
+    assert result["method"] == "tukey"
+    assert result["method_requested"] == "tukey"
+    # Tukey controls FWER internally, so p_adjust is echoed null.
+    assert result["p_adjust"] is None
+    assert result["estimate_name"] == "mean_diff"
+    assert result["n_comparisons"] == 3  # C(3, 2)
+    assert result["n_rejected"] == 1
+
+    by = {(c["group_a"], c["group_b"]): c for c in result["comparisons"]}
+    ab, ac, bc = by[("A", "B")], by[("A", "C")], by[("B", "C")]
+
+    # Reference: statsmodels.stats.multicomp.pairwise_tukeyhsd(vals, grps, alpha=0.05)
+    #   meandiffs [2.0, 4.0, 2.0]  (group_b - group_a orientation)
+    #   pvalues   [0.1545799684, 0.0046340806, 0.1545799684]
+    #   confint   [[-0.6678636566, 4.6678636566],
+    #              [ 1.3321363434, 6.6678636566],
+    #              [-0.6678636566, 4.6678636566]]
+    #   reject    [False, True, False]
+    assert ab["n_a"] == 5 and ab["n_b"] == 5
+    assert ab["estimate"] == pytest.approx(2.0, abs=1e-4)
+    assert ab["p_adj"] == pytest.approx(0.1545799684, abs=1e-4)
+    assert ab["ci_low"] == pytest.approx(-0.6678636566, abs=1e-4)
+    assert ab["ci_high"] == pytest.approx(4.6678636566, abs=1e-4)
+    assert ab["reject"] is False
+    # Tukey does not produce a per-row z or raw p-value.
+    assert ab["statistic"] is None
+    assert ab["p_raw"] is None
+
+    assert ac["estimate"] == pytest.approx(4.0, abs=1e-4)
+    assert ac["p_adj"] == pytest.approx(0.0046340806, abs=1e-4)
+    assert ac["ci_low"] == pytest.approx(1.3321363434, abs=1e-4)
+    assert ac["ci_high"] == pytest.approx(6.6678636566, abs=1e-4)
+    assert ac["reject"] is True
+
+    assert bc["estimate"] == pytest.approx(2.0, abs=1e-4)
+    assert bc["p_adj"] == pytest.approx(0.1545799684, abs=1e-4)
+    assert bc["ci_low"] == pytest.approx(-0.6678636566, abs=1e-4)
+    assert bc["ci_high"] == pytest.approx(4.6678636566, abs=1e-4)
+    assert bc["reject"] is False
+
+    # Omnibus: scipy.stats.f_oneway([1..5], [3..7], [5..9]) -> F=8.0, p=0.0061963978
+    assert result["omnibus"]["test"] == "anova"
+    assert result["omnibus"]["statistic"] == pytest.approx(8.0, abs=1e-4)
+    assert result["omnibus"]["p_value"] == pytest.approx(0.0061963978, abs=1e-4)
+    assert result["omnibus"]["significant"] is True
