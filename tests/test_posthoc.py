@@ -419,3 +419,35 @@ def test_slice12_dunn_tie_correction(call_tool, load_df_into_session):
     assert ac["p_adj"] == pytest.approx(0.0289003729, abs=1e-4)
     assert bc["p_adj"] == pytest.approx(0.2556305262, abs=1e-4)
     assert [ab["reject"], ac["reject"], bc["reject"]] == [False, True, False]
+
+
+# === slice 13: pairwise_comparisons dunn passes p_adjust through to bonferroni ===
+
+
+def test_slice13_dunn_p_adjust_passthrough_bonferroni(call_tool, load_df_into_session):
+    load_df_into_session("ds", _dunn_tied_frame())
+    result = call_tool(
+        "pairwise_comparisons",
+        {
+            "name": "ds",
+            "group_column": "grp",
+            "metric_column": "val",
+            "method": "dunn",
+            "p_adjust": "bonferroni",
+        },
+    )
+    assert result["ok"] is True
+    # The explicit p_adjust is echoed, not defaulted to Holm.
+    assert result["p_adjust"] == "bonferroni"
+
+    by = {(c["group_a"], c["group_b"]): c for c in result["comparisons"]}
+    ab, ac, bc = by[("A", "B")], by[("A", "C")], by[("B", "C")]
+
+    # The raw p-value family is the same tie-corrected Dunn family as slice 12
+    # (p_raw=[0.2864499597, 0.0096334576, 0.1278152631]); only the correction
+    # changes. Bonferroni via statsmodels multipletests(method="bonferroni"):
+    #   p_adj = [0.8593498790, 0.0289003729, 0.3834457893]; reject [F, T, F].
+    assert ab["p_adj"] == pytest.approx(0.8593498790, abs=1e-4)
+    assert ac["p_adj"] == pytest.approx(0.0289003729, abs=1e-4)
+    assert bc["p_adj"] == pytest.approx(0.3834457893, abs=1e-4)
+    assert [ab["reject"], ac["reject"], bc["reject"]] == [False, True, False]
