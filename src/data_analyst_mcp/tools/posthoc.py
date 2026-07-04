@@ -22,6 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.tools.multitest import (
+    _METHOD_TO_STATSMODELS,  # type: ignore[reportPrivateUsage]
     _sm_multitest,  # type: ignore[reportPrivateUsage]
 )
 from data_analyst_mcp.tools.stats import (
@@ -274,8 +275,11 @@ def _run_dunn(
         stats_z.append(z)
         p_raw.append(2.0 * float(sps.norm.sf(abs(z))))
 
+    # Dunn resolves an omitted p_adjust to Holm; an explicit choice passes
+    # through to statsmodels via the shared _METHOD_TO_STATSMODELS map.
+    p_adjust_resolved = payload.p_adjust or "holm"
     rejected, p_adj, _acs, _acb = _sm_multitest().multipletests(
-        p_raw, alpha=payload.alpha, method="holm"
+        p_raw, alpha=payload.alpha, method=_METHOD_TO_STATSMODELS[p_adjust_resolved]
     )
 
     comparisons: list[dict[str, Any]] = []
@@ -306,7 +310,7 @@ def _run_dunn(
     return _build_response(
         engine="dunn",
         payload=payload,
-        p_adjust="holm",
+        p_adjust=p_adjust_resolved,
         estimate_name="mean_rank_diff",
         omnibus=omnibus,
         comparisons=comparisons,
