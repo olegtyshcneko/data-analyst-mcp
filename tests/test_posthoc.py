@@ -534,3 +534,53 @@ def test_slice15_auto_selects_dunn_when_non_normal(call_tool, load_df_into_sessi
     assert by[("A", "B")]["p_raw"] == pytest.approx(0.9422608276, abs=1e-4)
     assert all(c["p_adj"] == pytest.approx(1.0, abs=1e-4) for c in result["comparisons"])
     assert result["n_rejected"] == 0
+
+
+# === slice 16: pairwise_comparisons restricts pairs to the requested groups subset ===
+
+
+def _tukey_frame_with_extra_group():
+    import pandas as pd
+
+    # The slice-10 Tukey fixture (A/B/C) plus a 4th far-flung junk group D.
+    # A subset request of A/B/C must ignore D entirely.
+    return pd.DataFrame(
+        {
+            "grp": ["A"] * 5 + ["B"] * 5 + ["C"] * 5 + ["D"] * 5,
+            "val": [
+                1.0, 2.0, 3.0, 4.0, 5.0,
+                3.0, 4.0, 5.0, 6.0, 7.0,
+                5.0, 6.0, 7.0, 8.0, 9.0,
+                100.0, 101.0, 102.0, 103.0, 104.0,
+            ],
+        }
+    )
+
+
+def test_slice16_restricts_pairs_to_requested_subset(call_tool, load_df_into_session):
+    load_df_into_session("ds", _tukey_frame_with_extra_group())
+    result = call_tool(
+        "pairwise_comparisons",
+        {
+            "name": "ds",
+            "group_column": "grp",
+            "metric_column": "val",
+            "method": "tukey",
+            "groups": ["C", "A", "B"],  # unsorted subset; D deliberately omitted
+        },
+    )
+    assert result["ok"] is True
+    assert result["n_comparisons"] == 3  # C(3, 2) over the 3-label subset only
+
+    # The excluded label D appears nowhere — not in the group counts nor any pair.
+    group_names = [g["name"] for g in result["groups"]]
+    assert group_names == ["A", "B", "C"]  # resolved labels sorted ascending
+    assert "D" not in group_names
+    pairs = [(c["group_a"], c["group_b"]) for c in result["comparisons"]]
+    assert pairs == [("A", "B"), ("A", "C"), ("B", "C")]  # itertools.combinations order
+    assert all("D" not in pair for pair in pairs)
+
+    # Computation ran on the subset: A-C p_adj reproduces the slice-10
+    # statsmodels pin (0.0046340806) verbatim despite the junk D group.
+    by = {(c["group_a"], c["group_b"]): c for c in result["comparisons"]}
+    assert by[("A", "C")]["p_adj"] == pytest.approx(0.0046340806, abs=1e-4)
