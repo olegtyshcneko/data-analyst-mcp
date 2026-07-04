@@ -172,3 +172,40 @@ def test_slice08_too_many_groups_above_twenty(call_tool, load_df_into_session):
     assert result["ok"] is False
     assert result["error"]["type"] == "too_many_groups"
     assert "groups" in result["error"]["hint"]
+
+
+# === slice 9: pairwise_comparisons rejects explicit p_adjust with method tukey as p_adjust_not_applicable ===
+
+
+def test_slice09_tukey_with_explicit_p_adjust_is_not_applicable(call_tool, load_df_into_session):
+    load_df_into_session("ds", _three_group_frame())
+
+    # method="tukey" + an explicit p_adjust is the only path that errors:
+    # Tukey controls FWER internally via the studentized-range distribution.
+    rejected = call_tool(
+        "pairwise_comparisons",
+        {
+            "name": "ds",
+            "group_column": "grp",
+            "metric_column": "val",
+            "method": "tukey",
+            "p_adjust": "holm",
+        },
+    )
+    assert rejected["ok"] is False
+    assert rejected["error"]["type"] == "p_adjust_not_applicable"
+
+    # Under auto, an explicit p_adjust is never an error. The engines land in
+    # T3, so the request still returns the internal stub — assert only that
+    # it is NOT rejected as p_adjust_not_applicable.
+    allowed = call_tool(
+        "pairwise_comparisons",
+        {
+            "name": "ds",
+            "group_column": "grp",
+            "metric_column": "val",
+            "method": "auto",
+            "p_adjust": "holm",
+        },
+    )
+    assert allowed["error"]["type"] != "p_adjust_not_applicable"
