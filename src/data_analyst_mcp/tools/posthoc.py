@@ -113,7 +113,22 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
             hint="Use 0.05 (default), 0.01, or any value strictly between 0 and 1.",
         )
 
-    labels = _all_labels(payload.name, payload.group_column)
+    if payload.groups is not None:
+        labels = list(payload.groups)
+        seen: set[str] = set()
+        duplicates: list[str] = []
+        for lab in labels:
+            if lab in seen:
+                duplicates.append(lab)
+            seen.add(lab)
+        if duplicates:
+            return build_error(
+                type="duplicate_groups",
+                message=f"Duplicate labels in groups: {duplicates}.",
+                hint="List each group label at most once in `groups`.",
+            )
+    else:
+        labels = _all_labels(payload.name, payload.group_column)
     if len(labels) < 3:
         return build_error(
             type="too_few_groups",
