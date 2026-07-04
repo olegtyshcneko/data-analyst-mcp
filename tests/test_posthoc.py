@@ -762,3 +762,76 @@ def test_slice19_no_cells_recorded_on_error(call_tool, load_df_into_session):
     )
     assert result["ok"] is False
     assert get_recorder().cells == []
+
+
+# === extra: pairwise_comparisons recorded notebook round-trips through nbconvert ===
+
+
+def test_recorded_notebook_round_trips_through_nbconvert(call_tool, tmp_path):
+    """End-to-end: a FILE-BACKED dataset + dunn pairwise_comparisons + emit →
+    ``jupyter nbconvert --execute`` runs clean AND the Dunn cell prints one
+    line per pair carrying the reject decision (the proposal's per-pair output
+    contract). The dataset must be file-backed (loaded via load_dataset) so the
+    notebook setup cell can re-create its table.
+    """
+    import os
+    import subprocess
+
+    import nbformat as nbf
+    import pandas as pd
+
+    csv = tmp_path / "scores.csv"
+    pd.DataFrame(
+        {
+            "grp": ["A"] * 4 + ["B"] * 4 + ["C"] * 4,
+            "val": [1.0, 2.0, 3.0, 4.0, 3.0, 4.0, 5.0, 6.0, 5.0, 6.0, 7.0, 8.0],
+        }
+    ).to_csv(csv, index=False)
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "scores"})
+    assert r["ok"], r
+    r = call_tool(
+        "pairwise_comparisons",
+        {"name": "scores", "group_column": "grp", "metric_column": "val", "method": "dunn"},
+    )
+    assert r["ok"], r
+
+    nb_path = tmp_path / "pairwise_round_trip.ipynb"
+    r = call_tool("emit_notebook", {"path": str(nb_path)})
+    assert r["ok"], r
+
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "jupyter",
+            "nbconvert",
+            "--to",
+            "notebook",
+            "--execute",
+            "--inplace",
+            str(nb_path),
+            "--ExecutePreprocessor.timeout=120",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    assert result.returncode == 0, (
+        f"nbconvert failed:\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+    )
+
+    # The executed Dunn cell must print one line per pair (3 pairs -> 3 lines),
+    # each carrying the reject decision.
+    nb = nbf.read(str(nb_path), as_version=4)
+    dunn_cells = [
+        c for c in nb.cells if c.cell_type == "code" and "multipletests" in c.source
+    ]
+    assert len(dunn_cells) == 1
+    stdout = "".join(
+        o.get("text", "")
+        for o in dunn_cells[0].get("outputs", [])
+        if o.get("output_type") == "stream"
+    )
+    reject_lines = [ln for ln in stdout.splitlines() if "reject=" in ln]
+    assert len(reject_lines) == 3, f"expected 3 per-pair reject lines, got:\n{stdout}"
