@@ -662,3 +662,103 @@ def test_slice18_no_caveat_when_omnibus_significant(call_tool, load_df_into_sess
     interp = result["interpretation"]
     assert "not significant" not in interp
     assert "cautiously" not in interp
+
+
+# === slice 19: pairwise_comparisons records a runnable cell pair for tukey and dunn ===
+
+
+def test_slice19_records_runnable_cell_pair_for_tukey(call_tool, load_df_into_session):
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("ds", _tukey_frame())
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "tukey"},
+    )
+    assert result["ok"] is True
+
+    cells = get_recorder().cells
+    assert len(cells) == 2
+    md, code = cells
+    assert md["cell_type"] == "markdown"
+    assert code["cell_type"] == "code"
+    assert md["metadata"]["tool_name"] == "pairwise_comparisons"
+    assert code["metadata"]["tool_name"] == "pairwise_comparisons"
+    # Markdown surfaces the N / M pairs ratio and names the engine.
+    assert "1 / 3 pairs" in md["source"]
+    assert "Tukey HSD" in md["source"]
+    # The Tukey reproducer imports its own pairwise_tukeyhsd and compiles.
+    assert "pairwise_tukeyhsd" in code["source"]
+    compile(code["source"], "<pairwise_tukey_cell>", "exec")
+
+
+def test_slice19_records_runnable_cell_pair_for_dunn(call_tool, load_df_into_session):
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("ds", _dunn_untied_frame())
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "dunn"},
+    )
+    assert result["ok"] is True
+
+    cells = get_recorder().cells
+    assert len(cells) == 2
+    md, code = cells
+    assert md["cell_type"] == "markdown"
+    assert code["cell_type"] == "code"
+    assert md["metadata"]["tool_name"] == "pairwise_comparisons"
+    assert code["metadata"]["tool_name"] == "pairwise_comparisons"
+    # Markdown surfaces the N / M pairs ratio and names the engine.
+    assert "1 / 3 pairs" in md["source"]
+    assert "Dunn's test" in md["source"]
+    # The Dunn reproducer recomputes the vendored formula via multipletests.
+    assert "multipletests" in code["source"]
+    compile(code["source"], "<pairwise_dunn_cell>", "exec")
+
+
+def test_slice19_single_quote_label_is_escaped_in_code(call_tool, load_df_into_session):
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    # A label carrying an apostrophe must be ''-doubled for the SQL IN-list —
+    # not backslash-escaped, which would break (or inject into) the query.
+    df = pd.DataFrame(
+        {
+            "grp": ["A"] * 3 + ["B"] * 3 + ["O'Brien"] * 3,
+            "val": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+        }
+    )
+    load_df_into_session("ds", df)
+    result = call_tool(
+        "pairwise_comparisons",
+        {"name": "ds", "group_column": "grp", "metric_column": "val", "method": "dunn"},
+    )
+    assert result["ok"] is True
+
+    code = get_recorder().cells[1]["source"]
+    # Single quote doubled inside the SQL IN-list.
+    assert "O''Brien" in code
+    # And the cell still compiles as Python.
+    compile(code, "<pairwise_quote_cell>", "exec")
+
+
+def test_slice19_no_cells_recorded_on_error(call_tool, load_df_into_session):
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session("ds", _three_group_frame())
+    # method="tukey" + explicit p_adjust errors as p_adjust_not_applicable, so
+    # nothing should be recorded (mirrors the multitest error guard).
+    result = call_tool(
+        "pairwise_comparisons",
+        {
+            "name": "ds",
+            "group_column": "grp",
+            "metric_column": "val",
+            "method": "tukey",
+            "p_adjust": "holm",
+        },
+    )
+    assert result["ok"] is False
+    assert get_recorder().cells == []
