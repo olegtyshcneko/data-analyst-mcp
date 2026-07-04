@@ -237,8 +237,8 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
     p_lev = _levene_p(*arrays)
     if _select_test(n_groups=len(labels), p_norm=p_norm, p_levene=p_lev) == "anova":
         return _run_tukey(labels, arrays, payload)
-    # The violated (Kruskal -> Dunn) branch lands in slice 15.
-    return build_error(type="internal", message="auto method resolution lands in T4")
+    # Normality violated -> Kruskal wins the gate, so run the Dunn engine.
+    return _run_dunn(labels, arrays, payload)
 
 
 def _run_dunn(
