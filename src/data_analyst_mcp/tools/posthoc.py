@@ -31,6 +31,7 @@ from data_analyst_mcp.tools.stats import (
     _levene_p,  # type: ignore[reportPrivateUsage]
     _quote,  # type: ignore[reportPrivateUsage]
     _scipy_stats,  # type: ignore[reportPrivateUsage]
+    _select_test,  # type: ignore[reportPrivateUsage]
     _shapiro_p,  # type: ignore[reportPrivateUsage]
 )
 
@@ -228,7 +229,15 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
         return _run_tukey(labels, arrays, payload)
     if payload.method == "dunn":
         return _run_dunn(labels, arrays, payload)
-    # The auto Shapiro gate lands in a later slice.
+
+    # method == "auto": mirror compare_groups' Shapiro gate (stats.py:782-786)
+    # to pick the engine. _select_test resolves to "anova" when normality holds
+    # and "kruskal_wallis" when it is violated; map those to Tukey / Dunn.
+    p_norm = [_shapiro_p(arr) for arr in arrays]
+    p_lev = _levene_p(*arrays)
+    if _select_test(n_groups=len(labels), p_norm=p_norm, p_levene=p_lev) == "anova":
+        return _run_tukey(labels, arrays, payload)
+    # The violated (Kruskal -> Dunn) branch lands in slice 15.
     return build_error(type="internal", message="auto method resolution lands in T4")
 
 
