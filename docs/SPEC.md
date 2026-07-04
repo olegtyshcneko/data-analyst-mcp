@@ -422,7 +422,7 @@ Every tool follows this contract:
    - **Tukey** — `statsmodels.stats.multicomp.pairwise_tukeyhsd(endog, groups, alpha)` behind an `Any`-returning `_sm_multicomp()` wrapper (pyright-strict pattern). `estimate_name = "mean_diff"`; each row carries `statistic=null`, `p_raw=null`, `p_adj` = Tukey's adjusted p, and `ci_low`/`ci_high` from the confint. Omnibus = `scipy.stats.f_oneway`, reported as `test: "anova"`.
    - **Dunn** (vendored) — pooled average ranks via `scipy.stats.rankdata`; tie term `T = Σ(t³ − t)` over pooled tie-group sizes `t`; `var = N(N+1)/12 − T/(12(N−1))`; `SE_ij = sqrt(var·(1/nᵢ + 1/nⱼ))`; `z = (R̄ⱼ − R̄ᵢ)/SE_ij` (signed, **b − a**); `p_raw = 2·norm.sf(|z|)`. Family correction via statsmodels `multipletests` through `_METHOD_TO_STATSMODELS` (imported from `tools.multitest`, never re-declared); `p_adjust` resolves to `"holm"` when `None`, else passes through. `estimate_name = "mean_rank_diff"`; `estimate = R̄_b − R̄_a`; `statistic = z`; `ci_low`/`ci_high = null`. Omnibus = `scipy.stats.kruskal`, reported as `test: "kruskal_wallis"`.
 10. Recompute the omnibus inline on the filtered groups; a non-significant omnibus (`p ≥ alpha`) drives a caveat in the `interpretation`.
-11. Emit the recorder cell pair on success only, then return. The code cell is **fully runnable** (the `adjust_pvalues` precedent, not the `compare_groups` stub): it rehydrates the group vectors from the notebook's `con` DuckDB connection via a NULL-filtered `IN (...)` list with every single quote `''`-doubled (mandatory — a label like `O'Brien` becomes `'O''Brien'`), imports its own `pairwise_tukeyhsd` / `multipletests`, and reproduces the reported table.
+11. Emit the recorder cell pair on success only, then return. The code cell is **fully runnable** (the `adjust_pvalues` precedent, not the `compare_groups` stub): it rehydrates the group vectors from the notebook's `con` DuckDB connection via a NULL-filtered `IN (...)` list with every single quote `''`-doubled (mandatory — a label like `O'Brien` becomes `'O''Brien'`), imports its own `pairwise_tukeyhsd` / `multipletests`, casts the group column to string at the pandas layer (`astype(str)`) so replay matches the tool's stringified labels even for integer-coded groups, and reproduces the reported table.
 
 **Output**:
 ```python
@@ -456,11 +456,12 @@ Every tool follows this contract:
     "n_comparisons": int,               # n·(n−1)/2
     "n_rejected": int,
     "groups": [{"name": "A", "n": 20}, ...],  # post-NULL-filter counts
-    "assumption_checks": [              # compare_groups envelope
-        {"name": "shapiro", "p": 0.01, "violated": True,
-         "consequence": "Non-normal residuals — switched to Dunn's test."},
-        {"name": "levene", "p": 0.44, "violated": False, "consequence": "..."},
-    ],
+    "assumption_checks": {              # compare_groups envelope — same stable keys
+        "normality_test": {"name": "shapiro", "p": 0.01, "violated": True,
+                           "consequence": "Non-normal residuals — switched to Dunn's test."},
+        "equal_variances_test": {"name": "levene", "p": 0.44, "violated": False,
+                                 "consequence": "..."},
+    },
     "interpretation": "…",              # plain-English; caveats a non-significant omnibus
 }
 ```
