@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
+from data_analyst_mcp.tools.stats import _is_numeric_dtype  # type: ignore[reportPrivateUsage]
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,16 @@ def _pairwise_comparisons_impl(payload: PairwiseComparisonsInput) -> dict[str, A
                 message=f"Column {col!r} is not in dataset {payload.name!r}.",
                 hint=f"Available columns: {', '.join(sorted(available))}",
             )
+
+    metric_dtype = available[payload.metric_column]
+    if not _is_numeric_dtype(metric_dtype):
+        return build_error(
+            type="metric_not_numeric",
+            message=(
+                f"Metric column {payload.metric_column!r} has non-numeric dtype {metric_dtype!r}."
+            ),
+            hint="Tukey and Dunn need a numeric metric; pick a numeric column.",
+        )
 
     # All validations passed — the Tukey / Dunn engines land in T3.
     return build_error(type="internal", message="pairwise engines land in T3")
