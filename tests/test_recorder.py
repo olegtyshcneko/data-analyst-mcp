@@ -551,3 +551,26 @@ def test_setup_cell_emits_fallback_guard_above_content_ceiling(tmp_path, monkeyp
     assert "'fallback:' + hashlib.sha256(" in setup_src
     assert "assert actual_hash_ds_big_0 == expected_hash_ds_big_0" in setup_src
     compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_emits_comment_not_assert_for_sentinel_hash() -> None:
+    """Datasets without a verifiable local file (s3://, http) reload
+    unguarded — the setup cell says so in a comment instead of asserting."""
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import NotebookRecorder
+
+    session.reset()
+    session.register(
+        name="remote",
+        path="s3://bucket/file.csv",
+        read_options={},
+        format="csv",
+        rows=1,
+        columns=[],
+    )
+
+    setup_src = NotebookRecorder().to_notebook(include_setup=True).cells[0].source
+    assert "# Note: dataset 'remote' has no verifiable source hash" in setup_src
+    assert "expected_hash_ds_remote_0" not in setup_src
+    assert "CREATE OR REPLACE TABLE remote" in setup_src
+    compile(setup_src, "<setup>", "exec")
