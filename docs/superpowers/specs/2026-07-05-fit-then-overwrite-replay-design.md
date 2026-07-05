@@ -82,9 +82,14 @@ m_train_df = con.sql("SELECT * FROM read_csv_auto('/data/x.csv', SAMPLE_SIZE=-1)
 m = smf.ols("y ~ x", data=m_train_df).fit()
 ```
 
-- The frame is named `<model_name>_train_df`. Model names are already
-  identifier-validated (the block emits `expected_hash_<model_name>`
-  variables today), so no sanitization is needed.
+- The frame is named `<model_name>_train_df`, prefixed with underscores
+  until it collides with no reloadable dataset's `<name>_df` frame (a
+  dataset named `<model>_train` would otherwise have its post-transform
+  scoring frame clobbered). Model names are validated as
+  non-empty-no-whitespace only (`_is_valid_model_name`); the emitted
+  `expected_hash_<model_name>` lines share that pre-existing assumption,
+  so non-identifier model names remain a pre-existing fragility outside
+  this fix's scope.
 - `<dataset>_df` is left untouched — post-transform — because the
   predict/evaluate scoring cells reference it and that is the table they saw
   live.
@@ -116,6 +121,7 @@ a pure refactor, byte-identical output.
 | >100 MB base | `fallback:` shape recomputed against the base path. |
 | In-memory base (`base_loader is None`) | Not detected — unchanged (pre-existing gap: no reproducible source exists). |
 | Dataset deleted from registry | `ds_entry is None` → unchanged comment branch. |
+| Fit on an intermediate derived state, then overwritten again | Not detected — both hashes are the derived sentinel; the re-fit uses the final table, unguarded. Consistent with the documented body-cell ordering limitation. |
 
 ### Out of scope (documented limitation)
 
