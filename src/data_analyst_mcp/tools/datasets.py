@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import logging
 import os
-import re
-from typing import Any, cast
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
+from data_analyst_mcp.read_options import render_read_options_fragment
 from data_analyst_mcp.recorder import get_recorder
 
 logger = logging.getLogger(__name__)
@@ -63,54 +63,13 @@ def _extension(path: str) -> str:
     return os.path.splitext(path)[1].lower()
 
 
-def _render_read_option(value: Any) -> str:
-    """Render a Python value as a DuckDB literal for the reader option list.
-
-    Bools → ``TRUE``/``FALSE``; ints/floats unchanged; strings single-quoted
-    with embedded quotes doubled; lists rendered as ``[a, b, c]`` (used for
-    ``names``, ``columns``, etc.). Unknown shapes raise — the caller surfaces
-    them as a ``bad_read_option`` error rather than producing broken SQL.
-    """
-    if isinstance(value, bool):
-        return "TRUE" if value else "FALSE"
-    if isinstance(value, (int, float)):
-        return repr(value)
-    if isinstance(value, str):
-        escaped = value.replace("'", "''")
-        return f"'{escaped}'"
-    if isinstance(value, list):
-        items = cast(list[Any], value)
-        return "[" + ", ".join(_render_read_option(v) for v in items) + "]"
-    raise TypeError(f"unsupported read_option value type: {type(value).__name__}")
-
-
-_READ_OPTION_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-
-
-def _format_read_options(options: dict[str, Any]) -> str:
-    """Render ``read_options`` as a leading ``, key=value, ...`` fragment.
-
-    Keys must be identifier-like (``[A-Za-z_][A-Za-z0-9_]*``) to keep SQL
-    injection impossible via the option dict. Returns an empty string when
-    ``options`` is empty.
-    """
-    if not options:
-        return ""
-    parts: list[str] = []
-    for key, val in options.items():
-        if not _READ_OPTION_KEY_RE.match(key):
-            raise ValueError(f"read_options key {key!r} is not a valid identifier")
-        parts.append(f"{key}={_render_read_option(val)}")
-    return ", " + ", ".join(parts)
-
-
 def _build_read_call(path: str, fmt: str, read_options: dict[str, Any]) -> str:
     """Render the DuckDB read_* call used in the CREATE TABLE statement.
 
     ``read_options`` is forwarded as additional kwargs to the reader; an
     empty dict produces the same call as before.
     """
-    extra = _format_read_options(read_options)
+    extra = render_read_options_fragment(read_options)
     if fmt == "parquet":
         return f"read_parquet('{path}'{extra})"
     if fmt in {"json", "jsonl"}:
