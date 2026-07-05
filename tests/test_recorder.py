@@ -846,3 +846,126 @@ def test_setup_cell_refits_overwritten_training_dataset_from_base_loader(
     # predict/evaluate scoring cells.
     assert 'train_df = con.sql("SELECT * FROM train").df()' in setup_src
     compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_fallback_guard_targets_base_path_after_overwrite(
+    call_tool, tmp_path, monkeypatch
+) -> None:
+    """Above-ceiling training file + overwrite: the fallback stat/recompute
+    must target the original path, not the '(query)' placeholder."""
+    from data_analyst_mcp import provenance
+    from data_analyst_mcp.recorder import get_recorder
+
+    monkeypatch.setattr(provenance, "HASH_CONTENT_CEILING_BYTES", 4)
+    csv = tmp_path / "big.csv"
+    csv.write_text("y,x\n1.0,0.0\n2.0,1.0\n3.0,2.0\n4.0,3.0\n5.0,4.0\n")
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "train"})
+    assert r["ok"], r
+    r = call_tool(
+        "fit_model",
+        {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT y * 10 AS y, x FROM train", "name": "train", "overwrite": True},
+    )
+    assert r["ok"], r
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert "expected_hash_m = 'fallback:" in setup_src
+    assert f"_st = _os.stat({str(csv)!r})" in setup_src
+    assert "_os.stat('(query)')" not in setup_src
+    assert "data=m_train_df" in setup_src
+    compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_sentinel_base_after_overwrite_refits_unguarded(tmp_path) -> None:
+    """An s3-backed training dataset overwritten after fit: no hash assert
+    is possible (sentinel), but the re-fit still loads from the original
+    s3 loader rather than the post-transform table."""
+    import pandas as pd
+
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import NotebookRecorder
+    from data_analyst_mcp.tools import models as _models
+
+    session.reset()
+    df = pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0]})
+    session.register(
+        name="train",
+        path="s3://bucket/train.csv",
+        read_options={},
+        format="csv",
+        rows=5,
+        columns=[{"name": "y", "dtype": "DOUBLE"}, {"name": "x", "dtype": "DOUBLE"}],
+    )
+    con = session.get_connection()
+    con.register("__train_df", df)
+    con.execute("CREATE OR REPLACE TABLE train AS SELECT * FROM __train_df")
+    con.unregister("__train_df")
+    assert session.get_datasets()["train"].source_hash.startswith("sentinel:")
+
+    _models.fit_model(
+        _models.FitModelInput(
+            name="train", formula="y ~ x", kind="ols", robust=False, model_name="m"
+        )
+    )
+    # Overwrite via a direct derived registration mirroring materialize_query
+    # (an s3 read through the tool would need network; the registry state is
+    # what the recorder consumes).
+    entry = session.get_datasets()["train"]
+    session.register(
+        name="train",
+        path="(query)",
+        read_options={"sql": "SELECT y * 10 AS y, x FROM train"},
+        format="derived",
+        rows=5,
+        columns=entry.columns,
+        base_loader={
+            "path": entry.path,
+            "format": entry.format,
+            "read_options": dict(entry.read_options),
+            "source_hash": entry.source_hash,
+        },
+    )
+    con.execute("CREATE OR REPLACE TABLE train AS SELECT y * 10 AS y, x FROM train")
+
+    setup_src = NotebookRecorder().to_notebook(include_setup=True).cells[0].source
+    assert "assert actual_hash_m" not in setup_src
+    assert "m_train_df = con.sql(" in setup_src
+    assert "s3://bucket/train.csv" in setup_src
+    assert "data=m_train_df" in setup_src
+    compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_model_fit_after_overwrite_keeps_refitting_current_table(
+    call_tool, tmp_path
+) -> None:
+    """A model fit on the already-derived table re-fits on <dataset>_df —
+    the post-transform table is exactly what it trained on. No train frame,
+    no hash assert (the derived entry's hash is a sentinel)."""
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv = tmp_path / "train.csv"
+    csv.write_text("y,x\n1.0,0.0\n2.0,1.0\n3.0,2.0\n4.0,3.0\n5.0,4.0\n")
+    r = call_tool("load_dataset", {"path": str(csv), "name": "train"})
+    assert r["ok"], r
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT y * 10 AS y, x FROM train", "name": "train", "overwrite": True},
+    )
+    assert r["ok"], r
+    r = call_tool(
+        "fit_model",
+        {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert "m_train_df" not in setup_src
+    assert "data=train_df" in setup_src
+    assert "assert actual_hash_m" not in setup_src
+    assert "non-file dataset" in setup_src
+    compile(setup_src, "<setup>", "exec")
