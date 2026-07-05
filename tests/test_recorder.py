@@ -610,3 +610,162 @@ def test_setup_cell_guards_base_loader_reload_after_overwrite(call_tool, tmp_pat
     assert r["ok"], r
     setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
     assert f"expected_hash_ds_data_0 = '{expected}'" in setup_src
+
+
+def test_emitted_notebook_dataset_guard_fires_when_source_csv_is_mutated(
+    tmp_path, call_tool
+) -> None:
+    """No model involved: a plain loaded dataset whose CSV is edited between
+    emit and replay must fail the setup cell loudly (spec acceptance
+    criterion, plain file-backed case)."""
+    import os
+    import subprocess
+
+    import pandas as pd
+
+    df = pd.DataFrame({"a": [1, 2, 3]})
+    csv = tmp_path / "plain.csv"
+    df.to_csv(csv, index=False)
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "plain"})
+    assert r["ok"], r
+    r = call_tool("describe_column", {"name": "plain", "column": "a"})
+    assert r["ok"], r
+
+    nb_path = tmp_path / "plain_drift.ipynb"
+    r = call_tool("emit_notebook", {"path": str(nb_path)})
+    assert r["ok"], r
+
+    with open(csv, "a") as fh:
+        fh.write("99\n")
+
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "jupyter",
+            "nbconvert",
+            "--to",
+            "notebook",
+            "--execute",
+            "--inplace",
+            str(nb_path),
+            "--ExecutePreprocessor.timeout=120",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    assert result.returncode != 0
+    combined = result.stderr + result.stdout
+    assert "AssertionError" in combined or "changed since the session was recorded" in combined
+
+
+def test_emitted_notebook_overwrite_chain_guard_fires_when_base_csv_is_mutated(
+    tmp_path, call_tool
+) -> None:
+    """Drift on a file reachable only via base_loader (after a
+    transform-in-place overwrite) must also fail replay loudly (spec
+    acceptance criterion, overwrite-chain case)."""
+    import os
+    import subprocess
+
+    import pandas as pd
+
+    df = pd.DataFrame({"a": [1, 2, 3]})
+    csv = tmp_path / "base.csv"
+    df.to_csv(csv, index=False)
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "data"})
+    assert r["ok"], r
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT a * 10 AS a FROM data", "name": "data", "overwrite": True},
+    )
+    assert r["ok"], r
+
+    nb_path = tmp_path / "chain_drift.ipynb"
+    r = call_tool("emit_notebook", {"path": str(nb_path)})
+    assert r["ok"], r
+
+    with open(csv, "a") as fh:
+        fh.write("99\n")
+
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "jupyter",
+            "nbconvert",
+            "--to",
+            "notebook",
+            "--execute",
+            "--inplace",
+            str(nb_path),
+            "--ExecutePreprocessor.timeout=120",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    assert result.returncode != 0
+    combined = result.stderr + result.stdout
+    assert "AssertionError" in combined or "changed since the session was recorded" in combined
+
+
+def test_emitted_notebook_model_guard_fires_when_dataset_reloaded_after_fit(
+    tmp_path, call_tool
+) -> None:
+    """Same-name reload after a fit: the dataset guard passes (the current
+    file matches the reloaded entry's hash) but the model assert must fail
+    loudly — the model trained on the pre-reload data. This is the guard
+    full unification would have lost (spec acceptance criterion)."""
+    import os
+    import subprocess
+
+    import pandas as pd
+
+    df = pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [1, 2, 3, 4, 5, 6]})
+    csv = tmp_path / "train.csv"
+    df.to_csv(csv, index=False)
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "train"})
+    assert r["ok"], r
+    r = call_tool(
+        "fit_model",
+        {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+
+    # Rewrite the file and reload under the same name — the dataset entry's
+    # hash refreshes, the model's captured hash goes (correctly) stale.
+    df2 = pd.DataFrame({"y": [6.0, 5.0, 4.0, 3.0, 2.0, 1.0], "x": [1, 2, 3, 4, 5, 6]})
+    df2.to_csv(csv, index=False)
+    r = call_tool("load_dataset", {"path": str(csv), "name": "train"})
+    assert r["ok"], r
+
+    nb_path = tmp_path / "reload_after_fit.ipynb"
+    r = call_tool("emit_notebook", {"path": str(nb_path)})
+    assert r["ok"], r
+
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "jupyter",
+            "nbconvert",
+            "--to",
+            "notebook",
+            "--execute",
+            "--inplace",
+            str(nb_path),
+            "--ExecutePreprocessor.timeout=120",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    assert result.returncode != 0
+    combined = result.stderr + result.stdout
+    # Specifically the *model* guard message — the dataset guard passes here.
+    assert "Training data for 'm' changed since the session was recorded" in combined
