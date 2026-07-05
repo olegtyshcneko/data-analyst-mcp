@@ -33,9 +33,14 @@ def compute_source_hash(path: str) -> str:
         h = hashlib.sha256()
         # Stream in 1 MB chunks; SHA-256 of a 100 MB file at ~500 MB/s is
         # under a quarter second on commodity hardware.
-        with open(path, "rb") as fh:
-            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
-                h.update(chunk)
+        try:
+            with open(path, "rb") as fh:
+                for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                    h.update(chunk)
+        except OSError:
+            # Readable at load, unreadable now (vanished, permissions):
+            # collapse to a sentinel — hashing must never raise.
+            return f"sentinel:read-failed:{path}"
         return h.hexdigest()
     # Above the ceiling: fall back to (path, mtime, size). Weaker guarantee
     # — a careful edit that preserves mtime + size will not trigger the
