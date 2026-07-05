@@ -969,3 +969,113 @@ def test_setup_cell_model_fit_after_overwrite_keeps_refitting_current_table(
     assert "assert actual_hash_m" not in setup_src
     assert "non-file dataset" in setup_src
     compile(setup_src, "<setup>", "exec")
+
+
+def test_emitted_notebook_replays_fit_then_overwrite_end_to_end(tmp_path, call_tool) -> None:
+    """fit_model → materialize_query overwrite → predict → emit → nbconvert
+    executes cleanly: the model re-fits from the original file while the
+    scoring cell sees the post-transform table, matching the live session."""
+    import os
+    import subprocess
+
+    import pandas as pd
+
+    df = pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]})
+    csv = tmp_path / "train.csv"
+    df.to_csv(csv, index=False)
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "train"})
+    assert r["ok"], r
+    r = call_tool(
+        "fit_model",
+        {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT y * 10 AS y, x FROM train", "name": "train", "overwrite": True},
+    )
+    assert r["ok"], r
+    r = call_tool("predict", {"model_name": "m", "dataset": "train", "limit": 5})
+    assert r["ok"], r
+
+    nb_path = tmp_path / "fit_then_overwrite.ipynb"
+    r = call_tool("emit_notebook", {"path": str(nb_path)})
+    assert r["ok"], r
+
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "jupyter",
+            "nbconvert",
+            "--to",
+            "notebook",
+            "--execute",
+            "--inplace",
+            str(nb_path),
+            "--ExecutePreprocessor.timeout=120",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    assert result.returncode == 0, (
+        f"nbconvert failed:\nSTDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+    )
+
+
+def test_emitted_notebook_fit_then_overwrite_guard_fires_on_mutated_source(
+    tmp_path, call_tool
+) -> None:
+    """Same session as the clean test, but the source CSV is edited between
+    emit and replay: the setup cell must die with a loud AssertionError
+    instead of silently re-fitting on different data."""
+    import os
+    import subprocess
+
+    import pandas as pd
+
+    df = pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]})
+    csv = tmp_path / "train.csv"
+    df.to_csv(csv, index=False)
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "train"})
+    assert r["ok"], r
+    r = call_tool(
+        "fit_model",
+        {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT y * 10 AS y, x FROM train", "name": "train", "overwrite": True},
+    )
+    assert r["ok"], r
+
+    nb_path = tmp_path / "fit_then_overwrite_drift.ipynb"
+    r = call_tool("emit_notebook", {"path": str(nb_path)})
+    assert r["ok"], r
+
+    csv.write_text("y,x\n9.0,0.0\n8.0,1.0\n7.0,2.0\n6.0,3.0\n5.0,4.0\n4.0,5.0\n")
+
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "jupyter",
+            "nbconvert",
+            "--to",
+            "notebook",
+            "--execute",
+            "--inplace",
+            str(nb_path),
+            "--ExecutePreprocessor.timeout=120",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    assert result.returncode != 0, "replay should fail after source mutation"
+    assert "AssertionError" in result.stderr
+    assert "changed since the session was recorded" in result.stderr
