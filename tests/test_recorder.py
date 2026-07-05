@@ -527,3 +527,27 @@ def test_setup_cell_guard_stays_valid_python_for_quote_containing_names(tmp_path
 
     setup_src = NotebookRecorder().to_notebook(include_setup=True).cells[0].source
     compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_emits_fallback_guard_above_content_ceiling(tmp_path, monkeypatch) -> None:
+    """Files above the content-hash ceiling carry a (path, mtime, size)
+    fallback hash; the emitted guard recomputes the same tuple at replay.
+    Weaker guarantee, still a hard assert."""
+    from data_analyst_mcp import provenance, session
+    from data_analyst_mcp.recorder import NotebookRecorder
+
+    monkeypatch.setattr(provenance, "HASH_CONTENT_CEILING_BYTES", 4)
+    csv = tmp_path / "big.csv"
+    csv.write_bytes(b"a,b\n1,2\n3,4\n")
+
+    session.reset()
+    session.register(name="big", path=str(csv), read_options={}, format="csv", rows=2, columns=[])
+    entry = session.get_datasets()["big"]
+    assert entry.source_hash.startswith("fallback:")
+
+    setup_src = NotebookRecorder().to_notebook(include_setup=True).cells[0].source
+    assert f"expected_hash_ds_big_0 = '{entry.source_hash}'" in setup_src
+    assert "_os.stat(" in setup_src
+    assert "'fallback:' + hashlib.sha256(" in setup_src
+    assert "assert actual_hash_ds_big_0 == expected_hash_ds_big_0" in setup_src
+    compile(setup_src, "<setup>", "exec")
