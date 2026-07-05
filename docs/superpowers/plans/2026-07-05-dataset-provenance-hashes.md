@@ -22,7 +22,7 @@
 - **No new MCP tools; no tool-response schema changes.** Tool count stays 22.
 - **Hash semantics (copied from spec):** content SHA-256 streamed in 1 MB chunks up to the 100 MB ceiling; `fallback:<sha256 of "path|mtime|size">` above it; `sentinel:no-file:<path>` / `sentinel:stat-failed:<path>` / `sentinel:read-failed:<path>` when the path isn't a readable local file. `sentinel:`-prefixed values never produce an assert — they produce a comment.
 - **Guard variable naming (from spec):** `expected_hash_ds_<var>` / `actual_hash_ds_<var>` where `<var>` = dataset name with non-identifier chars replaced by `_`, suffixed with the emission index (e.g. `expected_hash_ds_my_data_0`).
-- **Assert message (exact):** `"Source file for dataset '<name>' changed since the session was recorded."` (name rendered with `{name!r}`, matching the model guard's style).
+- **Assert message:** built as a Python string first — `message = f"Source file for dataset {display_name!r} changed since the session was recorded."` — and emitted with `{message!r}`, so quote-containing dataset names still produce valid Python. For plain names the emitted literal reads exactly `"Source file for dataset 'tiny' changed since the session was recorded."`. (Do NOT embed `{display_name!r}` directly inside a double-quoted emitted literal — a name like `a"b` would terminate the literal and break the setup cell.)
 - **Path quoting in emitted SQL:** keep the recorder's existing `repr(path)` quoting (`_file_load_stmt`). Do NOT switch the recorder to `datasets._build_read_call` — it interpolates the path naively and would regress the repr-quoting behavior that has its own red/green history. Share only the options fragment.
 - **Derived entries' `read_options` hold `{"sql": ...}` — never pass them to `_file_load_stmt`.** Only file-backed entries' and `base_loader`'s `read_options` are render targets.
 - All file paths below are relative to the repo root `/home/oleg/projects/personal_projects/dataanalysis_mcp`.
@@ -804,12 +804,38 @@ def test_setup_cell_guard_variable_sanitizes_non_identifier_names(tmp_path) -> N
     setup_src = NotebookRecorder().to_notebook(include_setup=True).cells[0].source
     assert "expected_hash_ds_my_data_0" in setup_src
     compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_guard_stays_valid_python_for_quote_containing_names(tmp_path) -> None:
+    """Dataset names may contain quote characters; the guard's assert
+    message must be emitted as a repr'd literal so the setup cell still
+    compiles (the model guard's inline-quoting style would break here)."""
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import NotebookRecorder
+
+    csv = tmp_path / "q.csv"
+    csv.write_bytes(b"a\n1\n")
+
+    session.reset()
+    session.register(
+        name='he said "hi"',
+        path=str(csv),
+        read_options={},
+        format="csv",
+        rows=1,
+        columns=[],
+    )
+
+    setup_src = NotebookRecorder().to_notebook(include_setup=True).cells[0].source
+    compile(setup_src, "<setup>", "exec")
 ```
 
-- [ ] **Step 2: Run to verify both fail**
+- [ ] **Step 2: Run to verify all three fail**
 
-Run: `uv run pytest tests/test_recorder.py -q -k "source_hash_assert or sanitizes_non_identifier"`
-Expected: 2 FAIL — no guard lines are emitted yet.
+Run: `uv run pytest tests/test_recorder.py -q -k "source_hash_assert or sanitizes_non_identifier or quote_containing"`
+Expected: 3 FAIL — no guard lines are emitted yet (the quote test fails once guards exist if the message is quoted naively; at red time it passes trivially without guards, so run it again after Step 4 to confirm it still passes — it is the regression pin for the `{message!r}` emission).
+
+Note: `compile()` alone passes while no guards are emitted, so strictly the quote test is a *pin*, not a red. That is fine inside this cycle: the pair red-fails on the two assert-emission tests, and the pin rides along in the same commit.
 
 - [ ] **Step 3: Commit red**
 
@@ -839,15 +865,14 @@ def _hash_guard_lines(var: str, display_name: str, path: str, hash_val: str) -> 
     """Drift-guard lines emitted before one file-backed dataset reload.
 
     Content hashes get a hard assert. (Fallback and sentinel shapes are added
-    in later cycles.)
+    in later cycles.) The message is built as data and emitted with ``!r`` so
+    quote-containing dataset names cannot break the emitted literal.
     """
-    message = (
-        f'"Source file for dataset {display_name!r} changed since the session was recorded."'
-    )
+    message = f"Source file for dataset {display_name!r} changed since the session was recorded."
     return [
         f"expected_hash_ds_{var} = {hash_val!r}",
         f"actual_hash_ds_{var} = hashlib.sha256(open({path!r}, 'rb').read()).hexdigest()",
-        f"assert actual_hash_ds_{var} == expected_hash_ds_{var}, {message}",
+        f"assert actual_hash_ds_{var} == expected_hash_ds_{var}, {message!r}",
     ]
 ```
 
@@ -943,11 +968,10 @@ def _hash_guard_lines(var: str, display_name: str, path: str, hash_val: str) -> 
 
     Three shapes keyed off the stored hash: content assert, ``(path, mtime,
     size)`` fallback assert, or (next cycle) a comment when only a sentinel
-    is available.
+    is available. The message is built as data and emitted with ``!r`` so
+    quote-containing dataset names cannot break the emitted literal.
     """
-    message = (
-        f'"Source file for dataset {display_name!r} changed since the session was recorded."'
-    )
+    message = f"Source file for dataset {display_name!r} changed since the session was recorded."
     if hash_val.startswith("fallback:"):
         # Above-ceiling files use a (path, mtime, size) fallback. Recompute
         # the same fallback at replay time; the assert remains hard, but the
@@ -959,12 +983,12 @@ def _hash_guard_lines(var: str, display_name: str, path: str, hash_val: str) -> 
             f"actual_hash_ds_{var} = 'fallback:' + hashlib.sha256("
             f"f'{{{path!r}}}|{{_st.st_mtime}}|{{_st.st_size}}'.encode('utf-8')"
             f").hexdigest()",
-            f"assert actual_hash_ds_{var} == expected_hash_ds_{var}, {message}",
+            f"assert actual_hash_ds_{var} == expected_hash_ds_{var}, {message!r}",
         ]
     return [
         f"expected_hash_ds_{var} = {hash_val!r}",
         f"actual_hash_ds_{var} = hashlib.sha256(open({path!r}, 'rb').read()).hexdigest()",
-        f"assert actual_hash_ds_{var} == expected_hash_ds_{var}, {message}",
+        f"assert actual_hash_ds_{var} == expected_hash_ds_{var}, {message!r}",
     ]
 ```
 
@@ -1147,7 +1171,7 @@ git commit -m "green: setup cell guards the base_loader reload with the carried 
 - Consumes: the completed emission (Tasks 8–10).
 - Produces: end-to-end evidence for the spec's acceptance criteria. These tests pass immediately against the finished implementation, so they land as a single `test:` commit (the auditor exempts that prefix — precedent: `test: add pairwise_comparisons integration evals`).
 
-- [ ] **Step 1: Write both tests** (append to `tests/test_recorder.py`; they mirror the structure of the existing `test_emitted_notebook_hash_assert_fires_when_training_csv_is_mutated` at line 361, including the nbconvert invocation)
+- [ ] **Step 1: Write the three tests** (append to `tests/test_recorder.py`; they mirror the structure of the existing `test_emitted_notebook_hash_assert_fires_when_training_csv_is_mutated` at line 361, including the nbconvert invocation)
 
 ```python
 def test_emitted_notebook_dataset_guard_fires_when_source_csv_is_mutated(
@@ -1249,12 +1273,70 @@ def test_emitted_notebook_overwrite_chain_guard_fires_when_base_csv_is_mutated(
     assert result.returncode != 0
     combined = result.stderr + result.stdout
     assert "AssertionError" in combined or "changed since the session was recorded" in combined
+
+
+def test_emitted_notebook_model_guard_fires_when_dataset_reloaded_after_fit(
+    tmp_path, call_tool
+) -> None:
+    """Same-name reload after a fit: the dataset guard passes (the current
+    file matches the reloaded entry's hash) but the model assert must fail
+    loudly — the model trained on the pre-reload data. This is the guard
+    full unification would have lost (spec acceptance criterion)."""
+    import os
+    import subprocess
+
+    import pandas as pd
+
+    df = pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [1, 2, 3, 4, 5, 6]})
+    csv = tmp_path / "train.csv"
+    df.to_csv(csv, index=False)
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "train"})
+    assert r["ok"], r
+    r = call_tool(
+        "fit_model",
+        {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+
+    # Rewrite the file and reload under the same name — the dataset entry's
+    # hash refreshes, the model's captured hash goes (correctly) stale.
+    df2 = pd.DataFrame({"y": [6.0, 5.0, 4.0, 3.0, 2.0, 1.0], "x": [1, 2, 3, 4, 5, 6]})
+    df2.to_csv(csv, index=False)
+    r = call_tool("load_dataset", {"path": str(csv), "name": "train"})
+    assert r["ok"], r
+
+    nb_path = tmp_path / "reload_after_fit.ipynb"
+    r = call_tool("emit_notebook", {"path": str(nb_path)})
+    assert r["ok"], r
+
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "jupyter",
+            "nbconvert",
+            "--to",
+            "notebook",
+            "--execute",
+            "--inplace",
+            str(nb_path),
+            "--ExecutePreprocessor.timeout=120",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    assert result.returncode != 0
+    combined = result.stderr + result.stdout
+    # Specifically the *model* guard message — the dataset guard passes here.
+    assert "Training data for 'm' changed since the session was recorded" in combined
 ```
 
 - [ ] **Step 2: Run them**
 
-Run: `uv run pytest tests/test_recorder.py -q -k "dataset_guard_fires or overwrite_chain_guard_fires"`
-Expected: 2 PASS (each takes several seconds — nbconvert spawns a kernel). If either fails, STOP: that is a real bug in Tasks 8–10; fix it there (with a red/green cycle if it's a new behavior) before proceeding.
+Run: `uv run pytest tests/test_recorder.py -q -k "dataset_guard_fires or overwrite_chain_guard_fires or model_guard_fires"`
+Expected: 3 PASS (each takes several seconds — nbconvert spawns a kernel). If any fails, STOP: that is a real bug in Tasks 5 or 8–10; fix it there (with a red/green cycle if it's a new behavior) before proceeding.
 
 - [ ] **Step 3: Commit**
 
@@ -1304,6 +1386,7 @@ import pandas as pd
 import numpy as np
 from scipy import stats
 import statsmodels.api as sm
+import statsmodels.formula.api as smf
 import matplotlib.pyplot as plt
 
 con = duckdb.connect()
@@ -1325,7 +1408,19 @@ In `README.md` "Known gotchas", add a bullet after the "Datasets are in-process 
 - **Emitted notebooks are drift-guarded.** The setup cell asserts a SHA-256 provenance hash for every file-backed dataset (and for base files behind `materialize_query` overwrites) before reloading it. If a source file changed since the session, replay fails with a loud `AssertionError` instead of silently recomputing different numbers. Files over 100 MB use a weaker `(path, mtime, size)` check; s3/http sources reload unguarded (a comment in the cell says so).
 ```
 
-In the architecture diagram, change the parenthetical `(setup cell re-fits models behind SHA-256 assert)` to `(setup cell hash-guards every dataset and re-fits models behind SHA-256 asserts)`.
+In the architecture diagram the parenthetical spans two lines (`README.md:414-415`). Replace exactly these two lines (preserving the leading spaces):
+
+```
+            │                              (setup cell re-fits models
+            ▼                               behind SHA-256 assert)
+```
+
+with:
+
+```
+            │                              (setup cell hash-guards datasets,
+            ▼                               re-fits models behind SHA-256)
+```
 
 - [ ] **Step 3: ROADMAP edits**
 
@@ -1334,7 +1429,17 @@ In the architecture diagram, change the parenthetical `(setup cell re-fits model
 
 - [ ] **Step 4: CHANGELOG + version**
 
-`pyproject.toml`: `version = "1.2.0"`.
+Version lives in four places and they are currently inconsistent
+(`pyproject.toml` = 1.1.1, `uv.lock` = 1.1.1, but `src/data_analyst_mcp/__init__.py:3`
+still says `0.1.0` and `tests/test_smoke.py:12` pins that stale value). Sync
+all four to 1.2.0:
+
+- `pyproject.toml`: `version = "1.2.0"`.
+- `src/data_analyst_mcp/__init__.py`: `__version__ = "1.2.0"`.
+- `tests/test_smoke.py::test_package_version_is_set`: assert `== "1.2.0"`.
+- Run `uv lock` and check `git diff uv.lock` — only the root package's
+  `version` line should change; if anything else churns, restore the file
+  (`git checkout uv.lock`) and re-run as `uv lock --upgrade-package data-analyst-mcp`.
 
 Prepend to `CHANGELOG.md` after the header block:
 
@@ -1367,7 +1472,7 @@ Prepend to `CHANGELOG.md` after the header block:
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/SPEC.md README.md ROADMAP.md CHANGELOG.md pyproject.toml
+git add docs/SPEC.md README.md ROADMAP.md CHANGELOG.md pyproject.toml src/data_analyst_mcp/__init__.py tests/test_smoke.py uv.lock
 git commit -m "docs: dataset provenance hashes — SPEC/README/ROADMAP/CHANGELOG sync, bump to 1.2.0"
 ```
 
@@ -1388,7 +1493,7 @@ uv run pyright src/
 uv run python scripts/check_tdd_commits.py
 ```
 
-Expected: all clean. `check_tdd_commits.py` must report the new red/green pairs matched (9 red, 9 green added by this plan: Tasks 2, 3, 4, 5, 7, 8, 9A, 9B, 10) with zero mismatches.
+Expected: all clean. `check_tdd_commits.py` must report **zero mismatches** — note its red/green counts are whole-history totals, not per-plan deltas; this plan adds 9 red/green pairs (Tasks 2, 3, 4, 5, 7, 8, 9A, 9B, 10) on top of the pre-plan baseline.
 
 - [ ] **Step 2: If any gate fails**
 
