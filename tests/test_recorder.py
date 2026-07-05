@@ -803,3 +803,46 @@ def test_emitted_notebook_model_guard_fires_when_dataset_reloaded_after_fit(
     combined = result.stderr + result.stdout
     # Specifically the *model* guard message — the dataset guard passes here.
     assert "Training data for 'm' changed since the session was recorded" in combined
+
+
+def test_setup_cell_refits_overwritten_training_dataset_from_base_loader(
+    call_tool, tmp_path
+) -> None:
+    """A model whose training dataset is later overwritten by
+    materialize_query must guard against the original file (not the
+    '(query)' placeholder, which crashes the hash recompute) and re-fit on
+    a dedicated train frame loaded from that file — not on the
+    post-transform table."""
+    import hashlib
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv = tmp_path / "train.csv"
+    csv.write_text("y,x\n1.0,0.0\n2.0,1.0\n3.0,2.0\n4.0,3.0\n5.0,4.0\n")
+    expected = hashlib.sha256(csv.read_bytes()).hexdigest()
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "train"})
+    assert r["ok"], r
+    r = call_tool(
+        "fit_model",
+        {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT y * 10 AS y, x FROM train", "name": "train", "overwrite": True},
+    )
+    assert r["ok"], r
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    # Guard recomputes against the original file, not the placeholder.
+    assert f"expected_hash_m = '{expected}'" in setup_src
+    assert "open('(query)'" not in setup_src
+    # Re-fit uses a dedicated frame loaded from the original file...
+    assert "m_train_df = con.sql(" in setup_src
+    assert "data=m_train_df" in setup_src
+    assert "was overwritten by materialize_query" in setup_src
+    # ...while train_df stays the (post-transform) current table for
+    # predict/evaluate scoring cells.
+    assert 'train_df = con.sql("SELECT * FROM train").df()' in setup_src
+    compile(setup_src, "<setup>", "exec")
