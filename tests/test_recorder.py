@@ -574,3 +574,39 @@ def test_setup_cell_emits_comment_not_assert_for_sentinel_hash() -> None:
     assert "expected_hash_ds_remote_0" not in setup_src
     assert "CREATE OR REPLACE TABLE remote" in setup_src
     compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_guards_base_loader_reload_after_overwrite(call_tool, tmp_path) -> None:
+    """Overwriting a file-backed dataset moves its reload into the
+    base_loader branch — the carried load-time hash must guard that reload,
+    and a second overwrite must keep the guard."""
+    import hashlib
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv = tmp_path / "base.csv"
+    csv.write_bytes(b"a\n1\n2\n")
+    expected = hashlib.sha256(csv.read_bytes()).hexdigest()
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "data"})
+    assert r["ok"], r
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT a * 10 AS a FROM data", "name": "data", "overwrite": True},
+    )
+    assert r["ok"], r
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert f"expected_hash_ds_data_0 = '{expected}'" in setup_src
+    assert setup_src.index("expected_hash_ds_data_0") < setup_src.index(
+        "CREATE OR REPLACE TABLE data"
+    )
+    compile(setup_src, "<setup>", "exec")
+
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT a + 1 AS a FROM data", "name": "data", "overwrite": True},
+    )
+    assert r["ok"], r
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert f"expected_hash_ds_data_0 = '{expected}'" in setup_src
