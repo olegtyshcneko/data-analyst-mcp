@@ -78,10 +78,11 @@ def _sanitized_guard_var(name: str, idx: int) -> str:
 def _hash_guard_lines(var: str, display_name: str, path: str, hash_val: str) -> list[str]:
     """Drift-guard lines emitted before one file-backed dataset reload.
 
-    Three shapes keyed off the stored hash: content assert, ``(path, mtime,
-    size)`` fallback assert, or (next cycle) a comment when only a sentinel
-    is available. The message is built as data and emitted with ``!r`` so
-    quote-containing dataset names cannot break the emitted literal.
+    Three shapes keyed off the stored hash: a content assert, a ``(path,
+    mtime, size)`` fallback recompute assert, or a comment when only a
+    sentinel is available. The message is built as data and emitted with
+    ``!r`` so quote-containing dataset names cannot break the emitted
+    literal.
     """
     if not hash_val or hash_val.startswith("sentinel:"):
         return [
