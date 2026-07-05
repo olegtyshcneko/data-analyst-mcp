@@ -43,11 +43,8 @@ _FORMAT_TO_READER: dict[str, str] = {
 }
 
 
-def _file_load_stmt(
-    name: str, fmt: str, path: str, read_options: dict[str, Any] | None = None
-) -> str:
-    """Build the ``CREATE OR REPLACE TABLE`` line that reloads a file-backed
-    dataset from disk via the format-appropriate DuckDB reader.
+def _file_select_expr(fmt: str, path: str, read_options: dict[str, Any] | None = None) -> str:
+    """``SELECT * FROM <reader>(...)`` expression for a file-backed source.
 
     ``repr()`` quotes the path safely — embedded ``'`` / ``"`` / ``\"\"\"`` no
     longer break out of the host literal. ``read_options`` is rendered via the
@@ -57,10 +54,17 @@ def _file_load_stmt(
     path_lit = repr(path)
     extra = render_read_options_fragment(read_options or {})
     if reader == "read_csv_auto":
-        call = f"{reader}({path_lit}, SAMPLE_SIZE=-1{extra})"
-    else:
-        call = f"{reader}({path_lit}{extra})"
-    return f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM {call}"
+        return f"SELECT * FROM {reader}({path_lit}, SAMPLE_SIZE=-1{extra})"
+    return f"SELECT * FROM {reader}({path_lit}{extra})"
+
+
+def _file_load_stmt(
+    name: str, fmt: str, path: str, read_options: dict[str, Any] | None = None
+) -> str:
+    """Build the ``CREATE OR REPLACE TABLE`` line that reloads a file-backed
+    dataset from disk via the format-appropriate DuckDB reader.
+    """
+    return f"CREATE OR REPLACE TABLE {name} AS {_file_select_expr(fmt, path, read_options)}"
 
 
 _IDENT_SANITIZE_RE = re.compile(r"\W")
