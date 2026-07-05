@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   time). A same-name dataset reload after a fit still fails replay loudly
   via the model-block assert.
 
+### Fixed
+- `session.reset()` no longer raises on datasets whose names contain double
+  quotes (reachable via `load_dataset` name defaulting from the file
+  basename) — table names are now escaped in the `DROP TABLE` statement.
+
 ### Internal
 - New `provenance.py` (shared hash) and `read_options.py` (shared DuckDB
   reader-option rendering) leaf modules.
