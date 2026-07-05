@@ -31,8 +31,8 @@ hash is the truthful provenance anchor.
   re-hashing the file and instead copies the dataset entry's load-time hash
   into `ModelEntry.training_dataset_hash`. The model block's assert lines
   stay in the setup cell — they are not redundant: they diverge from the
-  dataset assert exactly when the same dataset name is reloaded/overwritten
-  after a fit, which is the drift case they guard.
+  dataset assert exactly when the same dataset name is reloaded after a
+  fit, which is the drift case they guard.
 - Setup-cell file loads (first-pass and `base_loader` re-creates) render
   `read_options` via the same trusted call renderer `load_dataset` uses, so
   a passing hash also implies the same parse at replay.
@@ -99,7 +99,7 @@ while replay could still parse them differently (e.g. `header=false`,
    `ModelEntry.training_dataset_hash` — no re-hash of the file. The field and
    the `register_model(...)` parameter stay: the captured value is the
    model's own provenance anchor, and it intentionally goes stale if the
-   dataset name is later reloaded/overwritten (that staleness is the guard).
+   dataset name is later reloaded (that staleness is the guard).
 3. **Emit:** for each file-backed dataset the setup cell writes, *before* its
    `CREATE OR REPLACE TABLE` line, one of:
    - content shape (single-line assert, matching the existing model-block
