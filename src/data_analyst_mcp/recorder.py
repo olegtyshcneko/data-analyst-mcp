@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
 
 from data_analyst_mcp.read_options import render_read_options_fragment
@@ -62,6 +63,33 @@ def _file_load_stmt(
     return f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM {call}"
 
 
+_IDENT_SANITIZE_RE = re.compile(r"\W")
+
+
+def _sanitized_guard_var(name: str, idx: int) -> str:
+    """Guard-variable stem for a dataset: sanitized name + emission index.
+
+    Dataset names are not validated as Python identifiers, and two names may
+    sanitize identically — the index keeps the variables collision-free.
+    """
+    return f"{_IDENT_SANITIZE_RE.sub('_', name)}_{idx}"
+
+
+def _hash_guard_lines(var: str, display_name: str, path: str, hash_val: str) -> list[str]:
+    """Drift-guard lines emitted before one file-backed dataset reload.
+
+    Content hashes get a hard assert. (Fallback and sentinel shapes are added
+    in later cycles.) The message is built as data and emitted with ``!r`` so
+    quote-containing dataset names cannot break the emitted literal.
+    """
+    message = f"Source file for dataset {display_name!r} changed since the session was recorded."
+    return [
+        f"expected_hash_ds_{var} = {hash_val!r}",
+        f"actual_hash_ds_{var} = hashlib.sha256(open({path!r}, 'rb').read()).hexdigest()",
+        f"assert actual_hash_ds_{var} == expected_hash_ds_{var}, {message!r}",
+    ]
+
+
 def _build_setup_source() -> str:
     """Compose the setup-cell body from the live session registry.
 
@@ -85,6 +113,7 @@ def _build_setup_source() -> str:
     from data_analyst_mcp import session as _session
 
     lines = [_SETUP_IMPORTS]
+    guard_idx = 0
     # First pass: file-backed datasets. Derived datasets are emitted in a
     # second pass so that their CREATE OR REPLACE TABLE lines land *after*
     # the base tables they SELECT from — otherwise DuckDB would fail at
@@ -106,6 +135,9 @@ def _build_setup_source() -> str:
                 stmt = _file_load_stmt(name, base["format"], base["path"], base.get("read_options"))
                 lines.append(f"con.execute({stmt!r})")
             continue
+        var = _sanitized_guard_var(name, guard_idx)
+        guard_idx += 1
+        lines.extend(_hash_guard_lines(var, name, entry.path, entry.source_hash))
         stmt = _file_load_stmt(name, entry.format, entry.path, entry.read_options)
         lines.append(f"con.execute({stmt!r})")
 

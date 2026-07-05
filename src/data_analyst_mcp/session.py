@@ -200,6 +200,8 @@ def reset() -> None:
     """
     if _connection is not None:
         for name in list(_datasets.keys()):
-            _connection.execute(f'DROP TABLE IF EXISTS "{name}"')
+            # Escape double quotes in the table name by doubling them for SQL.
+            escaped_name = name.replace('"', '""')
+            _connection.execute(f'DROP TABLE IF EXISTS "{escaped_name}"')
     _datasets.clear()
     _models.clear()
