@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+from data_analyst_mcp.provenance import compute_source_hash
+
 if TYPE_CHECKING:
     import duckdb
 
@@ -29,6 +31,10 @@ class DatasetEntry:
     # base table before the derived SQL — which often self-references the same
     # name (transform-in-place) — runs at notebook-replay time.
     base_loader: dict[str, Any] | None = None
+    # Content hash of the source file at registration time (the recorder's
+    # drift-guard anchor). ``sentinel:``-prefixed when there is no
+    # verifiable file. Default covers direct constructions in tests.
+    source_hash: str = "sentinel:unset"
     registered_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -128,6 +134,7 @@ def register(
         rows=rows,
         columns=list(columns),
         base_loader=dict(base_loader) if base_loader is not None else None,
+        source_hash=compute_source_hash(path),
     )
 
 
