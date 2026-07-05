@@ -567,15 +567,9 @@ def test_emitted_fallback_guard_executes_and_detects_drift(tmp_path, monkeypatch
     csv.write_bytes(b"a,b\n1,2\n3,4\n")
 
     session.reset()
-    session.register(
-        name="big", path=str(csv), read_options={}, format="csv", rows=2, columns=[]
-    )
+    session.register(name="big", path=str(csv), read_options={}, format="csv", rows=2, columns=[])
     setup_src = NotebookRecorder().to_notebook(include_setup=True).cells[0].source
-    guard_lines = [
-        ln
-        for ln in setup_src.splitlines()
-        if "_os" in ln or "hash_ds_big_0" in ln
-    ]
+    guard_lines = [ln for ln in setup_src.splitlines() if "_os" in ln or "hash_ds_big_0" in ln]
     guard_src = "\n".join(guard_lines)
 
     exec(guard_src, {"hashlib": hashlib})  # unchanged file: must not raise
