@@ -147,9 +147,18 @@ def _build_setup_source() -> str:
             # A derived entry that overwrote a file-backed dataset retains the
             # original loader in base_loader; emit it here (first pass) so the
             # second-pass derived CREATE — which may self-reference this same
-            # name (transform-in-place) — has its base table at replay.
+            # name (transform-in-place) — has its base table at replay. The
+            # carried load-time hash guards the base file exactly like a
+            # first-class file-backed entry.
             base = entry.base_loader
             if base is not None:
+                var = _sanitized_guard_var(name, guard_idx)
+                guard_idx += 1
+                lines.extend(
+                    _hash_guard_lines(
+                        var, name, base["path"], base.get("source_hash", "sentinel:unset")
+                    )
+                )
                 stmt = _file_load_stmt(name, base["format"], base["path"], base.get("read_options"))
                 lines.append(f"con.execute({stmt!r})")
             continue
