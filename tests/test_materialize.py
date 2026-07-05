@@ -518,3 +518,38 @@ def test_session_reset_clears_derived_entries(call_tool: Any, load_df_into_sessi
     con = _session.get_connection()
     with pytest.raises(duckdb.CatalogException):
         con.execute('SELECT * FROM "derived"').fetchall()
+
+
+def test_overwrite_carries_source_hash_into_base_loader(call_tool, tmp_path) -> None:
+    """Overwriting a file-backed dataset must retain the original file's
+    load-time hash in base_loader so the emitted setup cell can guard the
+    base reload; a second (derived-over-derived) overwrite carries it on."""
+    import pandas as pd
+
+    from data_analyst_mcp import session
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame({"a": [1, 2]}).to_csv(csv, index=False)
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "data"})
+    assert r["ok"], r
+    original_hash = session.get_datasets()["data"].source_hash
+    assert not original_hash.startswith("sentinel:")
+
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT a * 2 AS a FROM data", "name": "data", "overwrite": True},
+    )
+    assert r["ok"], r
+    entry = session.get_datasets()["data"]
+    assert entry.base_loader is not None
+    assert entry.base_loader["source_hash"] == original_hash
+
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT a + 1 AS a FROM data", "name": "data", "overwrite": True},
+    )
+    assert r["ok"], r
+    entry = session.get_datasets()["data"]
+    assert entry.base_loader is not None
+    assert entry.base_loader["source_hash"] == original_hash
