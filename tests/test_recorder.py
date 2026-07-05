@@ -553,6 +553,46 @@ def test_setup_cell_emits_fallback_guard_above_content_ceiling(tmp_path, monkeyp
     compile(setup_src, "<setup>", "exec")
 
 
+def test_emitted_fallback_guard_executes_and_detects_drift(tmp_path, monkeypatch) -> None:
+    """Executing (not just compiling) the fallback guard: it must pass on an
+    unchanged file and fire after mutation — pinning that the emitted
+    recompute is byte-identical to provenance.compute_source_hash's fallback."""
+    import hashlib
+
+    from data_analyst_mcp import provenance, session
+    from data_analyst_mcp.recorder import NotebookRecorder
+
+    monkeypatch.setattr(provenance, "HASH_CONTENT_CEILING_BYTES", 4)
+    csv = tmp_path / "big.csv"
+    csv.write_bytes(b"a,b\n1,2\n3,4\n")
+
+    session.reset()
+    session.register(
+        name="big", path=str(csv), read_options={}, format="csv", rows=2, columns=[]
+    )
+    setup_src = NotebookRecorder().to_notebook(include_setup=True).cells[0].source
+    guard_lines = [
+        ln
+        for ln in setup_src.splitlines()
+        if "_os" in ln or "hash_ds_big_0" in ln
+    ]
+    guard_src = "\n".join(guard_lines)
+
+    exec(guard_src, {"hashlib": hashlib})  # unchanged file: must not raise
+
+    import os
+    import time
+
+    csv.write_bytes(b"a,b\n9,9\n9,9\n99\n")  # different size -> different fallback
+    os.utime(csv, (time.time() + 10, time.time() + 10))
+    try:
+        exec(guard_src, {"hashlib": hashlib})
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("fallback guard did not fire after mutation")
+
+
 def test_setup_cell_emits_comment_not_assert_for_sentinel_hash() -> None:
     """Datasets without a verifiable local file (s3://, http) reload
     unguarded — the setup cell says so in a comment instead of asserting."""

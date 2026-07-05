@@ -136,3 +136,8 @@ def test_reset_drops_quote_containing_table_names_without_error() -> None:
     session.reset()  # must not raise
 
     assert session.get_datasets() == {}
+    # A mis-escaping that mangled the name into a different valid identifier
+    # would silently drop nothing while leaving the above assertions green —
+    # confirm the table itself is actually gone from the connection.
+    remaining = {row[0] for row in session.get_connection().execute("SHOW TABLES").fetchall()}
+    assert 'he said "hi"' not in remaining
