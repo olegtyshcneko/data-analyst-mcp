@@ -409,3 +409,45 @@ def test_emitted_notebook_hash_assert_fires_when_training_csv_is_mutated(
     assert result.returncode != 0
     combined = result.stderr + result.stdout
     assert "AssertionError" in combined or "changed since the session was recorded" in combined
+
+
+def test_setup_cell_renders_read_options_in_reload_statements() -> None:
+    """The live load honored read_options; the replay reload must too,
+    otherwise a passing hash can still parse differently (e.g. header or
+    delimiter divergence). Covers both first-pass file-backed entries and
+    base_loader re-creates."""
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import NotebookRecorder
+
+    session.reset()
+    session.register(
+        name="raw",
+        path="fixtures/messy.csv",
+        read_options={"header": False, "delim": ";"},
+        format="csv",
+        rows=10,
+        columns=[],
+    )
+    session.register(
+        name="data",
+        path="(query)",
+        read_options={"sql": "SELECT 1 AS a"},
+        format="derived",
+        rows=1,
+        columns=[],
+        base_loader={
+            "path": "fixtures/messy.csv",
+            "format": "csv",
+            "read_options": {"delim": "|"},
+            "source_hash": "sentinel:unset",
+        },
+    )
+
+    setup_src = NotebookRecorder().to_notebook(include_setup=True).cells[0].source
+
+    assert "header=FALSE" in setup_src
+    assert "delim=';'" in setup_src
+    assert "delim='|'" in setup_src
+    # Derived read_options ({"sql": ...}) must NOT leak into a reader call.
+    assert "sql=" not in setup_src
+    compile(setup_src, "<setup>", "exec")
