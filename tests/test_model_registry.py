@@ -253,3 +253,30 @@ def test_list_models_does_not_emit_a_recorder_cell(call_tool, load_df_into_sessi
     after = len(get_recorder().cells)
     # list_models is read-only inspection (same as list_datasets) — zero cells.
     assert before == after
+
+
+def test_fit_model_records_load_time_hash_not_fit_time(call_tool, tmp_path) -> None:
+    """fit_model trains on the DuckDB table populated at load time, so its
+    provenance hash must be the load-time file hash — not a re-hash of
+    whatever the file contains at fit time."""
+    from data_analyst_mcp import session
+
+    df = pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [1, 2, 3, 4, 5, 6]})
+    csv = tmp_path / "train.csv"
+    df.to_csv(csv, index=False)
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "train"})
+    assert r["ok"], r
+    load_time_hash = session.get_datasets()["train"].source_hash
+
+    # Edit the file after load, before fit. The in-session table is unchanged.
+    with open(csv, "a") as fh:
+        fh.write("7.0,7\n")
+
+    r = call_tool(
+        "fit_model",
+        {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+
+    assert session.get_models()["m"].training_dataset_hash == load_time_hash
