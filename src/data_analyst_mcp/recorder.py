@@ -83,6 +83,10 @@ def _hash_guard_lines(var: str, display_name: str, path: str, hash_val: str) -> 
     is available. The message is built as data and emitted with ``!r`` so
     quote-containing dataset names cannot break the emitted literal.
     """
+    if not hash_val or hash_val.startswith("sentinel:"):
+        return [
+            f"# Note: dataset {display_name!r} has no verifiable source hash; reload is unguarded."
+        ]
     message = f"Source file for dataset {display_name!r} changed since the session was recorded."
     if hash_val.startswith("fallback:"):
         # Above-ceiling files use a (path, mtime, size) fallback. Recompute
