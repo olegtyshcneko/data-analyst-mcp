@@ -24,7 +24,6 @@ No active proposals (the tier-1 bundle closed the current cohort; see `docs/prop
 
 - **`load_session_from_notebook`.** The inverse of `emit_notebook` — read a previously-emitted `.ipynb` and rehydrate the dataset registry from the setup cell. Useful for "pick up where I left off."
 - **Notebook diff.** `compare_notebooks(a, b)` — compares two emitted sessions, highlights numeric drift.
-- **Fit-then-overwrite replay.** A model fitted on a dataset that is later overwritten by `materialize_query` emits a model block whose hash recompute targets `(query)` (crashes at replay even with zero drift) and whose re-fit would use the post-transform table. Fix: recompute against the carried `base_loader` path/hash, and decide the re-fit semantics (skip with a loud comment vs. materialize the base frame). Pre-existing gap, surfaced by the provenance-hashes review.
 
 ## Polish / DX
 

@@ -5,6 +5,16 @@ All notable changes to **data-analyst-mcp** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- A model fitted on a dataset that was later overwritten by
+  `materialize_query` no longer crashes notebook replay: the setup cell's
+  hash guard now targets the original source file carried in `base_loader`
+  (not the `"(query)"` placeholder), and the model re-fits on a dedicated
+  `<model_name>_train_df` frame loaded from that file instead of the
+  post-transform table. Scoring cells keep seeing the current table.
+
 ## [1.2.0] - 2026-07-05
 
 ### Added
