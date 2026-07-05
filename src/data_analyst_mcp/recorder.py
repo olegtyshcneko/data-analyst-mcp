@@ -129,6 +129,10 @@ def _build_setup_source() -> str:
          and a ``smf.<kind>(...).fit(disp=False)`` rehydration line. The
          hash assert is *hard*: silent drift between training data and
          replay is worse than a loud AssertionError.
+         If the model's training dataset was later overwritten by
+         ``materialize_query``, the guard and the re-fit both target the
+         carried base loader (original file) instead of the post-transform
+         table.
 
     Datasets with a sentinel hash (in-memory / unstattable path) skip the
     hash assert and emit a comment instead — there's no file to verify.
@@ -208,12 +212,35 @@ def _build_setup_source() -> str:
         for model_name, model_entry in models.items():
             lines.append("")
             lines.append(f"# --- Re-fit model {model_name!r} (kind={model_entry.kind}) ---")
-            ds_path = (
-                _session.get_datasets()[model_entry.fitted_on_dataset].path
-                if model_entry.fitted_on_dataset in _session.get_datasets()
-                else None
-            )
+            ds_entry = _session.get_datasets().get(model_entry.fitted_on_dataset)
             hash_val = model_entry.training_dataset_hash
+            # A model whose training dataset was later overwritten by
+            # materialize_query must not guard or re-fit against the current
+            # entry: its path is the "(query)" placeholder (the hash recompute
+            # would crash at replay) and its table is post-transform (the
+            # re-fit would train on the wrong data). The carried base_loader
+            # is the truthful source. A model fit *after* the overwrite copied
+            # the derived entry's own sentinel hash at fit time, so the hash
+            # inequality keeps it on the normal path.
+            overwritten_base: dict[str, Any] | None = None
+            if (
+                ds_entry is not None
+                and ds_entry.format == "derived"
+                and ds_entry.base_loader is not None
+                and hash_val != ds_entry.source_hash
+            ):
+                overwritten_base = ds_entry.base_loader
+            if overwritten_base is not None:
+                ds_path = overwritten_base["path"]
+                data_ref = f"{model_name}_train_df"
+                lines.append(
+                    f"# Dataset {model_entry.fitted_on_dataset!r} was overwritten by "
+                    f"materialize_query after this model was fit; re-fitting from "
+                    f"the original source file, not the current derived table."
+                )
+            else:
+                ds_path = ds_entry.path if ds_entry is not None else None
+                data_ref = f"{model_entry.fitted_on_dataset}_df"
             if (
                 ds_path is not None
                 and not hash_val.startswith("sentinel:")
@@ -250,11 +277,19 @@ def _build_setup_source() -> str:
                     f"non-file dataset; no hash assert is possible."
                 )
 
+            if overwritten_base is not None:
+                select = _file_select_expr(
+                    overwritten_base["format"],
+                    overwritten_base["path"],
+                    overwritten_base.get("read_options"),
+                )
+                lines.append(f"{model_name}_train_df = con.sql({select!r}).df()")
+
             smf_fn = _KIND_TO_SMF.get(model_entry.kind, "ols")
             fit_args = "disp=False" if model_entry.kind in ("logistic", "poisson", "negbin") else ""
             lines.append(
                 f'{model_name} = smf.{smf_fn}("{model_entry.formula}", '
-                f"data={model_entry.fitted_on_dataset}_df).fit({fit_args})"
+                f"data={data_ref}).fit({fit_args})"
             )
     return "\n".join(lines)
 
