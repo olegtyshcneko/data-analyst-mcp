@@ -451,3 +451,79 @@ def test_setup_cell_renders_read_options_in_reload_statements() -> None:
     # Derived read_options ({"sql": ...}) must NOT leak into a reader call.
     assert "sql=" not in setup_src
     compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_emits_source_hash_assert_for_file_backed_dataset(tmp_path) -> None:
+    """Every file-backed dataset reload is preceded by a content-hash assert
+    so an edited source file fails replay loudly (dataset-level counterpart
+    of the model-block guard)."""
+    import hashlib
+
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import NotebookRecorder
+
+    csv = tmp_path / "tiny.csv"
+    csv.write_bytes(b"a,b\n1,2\n")
+    expected = hashlib.sha256(csv.read_bytes()).hexdigest()
+
+    session.reset()
+    session.register(name="tiny", path=str(csv), read_options={}, format="csv", rows=1, columns=[])
+
+    setup_src = NotebookRecorder().to_notebook(include_setup=True).cells[0].source
+
+    assert f"expected_hash_ds_tiny_0 = '{expected}'" in setup_src
+    assert "actual_hash_ds_tiny_0 = hashlib.sha256(" in setup_src
+    assert (
+        "assert actual_hash_ds_tiny_0 == expected_hash_ds_tiny_0, "
+        "\"Source file for dataset 'tiny' changed since the session was recorded.\"" in setup_src
+    )
+    # Guard precedes the reload it protects.
+    assert setup_src.index("expected_hash_ds_tiny_0") < setup_src.index(
+        "CREATE OR REPLACE TABLE tiny"
+    )
+    compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_guard_variable_sanitizes_non_identifier_names(tmp_path) -> None:
+    """Dataset names are not validated as Python identifiers (load_dataset
+    defaults the name from the file basename, so ``my-data.csv`` → ``my-data``).
+    Guard variables sanitize the name and add an emission index so the setup
+    cell stays valid Python and collision-free."""
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import NotebookRecorder
+
+    csv = tmp_path / "my-data.csv"
+    csv.write_bytes(b"a\n1\n")
+
+    session.reset()
+    session.register(
+        name="my-data", path=str(csv), read_options={}, format="csv", rows=1, columns=[]
+    )
+
+    setup_src = NotebookRecorder().to_notebook(include_setup=True).cells[0].source
+    assert "expected_hash_ds_my_data_0" in setup_src
+    compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_guard_stays_valid_python_for_quote_containing_names(tmp_path) -> None:
+    """Dataset names may contain quote characters; the guard's assert
+    message must be emitted as a repr'd literal so the setup cell still
+    compiles (the model guard's inline-quoting style would break here)."""
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import NotebookRecorder
+
+    csv = tmp_path / "q.csv"
+    csv.write_bytes(b"a\n1\n")
+
+    session.reset()
+    session.register(
+        name='he said "hi"',
+        path=str(csv),
+        read_options={},
+        format="csv",
+        rows=1,
+        columns=[],
+    )
+
+    setup_src = NotebookRecorder().to_notebook(include_setup=True).cells[0].source
+    compile(setup_src, "<setup>", "exec")
