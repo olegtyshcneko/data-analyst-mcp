@@ -13,7 +13,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
-from data_analyst_mcp.provenance import compute_source_hash
 from data_analyst_mcp.recorder import get_recorder
 
 logger = logging.getLogger(__name__)
@@ -160,7 +159,7 @@ def fit_model(payload: FitModelInput) -> dict[str, Any]:
     # forgets to strip it.
     live_result = result.pop("_result", None)
     if result.get("ok") and payload.model_name is not None and live_result is not None:
-        ds_path = session.get_datasets()[payload.name].path
+        ds_entry = session.get_datasets()[payload.name]
         n_obs_val = int(result["fit"]["n_obs"])
         session.register_model(
             name=payload.model_name,
@@ -168,7 +167,7 @@ def fit_model(payload: FitModelInput) -> dict[str, Any]:
             formula=payload.formula,
             fitted_on_dataset=payload.name,
             n_obs=n_obs_val,
-            training_dataset_hash=compute_source_hash(ds_path),
+            training_dataset_hash=ds_entry.source_hash,
             result=live_result,
         )
         result["model_name"] = payload.model_name
