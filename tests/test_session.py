@@ -84,9 +84,7 @@ def test_register_records_content_hash_for_file_backed_dataset(tmp_path) -> None
     expected = hashlib.sha256(csv.read_bytes()).hexdigest()
 
     session.reset()
-    session.register(
-        name="tiny", path=str(csv), read_options={}, format="csv", rows=2, columns=[]
-    )
+    session.register(name="tiny", path=str(csv), read_options={}, format="csv", rows=2, columns=[])
 
     assert session.get_datasets()["tiny"].source_hash == expected
 
@@ -96,12 +94,20 @@ def test_register_records_sentinel_hash_for_non_file_paths() -> None:
 
     session.reset()
     session.register(
-        name="derived", path="(query)", read_options={"sql": "SELECT 1"},
-        format="derived", rows=1, columns=[],
+        name="derived",
+        path="(query)",
+        read_options={"sql": "SELECT 1"},
+        format="derived",
+        rows=1,
+        columns=[],
     )
     session.register(
-        name="mem", path="(dataframe)", read_options={}, format="dataframe",
-        rows=1, columns=[],
+        name="mem",
+        path="(dataframe)",
+        read_options={},
+        format="dataframe",
+        rows=1,
+        columns=[],
     )
 
     assert session.get_datasets()["derived"].source_hash.startswith("sentinel:")
