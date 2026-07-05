@@ -204,9 +204,11 @@ def _build_setup_source() -> str:
         # (format == "derived") are reloadable too — they exist as DuckDB
         # tables once the second-pass CREATE OR REPLACE TABLE lines above
         # have run.
+        frame_names: set[str] = set()
         for name, entry in _session.get_datasets().items():
             if entry.format == "dataframe":
                 continue
+            frame_names.add(f"{name}_df")
             lines.append(f'{name}_df = con.sql("SELECT * FROM {name}").df()')
 
         for model_name, model_entry in models.items():
@@ -232,7 +234,17 @@ def _build_setup_source() -> str:
                 overwritten_base = ds_entry.base_loader
             if overwritten_base is not None:
                 ds_path = overwritten_base["path"]
-                data_ref = f"{model_name}_train_df"
+                # A dataset named <model>_train would make the train frame
+                # collide with that dataset's <name>_df scoring frame — and
+                # the model block emits after the frames loop, so the
+                # assignment would clobber the post-transform frame that
+                # predict/evaluate cells reference. Prefix underscores until
+                # the name is free.
+                train_var = f"{model_name}_train_df"
+                while train_var in frame_names:
+                    train_var = f"_{train_var}"
+                frame_names.add(train_var)
+                data_ref = train_var
                 lines.append(
                     f"# Dataset {model_entry.fitted_on_dataset!r} was overwritten by "
                     f"materialize_query after this model was fit; re-fitting from "
@@ -283,7 +295,7 @@ def _build_setup_source() -> str:
                     overwritten_base["path"],
                     overwritten_base.get("read_options"),
                 )
-                lines.append(f"{model_name}_train_df = con.sql({select!r}).df()")
+                lines.append(f"{data_ref} = con.sql({select!r}).df()")
 
             smf_fn = _KIND_TO_SMF.get(model_entry.kind, "ols")
             fit_args = "disp=False" if model_entry.kind in ("logistic", "poisson", "negbin") else ""
