@@ -78,11 +78,25 @@ def _sanitized_guard_var(name: str, idx: int) -> str:
 def _hash_guard_lines(var: str, display_name: str, path: str, hash_val: str) -> list[str]:
     """Drift-guard lines emitted before one file-backed dataset reload.
 
-    Content hashes get a hard assert. (Fallback and sentinel shapes are added
-    in later cycles.) The message is built as data and emitted with ``!r`` so
+    Three shapes keyed off the stored hash: content assert, ``(path, mtime,
+    size)`` fallback assert, or (next cycle) a comment when only a sentinel
+    is available. The message is built as data and emitted with ``!r`` so
     quote-containing dataset names cannot break the emitted literal.
     """
     message = f"Source file for dataset {display_name!r} changed since the session was recorded."
+    if hash_val.startswith("fallback:"):
+        # Above-ceiling files use a (path, mtime, size) fallback. Recompute
+        # the same fallback at replay time; the assert remains hard, but the
+        # weaker guarantee is documented.
+        return [
+            "import os as _os",
+            f"_st = _os.stat({path!r})",
+            f"expected_hash_ds_{var} = {hash_val!r}",
+            f"actual_hash_ds_{var} = 'fallback:' + hashlib.sha256("
+            f"f'{{{path!r}}}|{{_st.st_mtime}}|{{_st.st_size}}'.encode('utf-8')"
+            f").hexdigest()",
+            f"assert actual_hash_ds_{var} == expected_hash_ds_{var}, {message!r}",
+        ]
     return [
         f"expected_hash_ds_{var} = {hash_val!r}",
         f"actual_hash_ds_{var} = hashlib.sha256(open({path!r}, 'rb').read()).hexdigest()",
