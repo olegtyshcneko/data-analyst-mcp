@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from data_analyst_mcp.read_options import render_read_options_fragment
+
 if TYPE_CHECKING:
     import nbformat
 
@@ -40,19 +42,23 @@ _FORMAT_TO_READER: dict[str, str] = {
 }
 
 
-def _file_load_stmt(name: str, fmt: str, path: str) -> str:
+def _file_load_stmt(
+    name: str, fmt: str, path: str, read_options: dict[str, Any] | None = None
+) -> str:
     """Build the ``CREATE OR REPLACE TABLE`` line that reloads a file-backed
     dataset from disk via the format-appropriate DuckDB reader.
 
     ``repr()`` quotes the path safely — embedded ``'`` / ``"`` / ``\"\"\"`` no
-    longer break out of the host literal.
+    longer break out of the host literal. ``read_options`` is rendered via the
+    same fragment builder the live load used, so replay parses identically.
     """
     reader = _FORMAT_TO_READER.get(fmt, "read_csv_auto")
     path_lit = repr(path)
+    extra = render_read_options_fragment(read_options or {})
     if reader == "read_csv_auto":
-        call = f"{reader}({path_lit}, SAMPLE_SIZE=-1)"
+        call = f"{reader}({path_lit}, SAMPLE_SIZE=-1{extra})"
     else:
-        call = f"{reader}({path_lit})"
+        call = f"{reader}({path_lit}{extra})"
     return f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM {call}"
 
 
@@ -97,10 +103,10 @@ def _build_setup_source() -> str:
             # name (transform-in-place) — has its base table at replay.
             base = entry.base_loader
             if base is not None:
-                stmt = _file_load_stmt(name, base["format"], base["path"])
+                stmt = _file_load_stmt(name, base["format"], base["path"], base.get("read_options"))
                 lines.append(f"con.execute({stmt!r})")
             continue
-        stmt = _file_load_stmt(name, entry.format, entry.path)
+        stmt = _file_load_stmt(name, entry.format, entry.path, entry.read_options)
         lines.append(f"con.execute({stmt!r})")
 
     # Second pass: derived datasets, materialized via their recorded SQL.
