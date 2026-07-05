@@ -5,6 +5,30 @@ All notable changes to **data-analyst-mcp** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-07-05
+
+### Added
+- **Dataset provenance hashes.** Every dataset records a SHA-256 content hash
+  of its source file at `load_dataset` time (`(path, mtime, size)` fallback
+  above 100 MB; sentinels for s3/http/in-memory/derived sources). The emitted
+  notebook's setup cell asserts on it before each reload — including base
+  files behind `materialize_query` overwrites — so editing a source file
+  between session and replay fails loudly instead of silently recomputing
+  different numbers.
+- Setup-cell reloads now render the live load's `read_options`, so a passing
+  hash also implies the same parse at replay.
+
+### Changed
+- `fit_model` no longer re-hashes the training file at fit time; the model's
+  provenance hash is copied from the dataset entry's load-time hash (the
+  model trains on the table loaded then, not the file as it exists at fit
+  time). A same-name dataset reload after a fit still fails replay loudly
+  via the model-block assert.
+
+### Internal
+- New `provenance.py` (shared hash) and `read_options.py` (shared DuckDB
+  reader-option rendering) leaf modules.
+
 ## [1.1.1] - 2026-07-04
 
 ### Security

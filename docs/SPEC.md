@@ -214,6 +214,7 @@ Every tool follows this contract:
 - Reads the file on a **separate short-lived DuckDB connection that has filesystem access**, then hands the rows to the sandboxed session connection in memory (register DataFrame → `CREATE OR REPLACE TABLE <name>`). The session connection itself runs with `enable_external_access=false` (see §5.6) so untrusted `query` SQL can never touch the filesystem; loading is the one place disk/URL access is allowed, and it only ever executes the trusted, server-built `read_*` call — never agent SQL.
 - Auto-detects format from extension; falls back to `read_csv_auto` for ambiguous text.
 - Stores file path and read_options in session for the recorder (the recorder still emits a direct `read_csv_auto(...)` line, since the exported notebook runs standalone with normal file access).
+- Records a provenance hash on the dataset entry at registration (`DatasetEntry.source_hash`): SHA-256 of the file bytes up to a 100 MB ceiling, a `(path, mtime, size)` fallback digest above it, and a `sentinel:` marker for non-file sources (s3/http, in-memory, derived). The emitted notebook's setup cell asserts on it at replay.
 
 **Output**:
 ```json
@@ -509,6 +510,7 @@ Every comparison row carries the **same keys** regardless of engine — `statist
 - `kind: Literal["ols", "logistic", "poisson", "negbin"] = "ols"` — `negbin` is NB2 (variance = μ + α·μ²), the canonical remedy when a Poisson fit emits `overdispersion`.
 - `robust: bool = False` — for OLS, use HC3 standard errors. Rejected for `negbin` (`robust_not_supported`).
 - `model_name: str | None = None` — optional registry handle. Non-empty, no whitespace. When provided, the fitted result is stored in the session model registry for downstream `predict` / `evaluate_model` / `list_models` calls; duplicates → `model_name_collision`, invalid → `model_name_invalid`. When stored, the response echoes `"model_name": "..."`.
+- When stored, the model's `training_dataset_hash` is copied from the dataset entry's load-time `source_hash` — the model trains on the table populated at `load_dataset` time, so the load-time hash is the truthful provenance anchor (no re-hash at fit time).
 - **Logistic separation/convergence:** for `kind="logistic"`, a perfectly or quasi-perfectly separated outcome returns `{"ok": false, "error": {"type": "perfect_separation", ...}}` — no `coefficients`/`fit`/`diagnostics`, and the model is not registered even if `model_name` was supplied. A logit that fails to converge *without* that coefficient/SE divergence signature returns `convergence_failed`. Perfect collinearity in the design is reported as `formula_error`, not separation.
 
 **Output**:
@@ -627,7 +629,7 @@ Outcome dtype validation: logistic requires binary 0/1 or boolean; OLS requires 
 
 **Behavior**:
 - Take accumulated cells from recorder.
-- Prepend a setup cell: imports, DuckDB connection, dataset reloads.
+- Prepend a setup cell: imports, DuckDB connection, then per-dataset drift guards (hash asserts) followed by dataset reloads that render the live load's `read_options`.
 - Serialize via `nbformat.v4`.
 - Write to disk.
 - Return `{"ok": true, "path": "/abs/path/session_2026....ipynb", "n_cells": 42}`.
@@ -691,17 +693,23 @@ print(f"t = {result.statistic:.3f}, p = {result.pvalue:.4f}")
 
 ```python
 import duckdb
+import hashlib
 import pandas as pd
 import numpy as np
 from scipy import stats
 import statsmodels.api as sm
+import statsmodels.formula.api as smf
 import matplotlib.pyplot as plt
 
 con = duckdb.connect()
 
-# Reload datasets registered in the session
+# Reload datasets registered in the session, each guarded by its
+# load-time provenance hash (sentinel-hashed sources get a comment
+# instead of an assert; >100 MB files use a (path, mtime, size) fallback).
+expected_hash_ds_raw_0 = '3f5a...'
+actual_hash_ds_raw_0 = hashlib.sha256(open('fixtures/messy.csv', 'rb').read()).hexdigest()
+assert actual_hash_ds_raw_0 == expected_hash_ds_raw_0, "Source file for dataset 'raw' changed since the session was recorded."
 con.execute("""CREATE OR REPLACE TABLE raw AS SELECT * FROM read_csv_auto('fixtures/messy.csv', SAMPLE_SIZE=-1)""")
-con.execute("""CREATE OR REPLACE TABLE orders AS SELECT * FROM read_parquet('orders.parquet')""")
 ```
 
 The setup cell is rebuilt from the session's dataset registry at emit-time.

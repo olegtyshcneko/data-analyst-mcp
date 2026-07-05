@@ -411,8 +411,8 @@ The agent will reach for MotherDuck when the task is "query the warehouse" and f
             │                                         │
             ▼                                         ▼
        DuckDB connection ──────────────► nbformat → session_*.ipynb
-            │                              (setup cell re-fits models
-            ▼                               behind SHA-256 assert)
+            │                              (setup cell hash-guards datasets,
+            ▼                               re-fits models behind SHA-256)
   CSV · Parquet · Excel · JSON · s3://
 ```
 
@@ -424,6 +424,7 @@ Single process, single DuckDB connection, single recorder. No network calls. No 
 - **Logistic regression with (quasi-)perfectly-separating predictors** returns a structured `error.type = "perfect_separation"` instead of a fit: the maximum-likelihood estimates diverge, so no coefficients/diagnostics are produced and the model is not registered even if `model_name` was supplied. Perfect collinearity in the design is reported as `formula_error`; a non-converged logit without the divergence signature returns `convergence_failed`.
 - **Boolean response columns in `fit_model`.** Pandas' nullable `BooleanDtype` is coerced to `{0, 1}` numeric before being handed to statsmodels' `Logit`; plain Python booleans work too. Mixed `True` / `"yes"` strings are not.
 - **Datasets are in-process state.** Restarting Claude Desktop drops the registry. Re-`load_dataset` after a restart, or run the emitted notebook to rehydrate.
+- **Emitted notebooks are drift-guarded.** The setup cell asserts a SHA-256 provenance hash for every file-backed dataset (and for base files behind `materialize_query` overwrites) before reloading it. If a source file changed since the session, replay fails with a loud `AssertionError` instead of silently recomputing different numbers. Files over 100 MB use a weaker `(path, mtime, size)` check; s3/http sources reload unguarded (a comment in the cell says so).
 - **Stdio only in v1.** No SSE, no HTTP. If you want to share one server across multiple clients, that's on the roadmap.
 
 ## Development
