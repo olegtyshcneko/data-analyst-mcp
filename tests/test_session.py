@@ -112,3 +112,27 @@ def test_register_records_sentinel_hash_for_non_file_paths() -> None:
 
     assert session.get_datasets()["derived"].source_hash.startswith("sentinel:")
     assert session.get_datasets()["mem"].source_hash.startswith("sentinel:")
+
+
+def test_reset_drops_quote_containing_table_names_without_error() -> None:
+    """session.reset() builds DROP TABLE SQL from registered names; a name
+    containing double quotes must be escaped, not break the statement.
+    (Names like this are reachable: load_dataset defaults the dataset name
+    from the file basename.)"""
+    from data_analyst_mcp import session
+
+    session.reset()
+    con = session.get_connection()
+    con.execute('CREATE OR REPLACE TABLE "he said ""hi""" AS SELECT 1 AS a')
+    session.register(
+        name='he said "hi"',
+        path="(dataframe)",
+        read_options={},
+        format="dataframe",
+        rows=1,
+        columns=[],
+    )
+
+    session.reset()  # must not raise
+
+    assert session.get_datasets() == {}
