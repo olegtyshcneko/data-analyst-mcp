@@ -6,25 +6,17 @@ Also hosts ``list_models`` — a read-only inspection helper that mirrors
 
 from __future__ import annotations
 
-import hashlib
 import logging
-import os
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
+from data_analyst_mcp.provenance import compute_source_hash
 from data_analyst_mcp.recorder import get_recorder
 
 logger = logging.getLogger(__name__)
-
-# Above this file size (bytes) we skip content-hashing in favour of a
-# cheap ``(path, mtime, size)`` tuple — content-hash on a 5 GB CSV is
-# slow enough that the recorder pause is user-visible. Documented as a
-# weaker drift guarantee in §Open question 2 of the model_registry
-# proposal.
-_HASH_CONTENT_CEILING_BYTES = 100 * 1024 * 1024
 
 
 def _quote(name: str) -> str:
@@ -105,45 +97,6 @@ def _is_valid_model_name(name: str) -> bool:
     return not any(ch.isspace() for ch in name)
 
 
-def compute_training_dataset_hash(path: str) -> str:
-    """Hash a training dataset for the recorder's drift guard.
-
-    Files up to ``_HASH_CONTENT_CEILING_BYTES`` are content-hashed
-    (SHA-256 of bytes). Larger files fall back to a cheap
-    ``(path, mtime, size)`` tuple — documented as a weaker guarantee in
-    the proposal. In-memory datasets (``path == "(dataframe)"``) and any
-    other non-file path are tagged with a sentinel so the recorder's
-    rehydration cell can detect them and skip the hash assert without
-    silently mismatching.
-    """
-    if not os.path.isfile(path):
-        # In-memory datasets, s3:// URLs, anything we cannot stat get a
-        # stable sentinel so collisions across runs are deterministic.
-        return f"sentinel:no-file:{path}"
-    try:
-        size = os.path.getsize(path)
-    except OSError:
-        return f"sentinel:stat-failed:{path}"
-    if size <= _HASH_CONTENT_CEILING_BYTES:
-        h = hashlib.sha256()
-        # Stream in 1 MB chunks; SHA-256 of a 100 MB file at ~500 MB/s is
-        # under a quarter second on commodity hardware.
-        with open(path, "rb") as fh:
-            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
-                h.update(chunk)
-        return h.hexdigest()
-    # Above the ceiling: fall back to (path, mtime, size). Weaker guarantee
-    # — a careful edit that preserves mtime + size will not trigger the
-    # drift assert — but content-hashing 5 GB is too slow for an
-    # interactive session.
-    try:
-        mtime = os.path.getmtime(path)
-    except OSError:
-        mtime = 0.0
-    fallback_hash = hashlib.sha256(f"{path}|{mtime}|{size}".encode()).hexdigest()
-    return f"fallback:{fallback_hash}"
-
-
 def fit_model(payload: FitModelInput) -> dict[str, Any]:
     """Fit an OLS / logistic / Poisson / negbin regression and return coefficients + diagnostics."""
     if payload.name not in session.get_datasets():
@@ -215,7 +168,7 @@ def fit_model(payload: FitModelInput) -> dict[str, Any]:
             formula=payload.formula,
             fitted_on_dataset=payload.name,
             n_obs=n_obs_val,
-            training_dataset_hash=compute_training_dataset_hash(ds_path),
+            training_dataset_hash=compute_source_hash(ds_path),
             result=live_result,
         )
         result["model_name"] = payload.model_name

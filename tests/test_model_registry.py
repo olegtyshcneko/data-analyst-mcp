@@ -8,9 +8,6 @@ existing dataset registry.
 
 from __future__ import annotations
 
-import hashlib
-from pathlib import Path
-
 import pandas as pd
 
 # ---- Session-level registry slices ---------------------------------------
@@ -112,26 +109,6 @@ def test_get_model_returns_none_when_name_missing() -> None:
 
     session.reset()
     assert session.get_model("typo") is None
-
-
-def test_compute_training_dataset_hash_matches_sha256(tmp_path: Path) -> None:
-    from data_analyst_mcp.tools.models import compute_training_dataset_hash
-
-    csv = tmp_path / "tiny.csv"
-    csv.write_bytes(b"a,b\n1,2\n3,4\n")
-    expected = hashlib.sha256(csv.read_bytes()).hexdigest()
-
-    assert compute_training_dataset_hash(str(csv)) == expected
-
-
-def test_compute_training_dataset_hash_handles_in_memory_dataset() -> None:
-    """In-memory datasets (no file path) get a deterministic sentinel
-    rather than throwing — the recorder cell uses this to skip the
-    hash assert without silently mismatching."""
-    from data_analyst_mcp.tools.models import compute_training_dataset_hash
-
-    h = compute_training_dataset_hash("(dataframe)")
-    assert h.startswith("sentinel:")
 
 
 # ---- fit_model(model_name=...) slices -----------------------------------
