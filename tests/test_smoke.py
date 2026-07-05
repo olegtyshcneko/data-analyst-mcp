@@ -9,7 +9,7 @@ from __future__ import annotations
 def test_package_version_is_set() -> None:
     import data_analyst_mcp
 
-    assert data_analyst_mcp.__version__ == "1.2.0"
+    assert data_analyst_mcp.__version__ == "1.2.1"
 
 
 def test_server_module_exposes_fastmcp_instance() -> None:
