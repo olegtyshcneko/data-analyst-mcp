@@ -1079,3 +1079,36 @@ def test_emitted_notebook_fit_then_overwrite_guard_fires_on_mutated_source(
     assert result.returncode != 0, "replay should fail after source mutation"
     assert "AssertionError" in result.stderr
     assert "changed since the session was recorded" in result.stderr
+
+
+def test_setup_cell_train_frame_never_clobbers_dataset_scoring_frame(call_tool, tmp_path) -> None:
+    """A dataset named <model>_train makes the naive train-frame variable
+    collide with the dataset's <name>_df scoring frame; the emitted train
+    frame must pick a distinct name so the post-transform scoring frame
+    survives the setup cell."""
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv = tmp_path / "m_train.csv"
+    csv.write_text("y,x\n1.0,0.0\n2.0,1.0\n3.0,2.0\n4.0,3.0\n5.0,4.0\n")
+    r = call_tool("load_dataset", {"path": str(csv), "name": "m_train"})
+    assert r["ok"], r
+    r = call_tool(
+        "fit_model",
+        {"name": "m_train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT y * 10 AS y, x FROM m_train", "name": "m_train", "overwrite": True},
+    )
+    assert r["ok"], r
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    # The scoring frame keeps the post-transform table...
+    assert '\nm_train_df = con.sql("SELECT * FROM m_train").df()' in setup_src
+    # ...and the train frame picked a non-colliding name.
+    assert "\n_m_train_df = con.sql(" in setup_src
+    assert "data=_m_train_df" in setup_src
+    # The scoring frame is assigned exactly once — never reassigned.
+    assert setup_src.count('m_train_df = con.sql("SELECT * FROM m_train").df()') == 1
+    compile(setup_src, "<setup>", "exec")
