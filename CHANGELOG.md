@@ -5,6 +5,58 @@ All notable changes to **data-analyst-mcp** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-07-08
+
+Model-workflow bundle — train/test splits and cross-validation, closing the loop the Phase-5 model registry opened. Tool surface **22 → 24**.
+
+### Added
+- **`split_dataset`** — a seeded, optionally stratified train/test split
+  registered as two first-class datasets (`{name}_train` / `{name}_test` by
+  default) that every other tool can target by name:
+  - Membership is a deterministic function of (source rows, seed) via
+    `np.random.RandomState` — NumPy's NEP 19-frozen MT19937 stream, not DuckDB
+    `hash()` / `USING SAMPLE` — so the same seed always reproduces the same
+    split across NumPy and DuckDB versions.
+  - The emitted notebook recreates each split behind an **order-independent
+    membership checksum** (row count + XOR and sum of per-row hashes, so
+    duplicate rows can't cancel out): deterministic replays pass, row-order
+    drift in a derived source fails loudly at the assert, mirroring the
+    SHA-256 file guards.
+  - Outputs register with a dedicated `format="split"`; the name preflight is
+    atomic (both collisions checked before either table is created) so a
+    half-applied split can't occur.
+- **`cross_validate`** — k-fold cross-validated metrics for a model formula;
+  the re-fitting complement to `evaluate_model`, with fits ephemeral and the
+  model registry untouched:
+  - A full-data preflight fit surfaces `fit_model`'s error taxonomy
+    (`formula_error`, `perfect_separation`, `convergence_failed`,
+    `outcome_dtype_mismatch`) before any fold work, and its patsy design
+    matrices are reused so a categorical level appearing in only one fold
+    can't crash held-out scoring.
+  - Logistic folds are auto-stratified by outcome class (requires ≥ k rows per
+    class); metrics match `evaluate_model`'s families, reported as mean,
+    std (ddof=1), and per-fold values.
+
+### Changed
+- `materialize_query` overwrites and the recorder's setup-cell rehydration now
+  recognize the dedicated `format="split"`, so a split output is never misread
+  as SQL-derived. Overwriting a split output drops that side's split recipe
+  from the setup cell, so replay fails loudly (missing table or checksum)
+  rather than recomputing silently.
+
+### Internal
+- Extracted `fit_prepared` from `fit_model`: the shared fit / validation /
+  coercion path (boolean-outcome coercion, negbin non-negative-integer count
+  checks, separation detection) is now a single entry point that
+  `cross_validate`'s preflight fit reuses, so CV can't drift from `fit_model`'s
+  semantics.
+
+### Documentation
+- `docs/SPEC.md` §5.6b (`split_dataset`) and §5.11d (`cross_validate`) specify
+  the two tools; the design record is
+  `docs/superpowers/specs/2026-07-08-model-workflow-bundle-design.md` and the
+  folded proposal stub is `docs/proposals/2026-07-08-model-workflow-bundle.md`.
+
 ## [1.2.1] - 2026-07-06
 
 ### Fixed
@@ -174,6 +226,7 @@ with **16 tools** over a DuckDB session.
   violin/heatmap), `emit_notebook` — every tool call records a markdown+code
   cell pair so a session replays as an executable Jupyter notebook.
 
+[1.3.0]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.3.0
 [1.2.1]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.2.1
 [1.2.0]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.2.0
 [1.1.0]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.1.0
