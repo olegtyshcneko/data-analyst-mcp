@@ -26,6 +26,7 @@ from data_analyst_mcp.tools import posthoc as _posthoc
 from data_analyst_mcp.tools import power as _power
 from data_analyst_mcp.tools import predict as _predict
 from data_analyst_mcp.tools import query as _query
+from data_analyst_mcp.tools import split as _split
 from data_analyst_mcp.tools import stats as _stats
 
 _handler = logging.StreamHandler(stream=sys.stderr)
@@ -95,6 +96,46 @@ def materialize_query(
         return _materialize.materialize_query(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("materialize_query failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def split_dataset(
+    name: str,
+    test_fraction: float = 0.25,
+    seed: int = 42,
+    stratify_by: str | None = None,
+    train_name: str | None = None,
+    test_name: str | None = None,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    """Partition a registered dataset into seeded train/test datasets.
+
+    Membership is a deterministic function of (source rows, seed) via
+    ``np.random.RandomState`` — the same seed always produces the same
+    split, and the emitted notebook reproduces it exactly. Defaults:
+    ``{name}_train`` / ``{name}_test`` (override with train_name /
+    test_name; all three names must be pairwise distinct). Optional
+    ``stratify_by`` keeps per-stratum proportions; strata with fewer
+    than 2 rows go entirely to train (``small_strata`` warning). Both
+    outputs register as first-class datasets every other tool can
+    target by name. Errors: dataset_not_found, dataset_name_collision,
+    invalid_name, split_name_conflict, test_fraction_out_of_range,
+    stratify_column_missing, dataset_too_small, stratification_too_sparse.
+    """
+    try:
+        payload = _split.SplitDatasetInput(
+            name=name,
+            test_fraction=test_fraction,
+            seed=seed,
+            stratify_by=stratify_by,
+            train_name=train_name,
+            test_name=test_name,
+            overwrite=overwrite,
+        )
+        return _split.split_dataset(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("split_dataset failed")
         return build_error(type="internal", message=str(exc))
 
 
