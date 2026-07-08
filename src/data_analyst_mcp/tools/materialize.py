@@ -109,11 +109,12 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
     # (transform-in-place: ``... AS SELECT ... FROM data`` over ``data``). If
     # overwriting an already-derived entry, carry its base_loader forward so a
     # chain of overwrites still rehydrates the original file. In-memory
-    # (dataframe) bases are not reloadable, so they leave base_loader None.
+    # (dataframe) bases are not reloadable, so they leave base_loader None —
+    # as do split outputs, whose "(split)" path is a placeholder, not a file.
     existing = session.get_datasets().get(payload.name)
     base_loader: dict[str, Any] | None = None
     if existing is not None:
-        if existing.format not in ("derived", "dataframe"):
+        if existing.format not in ("derived", "dataframe", "split"):
             base_loader = {
                 "path": existing.path,
                 "format": existing.format,

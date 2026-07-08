@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict
 
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
-from data_analyst_mcp.recorder import get_recorder
+from data_analyst_mcp.recorder import get_recorder, split_replay_source
 
 logger = logging.getLogger(__name__)
 
@@ -324,9 +324,8 @@ def _record_split(
 ) -> None:
     """Append the markdown + code cell pair for a successful split.
 
-    Task 4 replaces the placeholder code body with
-    ``recorder.split_replay_source`` so the per-call cell and the setup
-    cell share one snippet.
+    The code body is the shared ``recorder.split_replay_source`` snippet,
+    so the per-call cell and the setup cell replay identically.
     """
     md = (
         f"### Split `{payload.name}` into `{train_name}` / `{test_name}`\n\n"
@@ -334,8 +333,14 @@ def _record_split(
         f"stratify_by={payload.stratify_by!r}\n"
         f"- train rows: {n_train}, test rows: {n_test}"
     )
-    code = (
-        f"# split_dataset({payload.name!r}) -> {train_name!r} / {test_name!r} "
-        f"(replay source lands in Task 4)"
+    code = split_replay_source(
+        source=payload.name,
+        train_name=train_name,
+        test_name=test_name,
+        seed=payload.seed,
+        test_fraction=payload.test_fraction,
+        stratify_by=payload.stratify_by,
+        rid_column=rid,
+        membership_checksum=checksum,
     )
     get_recorder().record(markdown=md, code=code, tool_name="split_dataset")

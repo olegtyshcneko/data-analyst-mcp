@@ -67,6 +67,131 @@ def _file_load_stmt(
     return f"CREATE OR REPLACE TABLE {name} AS {_file_select_expr(fmt, path, read_options)}"
 
 
+def _split_assignment_lines(
+    source: str, seed: int, test_fraction: float, stratify_by: str | None
+) -> list[str]:
+    """Notebook lines that rebuild the boolean membership array.
+
+    Algorithm-identical to ``tools.split._assign_is_test`` — the
+    membership-checksum assert emitted below is the drift guard between
+    the two implementations.
+    """
+    src_q = '"' + source.replace('"', '""') + '"'
+    if stratify_by is None:
+        return [
+            f"_split_n = con.sql('SELECT COUNT(*) FROM {src_q}').fetchone()[0]",
+            f"_split_rng = np.random.RandomState({seed})",
+            "_split_is_test = np.zeros(_split_n, dtype=bool)",
+            f"_split_n_test = min(max(int(round(_split_n * {test_fraction})), 1), _split_n - 1)",
+            "_split_is_test[_split_rng.permutation(_split_n)[:_split_n_test]] = True",
+        ]
+    col_q = '"' + stratify_by.replace('"', '""') + '"'
+    return [
+        f"_split_labels = con.sql('SELECT {col_q} FROM {src_q}').df().iloc[:, 0]",
+        f"_split_rng = np.random.RandomState({seed})",
+        "_split_is_test = np.zeros(len(_split_labels), dtype=bool)",
+        "_split_null = _split_labels.isna().to_numpy()",
+        "_split_values = sorted(_split_labels[~_split_labels.isna()].unique().tolist(), key=str)",
+        "_split_groups = [np.where((_split_labels == _v).to_numpy() & ~_split_null)[0] for _v in _split_values]",
+        "if _split_null.any():",
+        "    _split_groups.append(np.where(_split_null)[0])",
+        "for _rids in _split_groups:",
+        "    if len(_rids) < 2:",
+        "        continue",
+        f"    _n_t = min(max(int(round(len(_rids) * {test_fraction})), 1), len(_rids) - 1)",
+        "    _split_is_test[_rids[_split_rng.permutation(len(_rids))[:_n_t]]] = True",
+    ]
+
+
+_SPLIT_CHECKSUM_DEF = """\
+def _split_checksum(_df):
+    import hashlib as _hl
+    import math as _math
+    _acc_xor = 0
+    _acc_sum = 0
+    _n_rows = 0
+    for _row in _df.itertuples(index=False, name=None):
+        _parts = []
+        for _v in _row:
+            try:
+                _is_na = bool(pd.isna(_v))
+            except (TypeError, ValueError):
+                _is_na = False
+            if _v is None or _is_na:
+                _parts.append('<null>')
+            elif isinstance(_v, (bool, np.bool_)):
+                _parts.append('true' if bool(_v) else 'false')
+            elif isinstance(_v, (float, np.floating)):
+                _f = float(_v)
+                _parts.append('<null>' if _math.isnan(_f) else repr(_f))
+            elif isinstance(_v, (int, np.integer)):
+                _parts.append(repr(int(_v)))
+            elif isinstance(_v, str):
+                _parts.append(repr(_v))
+            else:
+                _parts.append(str(_v))
+        _h = _hl.sha256('|'.join(_parts).encode('utf-8')).digest()
+        _row_hash = int.from_bytes(_h[:16], 'big')
+        _acc_xor ^= _row_hash
+        _acc_sum = (_acc_sum + _row_hash) % (1 << 128)
+        _n_rows += 1
+    return f'{_n_rows:x}:{_acc_xor:032x}:{_acc_sum:032x}'"""
+
+
+def split_replay_source(
+    *,
+    source: str,
+    train_name: str,
+    test_name: str,
+    seed: int,
+    test_fraction: float,
+    stratify_by: str | None,
+    rid_column: str,
+    membership_checksum: str,
+) -> str:
+    """Self-contained notebook snippet that recreates a train/test split.
+
+    Rebuilds membership with the same ``RandomState`` algorithm the live
+    tool used, recreates both tables, then asserts the order-independent
+    membership checksum of the recreated test table. For file-backed
+    sources the source hash assert upstream makes this deterministic; for
+    derived sources whose SQL is not order-preserving, row-order drift
+    fails loudly here instead of silently changing the split (spec §5.6b
+    row-order tiers).
+    """
+    src_q = '"' + source.replace('"', '""') + '"'
+    train_q = '"' + train_name.replace('"', '""') + '"'
+    test_q = '"' + test_name.replace('"', '""') + '"'
+    rid_q = '"' + rid_column.replace('"', '""') + '"'
+    lines = [
+        f"# --- split_dataset: {source} -> {train_name} / {test_name} "
+        f"(seed={seed}, test_fraction={test_fraction}) ---",
+    ]
+    lines.extend(_split_assignment_lines(source, seed, test_fraction, stratify_by))
+    base = (
+        f"SELECT s.* EXCLUDE ({rid_q}) FROM "
+        f"(SELECT *, row_number() OVER () - 1 AS {rid_q} FROM {src_q}) s "
+        f"JOIN __data_analyst_split_assign a ON s.{rid_q} = a.rid"
+    )
+    train_stmt = f"CREATE OR REPLACE TABLE {train_q} AS {base} WHERE NOT a.is_test"
+    test_stmt = f"CREATE OR REPLACE TABLE {test_q} AS {base} WHERE a.is_test"
+    message = f"Split membership for {test_name!r} drifted at replay (source row order changed)."
+    lines.extend(
+        [
+            "_split_assign = pd.DataFrame({'rid': np.arange(len(_split_is_test), "
+            "dtype=np.int64), 'is_test': _split_is_test})",
+            "con.register('__data_analyst_split_assign', _split_assign)",
+            f"con.execute({train_stmt!r})",
+            f"con.execute({test_stmt!r})",
+            "con.unregister('__data_analyst_split_assign')",
+            _SPLIT_CHECKSUM_DEF,
+            f"assert _split_checksum(con.sql('SELECT * FROM {test_q}').df()) == "
+            f"{membership_checksum!r}, {message!r}",
+        ]
+    )
+    return "\n".join(lines)
+
+
 _IDENT_SANITIZE_RE = re.compile(r"\W")
 
 
@@ -152,6 +277,11 @@ def _build_setup_source() -> str:
                 f"not reloaded here — rematerialize it from your own source."
             )
             continue
+        if entry.format == "split":
+            # Split datasets are rehydrated by the merged second pass below
+            # (RandomState recipe + membership-checksum assert), never by a
+            # file reload — "(split)" is a placeholder, not a path.
+            continue
         if entry.format == "derived":
             # A derived entry that overwrote a file-backed dataset retains the
             # original loader in base_loader; emit it here (first pass) so the
@@ -177,25 +307,41 @@ def _build_setup_source() -> str:
         stmt = _file_load_stmt(name, entry.format, entry.path, entry.read_options)
         lines.append(f"con.execute({stmt!r})")
 
-    # Second pass: derived datasets, materialized via their recorded SQL.
-    # No hash assert — the recipe is the SQL plus the upstream datasets,
-    # which already carry their own asserts via the model rehydration
-    # block when models depend on them.
-    #
-    # Chained derived datasets (derived_b SELECTs FROM derived_a) work
-    # because ``_session.get_datasets()`` is a regular dict and Python
-    # dicts preserve insertion order — so a derived dataset registered
-    # after its upstream derived dataset will also be emitted after it
-    # here.
+    # Second pass: derived and split datasets, in registration order.
+    # Registration order IS topological order — a derived/split entry can
+    # only reference earlier-registered tables, and ``_session.get_datasets()``
+    # is a regular dict whose insertion order Python preserves, so chained
+    # derived datasets (derived_b SELECTs FROM derived_a) are emitted after
+    # their upstream — one interleaved loop replaces the old derived-only
+    # pass. Derived recipes get no hash assert: the recipe is the SQL plus
+    # the upstream datasets, which already carry their own asserts via the
+    # model rehydration block when models depend on them. Split blocks are
+    # emitted once per pair, keyed off the test-role entry (which carries
+    # the membership checksum). Overwriting a split output with
+    # materialize_query drops that side's split recipe; replay then fails
+    # loudly (missing table / checksum) rather than silently recomputing.
     for name, entry in _session.get_datasets().items():
-        if entry.format != "derived":
-            continue
-        derived_sql = entry.read_options.get("sql", "")
-        stmt = f'CREATE OR REPLACE TABLE "{name}" AS {derived_sql}'
-        # repr() escapes embedded quotes (including ``\"\"\"``) so the
-        # emitted Python source compiles regardless of what SQL the user
-        # passed to materialize_query.
-        lines.append(f"con.execute({stmt!r})")
+        if entry.format == "derived":
+            derived_sql = entry.read_options.get("sql", "")
+            stmt = f'CREATE OR REPLACE TABLE "{name}" AS {derived_sql}'
+            # repr() escapes embedded quotes (including ``\"\"\"``) so the
+            # emitted Python source compiles regardless of what SQL the user
+            # passed to materialize_query.
+            lines.append(f"con.execute({stmt!r})")
+        elif entry.format == "split" and entry.read_options.get("role") == "test":
+            opts = entry.read_options
+            lines.append(
+                split_replay_source(
+                    source=str(opts["source"]),
+                    train_name=str(opts["train_name"]),
+                    test_name=str(opts["test_name"]),
+                    seed=int(opts["seed"]),
+                    test_fraction=float(opts["test_fraction"]),
+                    stratify_by=opts.get("stratify_by"),
+                    rid_column=str(opts["rid_column"]),
+                    membership_checksum=str(opts["membership_checksum"]),
+                )
+            )
 
     models = _session.get_models()
     if models:
@@ -232,6 +378,24 @@ def _build_setup_source() -> str:
                 and hash_val != ds_entry.source_hash
             ):
                 overwritten_base = ds_entry.base_loader
+            elif (
+                ds_entry is not None
+                and ds_entry.format == "derived"
+                and ds_entry.base_loader is None
+                and hash_val != ds_entry.source_hash
+            ):
+                # Fit-then-overwrite with nothing to re-fit from (e.g. the
+                # training dataset was a split output): silently re-fitting
+                # on the post-transform table would betray the drift
+                # guarantee — fail the replay loudly instead.
+                msg = (
+                    f"Model {model_name!r} was fit on dataset "
+                    f"{model_entry.fitted_on_dataset!r}, which was later "
+                    f"overwritten by materialize_query and has no re-loadable "
+                    f"source; the re-fit cannot be replayed faithfully."
+                )
+                lines.append(f"raise AssertionError({msg!r})")
+                continue
             if overwritten_base is not None:
                 ds_path = overwritten_base["path"]
                 # A dataset named <model>_train would make the train frame
