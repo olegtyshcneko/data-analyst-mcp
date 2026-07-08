@@ -62,8 +62,9 @@ the train/test tables are created by join/anti-join on `row_number() OVER ()`.
 - *Derived sources (`materialize_query` or a previous split):* at replay the derived
   table is recreated by re-running its SQL, and joins/group-bys carry no order guarantee.
   Recomputed row numbers could silently differ, so the split cell asserts a
-  **membership checksum** — an order-independent digest (XOR/sum of per-row hashes) of
-  the recreated test table against the session's value. Deterministic replays pass;
+  **membership checksum** — an order-independent digest (row count + XOR and sum of
+  per-row hashes, so duplicate rows cannot cancel out) of the recreated test table
+  against the session's value. Deterministic replays pass;
   order drift fails loudly at the assert, exactly like the existing SHA-256 file guards.
   The checksum is asserted for file-backed sources too (it is cheap and catches the
   unexpected).
@@ -77,7 +78,9 @@ deterministic; a stratum with fewer than 2 rows goes entirely to train and adds 
 strata (or rounding) leave train or test with zero rows, the split is rejected with
 `stratification_too_sparse` and nothing is registered.
 
-**Registration:** both outputs register as `format="derived"` datasets (path `"(split)"`),
+**Registration:** both outputs register as first-class datasets with a dedicated
+`format="split"` (path `"(split)"`) — a distinct format keeps the recorder's rehydration
+branch and `materialize_query`'s overwrite logic from misreading a split as SQL-derived —
 with `read_options` carrying `{source, seed, test_fraction, stratify_by, role}` plus the
 membership checksum, so the recorder can rehydrate and guard them. Every existing tool can then target them by name.
 
@@ -165,7 +168,13 @@ to the full-data preflight fit; the fold-local variants land in `fold_failures`.
 - `cross_validate` emits a self-contained cell: same fold assignment, statsmodels fits in
   a loop, sklearn metrics, printing the per-fold and aggregate table.
 - Overwrite interactions follow the existing `materialize_query` collision scheme,
-  including the fit-then-overwrite guard behavior shipped in 1.2.x.
+  including the fit-then-overwrite guard behavior shipped in 1.2.x. A model fit on a
+  split output (or any dataset without a carryable file loader) whose training table is
+  later overwritten by `materialize_query` cannot be re-fit faithfully at replay — the
+  setup cell emits a hard `raise AssertionError` for that model instead of silently
+  re-fitting against the post-transform table. Overwriting a split output also drops
+  that side's split recipe from the setup cell; replay then fails loudly (missing table
+  or checksum) rather than recomputing silently.
 
 ## Testing
 

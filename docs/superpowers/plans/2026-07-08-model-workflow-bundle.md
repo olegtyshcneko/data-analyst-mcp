@@ -11,8 +11,7 @@
 ## Global Constraints
 
 - Every behavior change lands as a `red:` commit (failing test) followed by a `green:` commit (implementation). `scripts/check_tdd_commits.py` enforces this on the log. Behavior-preserving refactors use `refactor:`; docs use `docs:`; release uses `chore:`.
-- Before **every** commit run all four gates and fix anything they flag:
-  `uv run ruff format .` && `uv run ruff check .` && `uv run pyright src/` && `uv run pytest tests/ -q`
+- Gates: `uv run ruff format .` && `uv run ruff check .` run before **every** commit. `uv run pyright src/` and a green `uv run pytest tests/ -q` run before every `green:` / `test:` / `refactor:` commit. A `red:` commit runs only its new targeted test (which must FAIL) — the rest of the suite must still pass, so run `uv run pytest tests/ -q --deselect <the-new-test>` if in doubt.
 - Tests call tools through the FastMCP layer via the `call_tool` fixture (`tests/conftest.py`) — never by direct function import — except for narrowly-scoped unit tests of private helpers.
 - House typing style: lazy `Any`-returning module accessors for pandas/sklearn/statsmodels (see `tools/evaluate.py:28-39`); pyright strict runs on `src/` only.
 - Error envelopes always via `build_error(type=..., message=..., hint=...)` from `data_analyst_mcp/errors.py`.
@@ -110,9 +109,11 @@ def test_split_dataset_registers_both_as_split_format(
         assert entry.read_options["role"] == role
         assert entry.read_options["train_name"] == "base_train"
         assert entry.read_options["test_name"] == "base_test"
-    # The test-side entry carries the membership checksum (32 hex chars).
+    # The test-side entry carries the membership checksum (count:xor:sum hex).
+    import re
+
     checksum = datasets["base_test"].read_options["membership_checksum"]
-    assert isinstance(checksum, str) and len(checksum) == 32
+    assert re.fullmatch(r"[0-9a-f]+:[0-9a-f]{32}:[0-9a-f]{32}", checksum)
 
 
 def test_split_dataset_same_seed_is_deterministic(
@@ -284,14 +285,19 @@ def _assign_is_test(
 def membership_checksum(df: Any) -> str:
     """Order-independent digest of a DataFrame's row contents.
 
-    XOR of truncated SHA-256 per-row digests over a canonical value
-    serialization — stable across DuckDB/numpy versions because every
-    value is converted to a builtin before ``repr``. Must stay
-    algorithm-identical to the ``_split_checksum`` snippet emitted by
+    ``count:xor:sum`` over truncated SHA-256 per-row digests — the row
+    count plus a second (additive) accumulator means duplicate rows
+    cannot cancel out of a pure XOR. Values are converted to builtins
+    before ``repr`` so the digest is stable across DuckDB/numpy
+    versions; strings are ``repr``'d so a ``|`` inside a value cannot
+    collide with the field separator. Must stay algorithm-identical to
+    the ``_split_checksum`` snippet emitted by
     ``recorder.split_replay_source``.
     """
     pd_mod = _pd()
-    acc = 0
+    acc_xor = 0
+    acc_sum = 0
+    n_rows = 0
     for row in df.itertuples(index=False, name=None):
         parts: list[str] = []
         for v in row:
@@ -310,12 +316,15 @@ def membership_checksum(df: Any) -> str:
             elif isinstance(v, (int, np.integer)):
                 parts.append(repr(int(v)))
             elif isinstance(v, str):
-                parts.append(v)
+                parts.append(repr(v))
             else:
                 parts.append(str(v))
         digest = hashlib.sha256("|".join(parts).encode("utf-8")).digest()
-        acc ^= int.from_bytes(digest[:16], "big")
-    return format(acc, "032x")
+        row_hash = int.from_bytes(digest[:16], "big")
+        acc_xor ^= row_hash
+        acc_sum = (acc_sum + row_hash) % (1 << 128)
+        n_rows += 1
+    return f"{n_rows:x}:{acc_xor:032x}:{acc_sum:032x}"
 
 
 def split_dataset(payload: SplitDatasetInput) -> dict[str, Any]:
@@ -601,12 +610,9 @@ git commit -m "green: split_dataset partitions a dataset into seeded train/test 
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `tests/test_split.py`:
+Add `import pytest` to the top-of-file import block of `tests/test_split.py` (next to `from typing import Any` — a mid-file import trips ruff E402), then append:
 
 ```python
-import pytest
-
-
 def test_split_dataset_unknown_source(call_tool: Any) -> None:
     result = call_tool("split_dataset", {"name": "nope"})
     assert result["ok"] is False
@@ -878,6 +884,9 @@ def test_split_setup_cell_recreates_both_tables_with_checksum_assert(
     checksum = _session.get_datasets()["base_test"].read_options["membership_checksum"]
     assert checksum in src
     assert "drifted at replay" in src
+    # The first (file-backed) pass must SKIP split entries — no bogus
+    # reload of the "(split)" placeholder path may appear anywhere.
+    assert "'(split)'" not in src
 
 
 def test_split_percall_cell_uses_same_replay_source(
@@ -942,6 +951,54 @@ def test_split_stratified_setup_cell_replays(
     src = _setup_source(call_tool)
     assert 'CREATE OR REPLACE TABLE "strat_test"' in src
     assert "isna" in src  # stratified branch emitted
+
+
+def test_split_membership_stable_under_multithreaded_scan(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Explicit spec check: threads > 1 must not change file/table scan
+    order, hence not membership."""
+    from data_analyst_mcp import session as _session
+
+    _load_ten_rows(load_df_into_session)
+    call_tool("split_dataset", {"name": "base"})
+    con = _session.get_connection()
+    before = sorted(r[0] for r in con.execute('SELECT x FROM "base_test"').fetchall())
+    con.execute("SET threads=4")
+    try:
+        call_tool(
+            "split_dataset", {"name": "base", "train_name": "mt_tr", "test_name": "mt_te"}
+        )
+        after = sorted(r[0] for r in con.execute('SELECT x FROM "mt_te"').fetchall())
+    finally:
+        con.execute("SET threads=1")
+    assert before == after
+
+
+def test_model_fit_on_split_then_overwritten_raises_at_replay(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """A model fit on a split output that is later overwritten by
+    materialize_query has no truthful re-fit source — the setup cell must
+    emit a hard raise for it, never a silent re-fit on the post-transform
+    table."""
+    _load_ten_rows(load_df_into_session)
+    call_tool("split_dataset", {"name": "base"})
+    r = call_tool(
+        "fit_model",
+        {"name": "base_train", "formula": "x ~ 1", "model_name": "m_split"},
+    )
+    assert r["ok"] is True
+    r = call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base_train" WHERE x > 2', "name": "base_train",
+         "overwrite": True},
+    )
+    assert r["ok"] is True
+
+    src = _setup_source(call_tool)
+    assert "raise AssertionError" in src
+    assert "m_split" in src
 
 
 def test_materialize_overwrite_of_split_entry_keeps_base_loader_none(
@@ -1019,7 +1076,9 @@ _SPLIT_CHECKSUM_DEF = """\
 def _split_checksum(_df):
     import hashlib as _hl
     import math as _math
-    _acc = 0
+    _acc_xor = 0
+    _acc_sum = 0
+    _n_rows = 0
     for _row in _df.itertuples(index=False, name=None):
         _parts = []
         for _v in _row:
@@ -1037,12 +1096,15 @@ def _split_checksum(_df):
             elif isinstance(_v, (int, np.integer)):
                 _parts.append(repr(int(_v)))
             elif isinstance(_v, str):
-                _parts.append(_v)
+                _parts.append(repr(_v))
             else:
                 _parts.append(str(_v))
         _h = _hl.sha256('|'.join(_parts).encode('utf-8')).digest()
-        _acc ^= int.from_bytes(_h[:16], 'big')
-    return format(_acc, '032x')"""
+        _row_hash = int.from_bytes(_h[:16], 'big')
+        _acc_xor ^= _row_hash
+        _acc_sum = (_acc_sum + _row_hash) % (1 << 128)
+        _n_rows += 1
+    return f'{_n_rows:x}:{_acc_xor:032x}:{_acc_sum:032x}'"""
 
 
 def split_replay_source(
@@ -1099,7 +1161,19 @@ def split_replay_source(
     return "\n".join(lines)
 ```
 
-- [ ] **Step 5: Merge the setup-cell derived pass**
+- [ ] **Step 5: Skip split entries in the setup cell's first pass**
+
+In `_build_setup_source`'s FIRST loop (the file-backed pass, current lines 148-178), add a skip branch right after the `dataframe` branch — without it a `format="split"` entry falls through to the file-backed branch and emits a bogus `read_csv_auto('(split)')` reload:
+
+```python
+        if entry.format == "split":
+            # Split datasets are rehydrated by the merged second pass below
+            # (RandomState recipe + membership-checksum assert), never by a
+            # file reload — "(split)" is a placeholder, not a path.
+            continue
+```
+
+- [ ] **Step 6: Merge the setup-cell derived pass**
 
 In `_build_setup_source`, replace the second pass (current lines 180-198, the `for name, entry ... if entry.format != "derived": continue` loop) with one merged loop:
 
@@ -1135,7 +1209,7 @@ In `_build_setup_source`, replace the second pass (current lines 180-198, the `f
 
 Keep the existing comment about chained derived datasets; fold it into the new comment block. (`split_replay_source` is defined in this same module — no import needed.)
 
-- [ ] **Step 6: Use the shared snippet in `split.py`'s per-call cell**
+- [ ] **Step 7: Use the shared snippet in `split.py`'s per-call cell**
 
 In `tools/split.py`, change the import to `from data_analyst_mcp.recorder import get_recorder, split_replay_source` and replace `_record_split`'s placeholder `code = ...` with:
 
@@ -1154,7 +1228,7 @@ In `tools/split.py`, change the import to `from data_analyst_mcp.recorder import
 
 Also update `_record_split`'s docstring (drop the Task 4 placeholder sentence).
 
-- [ ] **Step 7: Fix the materialize format guard**
+- [ ] **Step 8: Fix the materialize format guard**
 
 In `src/data_analyst_mcp/tools/materialize.py` line 116, change:
 
@@ -1170,12 +1244,46 @@ to:
 
 (Split entries have no file loader; without this, overwriting a split output would fabricate a base_loader with the unloadable path `"(split)"`.)
 
-- [ ] **Step 8: Run tests + full gates**
+- [ ] **Step 9: Loud replay failure for models whose loader-less training data was overwritten**
+
+In `_build_setup_source`'s model-refit block (recorder.py current lines 227-234), the `overwritten_base` computation only rescues models whose overwritten dataset carried a file `base_loader`. A model fit on a *split* output (or any loader-less entry) that was later overwritten currently falls through to the normal path and silently re-fits on the post-transform table. Add an `elif` right after the existing `overwritten_base` assignment block:
+
+```python
+            if (
+                ds_entry is not None
+                and ds_entry.format == "derived"
+                and ds_entry.base_loader is not None
+                and hash_val != ds_entry.source_hash
+            ):
+                overwritten_base = ds_entry.base_loader
+            elif (
+                ds_entry is not None
+                and ds_entry.format == "derived"
+                and ds_entry.base_loader is None
+                and hash_val != ds_entry.source_hash
+            ):
+                # Fit-then-overwrite with nothing to re-fit from (e.g. the
+                # training dataset was a split output): silently re-fitting
+                # on the post-transform table would betray the drift
+                # guarantee — fail the replay loudly instead.
+                msg = (
+                    f"Model {model_name!r} was fit on dataset "
+                    f"{model_entry.fitted_on_dataset!r}, which was later "
+                    f"overwritten by materialize_query and has no re-loadable "
+                    f"source; the re-fit cannot be replayed faithfully."
+                )
+                lines.append(f"raise AssertionError({msg!r})")
+                continue
+```
+
+(The first branch is the existing code shown for anchoring — only the `elif` is new. The `continue` skips the hash-assert and re-fit lines for that model.)
+
+- [ ] **Step 10: Run tests + full gates**
 
 Run: `uv run pytest tests/test_split.py tests/test_recorder.py tests/test_emit_notebook.py tests/test_materialize.py -q` then the full suite.
 Expected: PASS.
 
-- [ ] **Step 9: Commit green**
+- [ ] **Step 11: Commit green**
 
 ```bash
 git add src/data_analyst_mcp/recorder.py src/data_analyst_mcp/tools/split.py src/data_analyst_mcp/tools/materialize.py
@@ -1198,7 +1306,7 @@ git commit -m "green: emitted notebooks recreate split datasets behind a members
 
 - [ ] **Step 1: Extract `fit_prepared` in `models.py`**
 
-Add after `fit_model` (after current line 175):
+Add **immediately after the `_FormulaError` class definition** (currently `class _FormulaError(Exception)` at line 330-331 — NOT after `fit_model`: the alias assignment executes at import time, so placing it before the class is defined would raise `NameError` on module import):
 
 ```python
 # Public alias so sibling tools (cross_validate) can catch formula failures
@@ -1342,7 +1450,6 @@ def test_cross_validate_ols_matches_manual_recompute(
 ) -> None:
     """Independent recompute: same RandomState fold assignment, statsmodels
     array fits, numpy metrics. Aggregates must match to 1e-10."""
-    import pandas as pd
     import statsmodels.api as sm
 
     _load_linear(load_df_into_session)
@@ -1497,13 +1604,21 @@ def _fit_fold(kind: str, robust: bool, y_tr: Any, X_tr: Any) -> Any:
 
 
 def _classify_fold_failure(kind: str, exc: Exception | None, result: Any | None) -> str:
-    """Map a fold-local fit failure to fit_model's error-type strings."""
+    """Map a fold-local fit failure to fit_model's error-type strings.
+
+    Mirrors ``_fit_logistic_or_error``'s taxonomy: for logistic,
+    ``PerfectSeparationError`` / ``LinAlgError`` signal a degenerate
+    logit and map to ``perfect_separation`` (the design matrix is built
+    globally and full-rank — the preflight fit succeeded — so the
+    rank-deficiency → formula_error branch cannot apply fold-locally).
+    """
     if exc is not None:
+        from numpy.linalg import LinAlgError
         from statsmodels.tools.sm_exceptions import (  # type: ignore[reportMissingTypeStubs]
             PerfectSeparationError,
         )
 
-        if kind == "logistic" and isinstance(exc, PerfectSeparationError):
+        if kind == "logistic" and isinstance(exc, (PerfectSeparationError, LinAlgError)):
             return "perfect_separation"
         return "convergence_failed"
     # Returned-but-degenerate fit (logistic/negbin non-convergence).
@@ -1775,22 +1890,36 @@ def cross_validate(
     cv_fit_failed, robust_not_supported, threshold_out_of_range.
     """
     try:
-        payload = _crossval.CrossValidateInput(
-            name=name,
-            formula=formula,
-            kind=kind,  # type: ignore[arg-type]
-            robust=robust,
-            k=k,
-            seed=seed,
-            threshold=threshold,
-        )
+        from pydantic import ValidationError
+
+        try:
+            payload = _crossval.CrossValidateInput.model_validate(
+                {
+                    "name": name,
+                    "formula": formula,
+                    "kind": kind,
+                    "robust": robust,
+                    "k": k,
+                    "seed": seed,
+                    "threshold": threshold,
+                }
+            )
+        except ValidationError as ve:
+            for err in ve.errors():
+                if err.get("loc") == ("kind",):
+                    return build_error(
+                        type="invalid_kind",
+                        message=f"Unknown kind {kind!r}.",
+                        hint="Allowed kinds: ['logistic', 'negbin', 'ols', 'poisson'].",
+                    )
+            raise
         return _crossval.cross_validate(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("cross_validate failed")
         return build_error(type="internal", message=str(exc))
 ```
 
-(If pyright rejects the `kind` Literal narrowing, validate via pydantic by passing the raw string — pydantic raises ValidationError for a bad literal, which the wrapper's except maps to `internal`; match how other Literal-taking wrappers in `server.py` handle it — check `fit_model`'s wrapper at line 426 and copy its exact approach.)
+(This is `fit_model`'s exact wrapper pattern — `model_validate` + `ValidationError` special-case on `("kind",)` → structured `invalid_kind` (see `server.py:459-478`). Add `invalid_kind` to the docstring's error list.)
 
 - [ ] **Step 6: Run tests + gates**
 
@@ -1934,12 +2063,9 @@ git commit -m "test: pin cross_validate logistic stratification, class guards, a
 
 - [ ] **Step 1: Write the tests**
 
-Append to `tests/test_crossval.py`:
+Add `import pytest` to the top-of-file import block of `tests/test_crossval.py` (mid-file imports trip ruff E402), then append:
 
 ```python
-import pytest
-
-
 def test_cross_validate_unknown_dataset(call_tool: Any) -> None:
     result = call_tool("cross_validate", {"name": "ghost", "formula": "y ~ x"})
     assert result["ok"] is False
@@ -2052,13 +2178,29 @@ def test_cross_validate_poisson_metric_keys(
     assert set(result["metrics"].keys()) == {"rmse", "mae", "pearson_chi2", "deviance"}
 
 
+def test_cross_validate_unknown_kind_is_structured(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    _load_linear(load_df_into_session)
+    result = call_tool(
+        "cross_validate", {"name": "lin", "formula": "y ~ x", "kind": "quantile"}
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "invalid_kind"
+
+
 def test_classify_fold_failure_maps_exceptions() -> None:
+    from numpy.linalg import LinAlgError
     from statsmodels.tools.sm_exceptions import PerfectSeparationError
 
     from data_analyst_mcp.tools.crossval import _classify_fold_failure
 
     assert (
         _classify_fold_failure("logistic", PerfectSeparationError("sep"), None)
+        == "perfect_separation"
+    )
+    assert (
+        _classify_fold_failure("logistic", LinAlgError("singular"), None)
         == "perfect_separation"
     )
     assert _classify_fold_failure("ols", ValueError("boom"), None) == "convergence_failed"
@@ -2107,7 +2249,7 @@ def test_cross_validate_records_replayable_cell(
     assert len(code_cells) == 1
     src = code_cells[0]["source"]
     assert "RandomState(7)" in src
-    assert 'smf.ols("y ~ x"' in src
+    assert "smf.ols('y ~ x'" in src  # formulas render via !r — repr quoting
     assert "sm.OLS" in src
     assert "% 4" in src
     assert "pd.DataFrame(_cv_rows)" in src
@@ -2161,7 +2303,12 @@ def _cv_cell_source(payload: CrossValidateInput) -> str:
     Rebuilds the design matrices via the same smf formula fit the live
     preflight ran, assigns folds with the identical RandomState calls,
     then loops array-interface fits + metrics. ``con`` / ``np`` / ``pd``
-    / ``sm`` / ``smf`` come from the setup cell.
+    / ``sm`` / ``smf`` come from the setup cell. Known limitation
+    (matches fit_model's ``_code_for_fit`` cells): the cell calls smf
+    directly without the live path's boolean-column coercion, so a
+    boolean logistic outcome that succeeded live needs a manual cast at
+    replay. Fold-local fit failures are skipped with try/except, the
+    same exclusion the live aggregates apply.
     """
     smf_fn = _SMF_FN[payload.kind]
     sm_cls = _SM_CLASS[payload.kind]
@@ -2173,7 +2320,7 @@ def _cv_cell_source(payload: CrossValidateInput) -> str:
         fold_fit_args = "disp=0"
     lines = [
         f"_cv_df = con.sql('SELECT * FROM \"{payload.name}\"').df()",
-        f'_cv_full = smf.{smf_fn}("{payload.formula}", data=_cv_df).fit({full_fit_args})',
+        f"_cv_full = smf.{smf_fn}({payload.formula!r}, data=_cv_df).fit({full_fit_args})",
         "_cv_y = np.asarray(_cv_full.model.endog, dtype=float)",
         "_cv_X = np.asarray(_cv_full.model.exog, dtype=float)",
         f"_cv_rng = np.random.RandomState({payload.seed})",
@@ -2195,7 +2342,10 @@ def _cv_cell_source(payload: CrossValidateInput) -> str:
         "_cv_rows = []",
         f"for _i in range({payload.k}):",
         "    _tr = _cv_fold != _i",
-        f"    _res = sm.{sm_cls}(_cv_y[_tr], _cv_X[_tr]).fit({fold_fit_args})",
+        "    try:",
+        f"        _res = sm.{sm_cls}(_cv_y[_tr], _cv_X[_tr]).fit({fold_fit_args})",
+        "    except Exception:",
+        "        continue  # fold-local fit failure — excluded from live aggregates too",
         "    _te_y = _cv_y[~_tr]",
         "    _pred = np.asarray(_res.predict(_cv_X[~_tr]))",
     ]
@@ -2263,7 +2413,7 @@ git commit -m "green: cross_validate emits a replayable fold-loop notebook cell"
 - Create: `evals/eval_split_cv.py`
 
 **Interfaces:**
-- Consumes: `evals/conftest.py` (`mcp_session`, `call`, `FIXTURES_DIR`, `PROJECT_ROOT`) and the `_nbconvert` helper pattern from `evals/eval_materialize.py:21-30` (subprocess `uv run jupyter nbconvert --to notebook --execute`, artifacts under `evals/_artifacts/`). Copy that helper verbatim — read `evals/eval_materialize.py` first and mirror its structure exactly (including any `@pytest.mark` decorations and artifact-path conventions it uses).
+- Consumes: `evals/conftest.py` (`mcp_session`, `call`, `FIXTURES_DIR`, `PROJECT_ROOT`) and the `_nbconvert` helper from `evals/eval_materialize.py:21-30`. **Read `evals/eval_materialize.py` in full first and copy its exact conventions** — the real `_nbconvert` helper verbatim (it may use `--inplace` and a timeout rather than the `--output` form sketched below), its test decorators (the suite may use a different mark than `@pytest.mark.anyio` — e.g. plain `async def eval_*` collected by `evals/conftest.py`, or `@pytest.mark.eval`), its artifact-path handling, and how it obtains the emitted path. Where the sketch below differs from the real file, the real file wins.
 - Produces: three evals — split+CV replay via nbconvert, derived-source split replay, drift failure.
 
 - [ ] **Step 1: Write the evals**
@@ -2314,7 +2464,7 @@ def _nbconvert(nb_path: Path) -> subprocess.CompletedProcess[str]:
 
 
 @pytest.mark.anyio
-async def eval_split_fit_evaluate_cv_replays_via_nbconvert(tmp_path: Path) -> None:
+async def eval_split_fit_evaluate_cv_replays_via_nbconvert() -> None:
     """split → fit(train) → evaluate(test) → cross_validate → emit →
     nbconvert --execute exits 0 (checksum assert passes)."""
     async with mcp_session() as session:
@@ -2367,7 +2517,7 @@ async def eval_split_fit_evaluate_cv_replays_via_nbconvert(tmp_path: Path) -> No
 
 
 @pytest.mark.anyio
-async def eval_split_of_derived_source_replays(tmp_path: Path) -> None:
+async def eval_split_of_derived_source_replays() -> None:
     """materialize_query (join/filter) → split_dataset on the derived table
     → emit → replay. Covers the derived-source checksum path."""
     async with mcp_session() as session:
@@ -2517,6 +2667,7 @@ Check `git show 676e04e --stat` first and mirror exactly how the 1.2.1 release c
 
 ## Self-Review Notes (already applied)
 
-- Spec coverage: every §5.6b / §5.11d contract line maps to a task above; the spec's testing matrix items map to Tasks 2, 3, 4, 7, 8, 10. The `threads > 1` determinism check from the spec's testing section is covered implicitly by the nbconvert replays (the replay subprocess runs DuckDB with default threading); no separate test is planned — if reviewers want an explicit pin, add a `PRAGMA threads=4` variant to `eval_split_cv.py`.
+- Spec coverage: every §5.6b / §5.11d contract line maps to a task above; the spec's testing matrix items map to Tasks 2, 3, 4, 7, 8, 10. The `threads > 1` determinism check has an explicit unit test in Task 4 (`test_split_membership_stable_under_multithreaded_scan`).
+- Headless Codex review (2026-07-08, 13 findings) applied: `fit_prepared`/alias placement after `_FormulaError`; setup-cell first pass skips `split` entries; spec amended to `format="split"`; checksum upgraded to count:xor:sum with repr'd strings; `invalid_kind` via `model_validate`; `LinAlgError` → `perfect_separation` fold classification; emitted CV cell formula rendering via `!r` + fold try/except; loud replay raise for fit-then-overwrite of loader-less training data; gate wording fixed for red commits; ruff E402/F401 issues in test code fixed; eval-convention mirroring strengthened. Declined: emitting bool-coercion into CV cells (documented limitation matching fit_model's existing `_code_for_fit` precedent).
 - Type consistency: `split_replay_source` keyword names match between recorder.py, split.py, and tests; `_fold_ids` / `_fold_metrics` / `_classify_fold_failure` names match between crossval.py and tests.
 - The two checksum implementations (`split.membership_checksum` and recorder's `_SPLIT_CHECKSUM_DEF`) are intentionally duplicated (module-layering: recorder cannot import tools). Their sync is guarded twice: `test_split_replay_snippet_executes_and_reproduces_membership` (unit) and the nbconvert evals (integration).
