@@ -5,6 +5,20 @@ All notable changes to **data-analyst-mcp** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-07-08
+
+### Fixed
+- Overwriting one side of a still-live train/test split with a
+  *self-referential* `materialize_query` (e.g. `SELECT ... FROM "base_train"`
+  written back to `base_train`) now fails notebook replay with a
+  purpose-written `AssertionError` instead of a raw `duckdb.CatalogException`.
+  The pre-overwrite split table is deliberately not recreated at replay (that
+  would clobber the derived table), so its self-referencing SQL has no table to
+  read from; the setup cell's derived CREATE for the overwritten side is now
+  wrapped to explain which split side was overwritten and to rematerialize it
+  from a table that exists at replay, with the original catalog error chained.
+  Ordinary `materialize_query` notebooks are unchanged.
+
 ## [1.3.0] - 2026-07-08
 
 Model-workflow bundle — train/test splits and cross-validation, closing the loop the Phase-5 model registry opened. Tool surface **22 → 24**.
@@ -226,6 +240,7 @@ with **16 tools** over a DuckDB session.
   violin/heatmap), `emit_notebook` — every tool call records a markdown+code
   cell pair so a session replays as an executable Jupyter notebook.
 
+[1.3.1]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.3.1
 [1.3.0]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.3.0
 [1.2.1]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.2.1
 [1.2.0]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.2.0
