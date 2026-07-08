@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 
 def _load_ten_rows(load_df_into_session: Any) -> None:
     import pandas as pd
@@ -126,3 +128,93 @@ def test_split_dataset_source_column_named_split_rid_survives(
 
     cols = [c["name"] for c in _session.get_datasets()["tricky_train"].columns]
     assert cols == ["__split_rid", "y"]
+
+
+def test_split_dataset_unknown_source(call_tool: Any) -> None:
+    result = call_tool("split_dataset", {"name": "nope"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "dataset_not_found"
+
+
+@pytest.mark.parametrize("fraction", [0.0, 1.0, -0.1, 1.5])
+def test_split_dataset_rejects_fraction_endpoints(
+    call_tool: Any, load_df_into_session: Any, fraction: float
+) -> None:
+    _load_ten_rows(load_df_into_session)
+    result = call_tool("split_dataset", {"name": "base", "test_fraction": fraction})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "test_fraction_out_of_range"
+
+
+@pytest.mark.parametrize("bad", ["1train", "has space", "has-dash", ""])
+def test_split_dataset_rejects_invalid_output_names(
+    call_tool: Any, load_df_into_session: Any, bad: str
+) -> None:
+    _load_ten_rows(load_df_into_session)
+    result = call_tool("split_dataset", {"name": "base", "train_name": bad})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "invalid_name"
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"train_name": "same", "test_name": "same"},
+        {"train_name": "base"},
+        {"test_name": "base"},
+    ],
+)
+def test_split_dataset_rejects_name_conflicts(
+    call_tool: Any, load_df_into_session: Any, kwargs: dict[str, str]
+) -> None:
+    _load_ten_rows(load_df_into_session)
+    result = call_tool("split_dataset", {"name": "base", **kwargs})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "split_name_conflict"
+
+
+def test_split_dataset_collision_is_atomic(call_tool: Any, load_df_into_session: Any) -> None:
+    """If one output name collides, NEITHER table is created/registered."""
+    import pandas as pd
+
+    from data_analyst_mcp import session as _session
+
+    _load_ten_rows(load_df_into_session)
+    load_df_into_session("taken", pd.DataFrame({"z": [1]}))
+
+    result = call_tool(
+        "split_dataset", {"name": "base", "train_name": "fresh", "test_name": "taken"}
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["type"] == "dataset_name_collision"
+    assert "fresh" not in _session.get_datasets()
+    con = _session.get_connection()
+    tables = {row[0] for row in con.execute("SHOW TABLES").fetchall()}
+    assert "fresh" not in tables
+
+
+def test_split_dataset_overwrite_replaces_existing(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    import pandas as pd
+
+    _load_ten_rows(load_df_into_session)
+    load_df_into_session("taken", pd.DataFrame({"z": [1]}))
+
+    result = call_tool(
+        "split_dataset",
+        {"name": "base", "train_name": "fresh", "test_name": "taken", "overwrite": True},
+    )
+
+    assert result["ok"] is True
+    assert result["test"]["name"] == "taken"
+
+
+def test_split_dataset_rejects_single_row_source(call_tool: Any, load_df_into_session: Any) -> None:
+    import pandas as pd
+
+    load_df_into_session("tiny", pd.DataFrame({"x": [1]}))
+    result = call_tool("split_dataset", {"name": "tiny"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "dataset_too_small"
