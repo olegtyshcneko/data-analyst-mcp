@@ -466,3 +466,95 @@ def test_materialize_overwrite_of_split_entry_keeps_base_loader_none(
     )
     assert result["ok"] is True
     assert _session.get_datasets()["base_train"].base_loader is None
+
+
+def test_split_setup_cell_train_overwrite_drops_train_recreation(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Overwriting the train side of a split with materialize_query must drop
+    the train table from the split block's JOIN recreation — otherwise the
+    setup cell clobbers the derived train table with the original split rows
+    (silent replay drift). The test-side recreation and the membership
+    checksum assert must survive unchanged."""
+    from data_analyst_mcp import session as _session
+
+    _load_ten_rows(load_df_into_session)
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+    # Non-self-referential overwrite: SELECT against the SOURCE table, not the
+    # split train, so the derived CREATE stands alone at replay.
+    result = call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base" WHERE x > 5', "name": "base_train", "overwrite": True},
+    )
+    assert result["ok"] is True
+
+    src = _setup_source(call_tool)
+    # The split-JOIN recreation is distinguishable from the plain derived
+    # CREATE by its ``SELECT s.* EXCLUDE`` shape: the test side is recreated,
+    # the train side is not.
+    assert '"base_test" AS SELECT s.* EXCLUDE' in src
+    assert '"base_train" AS SELECT s.* EXCLUDE' not in src
+    # The derived overwrite CREATE for base_train still stands on its own.
+    assert 'CREATE OR REPLACE TABLE "base_train" AS SELECT * FROM "base" WHERE x > 5' in src
+    # The test-side membership checksum assert is still emitted.
+    checksum = _session.get_datasets()["base_test"].read_options["membership_checksum"]
+    assert checksum in src
+    assert "drifted at replay" in src
+
+
+def test_split_setup_cell_train_overwrite_replays_overwrite_not_split(
+    call_tool: Any, tmp_path: Any
+) -> None:
+    """Full drift regression (the reviewer's repro, automated): build a split
+    plus a train-side overwrite on a real CSV so the emitted setup source is
+    self-contained (file reload + hash assert + derived CREATE + split block),
+    exec it in a fresh namespace, and assert base_train holds the OVERWRITE
+    result — not the original split-train rows the buggy split block used to
+    clobber it with."""
+    import pandas as pd
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame({"x": list(range(20))}).to_csv(csv, index=False)
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+    result = call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base" WHERE x > 10', "name": "base_train", "overwrite": True},
+    )
+    assert result["ok"] is True
+
+    src = _setup_source(call_tool)
+    ns: dict[str, Any] = {}
+    exec(src, ns)  # the self-contained setup cell under test
+    con = ns["con"]
+    train_x = sorted(row[0] for row in con.execute('SELECT x FROM "base_train"').fetchall())
+    # The overwrite kept rows 11..19 (9 rows); the original split train had 15.
+    assert train_x == list(range(11, 20))
+
+
+def test_split_setup_cell_train_overwrite_self_ref_raises_at_replay(
+    call_tool: Any, tmp_path: Any
+) -> None:
+    """A self-referential train-side overwrite drops the split train recipe and
+    leaves a derived CREATE that references a table nothing recreates — replay
+    must fail loudly (DuckDB catalog error), never silently re-fabricate the
+    train table from the stale split recipe."""
+    import duckdb
+    import pandas as pd
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame({"x": list(range(20))}).to_csv(csv, index=False)
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+    result = call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base_train" WHERE x > 10', "name": "base_train", "overwrite": True},
+    )
+    assert result["ok"] is True
+
+    src = _setup_source(call_tool)
+    ns: dict[str, Any] = {}
+    with pytest.raises(duckdb.CatalogException):
+        exec(src, ns)  # self-ref recipe with no table to build from → loud failure
