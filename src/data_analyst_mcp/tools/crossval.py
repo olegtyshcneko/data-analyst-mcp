@@ -340,8 +340,111 @@ def _interpretation(
     return text
 
 
+_SMF_FN = {"ols": "ols", "logistic": "logit", "poisson": "poisson", "negbin": "negativebinomial"}
+_SM_CLASS = {"ols": "OLS", "logistic": "Logit", "poisson": "Poisson", "negbin": "NegativeBinomial"}
+
+
+def _cv_cell_source(payload: CrossValidateInput) -> str:
+    """Self-contained notebook cell reproducing the CV table.
+
+    Rebuilds the design matrices via the same smf formula fit the live
+    preflight ran, assigns folds with the identical RandomState calls,
+    then loops array-interface fits + metrics. ``con`` / ``np`` / ``pd``
+    / ``sm`` / ``smf`` come from the setup cell. Known limitation
+    (matches fit_model's ``_code_for_fit`` cells): the cell calls smf
+    directly without the live path's boolean-column coercion, so a
+    boolean logistic outcome that succeeded live needs a manual cast at
+    replay. Fold-local fit failures are skipped with try/except, the
+    same exclusion the live aggregates apply.
+    """
+    smf_fn = _SMF_FN[payload.kind]
+    sm_cls = _SM_CLASS[payload.kind]
+    if payload.kind == "ols":
+        full_fit_args = 'cov_type="HC3"' if payload.robust else ""
+        fold_fit_args = 'cov_type="HC3"' if payload.robust else ""
+    else:
+        full_fit_args = "disp=0"
+        fold_fit_args = "disp=0"
+    lines = [
+        f"_cv_df = con.sql('SELECT * FROM \"{payload.name}\"').df()",
+        f"_cv_full = smf.{smf_fn}({payload.formula!r}, data=_cv_df).fit({full_fit_args})",
+        "_cv_y = np.asarray(_cv_full.model.endog, dtype=float)",
+        "_cv_X = np.asarray(_cv_full.model.exog, dtype=float)",
+        f"_cv_rng = np.random.RandomState({payload.seed})",
+        "_cv_fold = np.empty(len(_cv_y), dtype=int)",
+    ]
+    if payload.kind == "logistic":
+        lines += [
+            "for _cls in (0, 1):",
+            "    _idx = np.where(_cv_y == _cls)[0]",
+            "    _p = _idx[_cv_rng.permutation(len(_idx))]",
+            f"    _cv_fold[_p] = np.arange(len(_p)) % {payload.k}",
+        ]
+    else:
+        lines += [
+            "_perm = _cv_rng.permutation(len(_cv_y))",
+            f"_cv_fold[_perm] = np.arange(len(_cv_y)) % {payload.k}",
+        ]
+    lines += [
+        "_cv_rows = []",
+        f"for _i in range({payload.k}):",
+        "    _tr = _cv_fold != _i",
+        "    try:",
+        f"        _res = sm.{sm_cls}(_cv_y[_tr], _cv_X[_tr]).fit({fold_fit_args})",
+        "    except Exception:",
+        "        continue  # fold-local fit failure — excluded from live aggregates too",
+        "    _te_y = _cv_y[~_tr]",
+        "    _pred = np.asarray(_res.predict(_cv_X[~_tr]))",
+    ]
+    if payload.kind == "logistic":
+        lines = [
+            "from sklearn import metrics as _skm",
+            *lines,
+            "    _ti = _te_y.astype(int)",
+            f"    _cls_pred = (_pred >= {payload.threshold}).astype(int)",
+            "    _cv_rows.append({",
+            "        'fold': _i,",
+            "        'roc_auc': _skm.roc_auc_score(_ti, _pred),",
+            "        'pr_auc': _skm.average_precision_score(_ti, _pred),",
+            "        'brier': _skm.brier_score_loss(_ti, _pred),",
+            "        'log_loss': _skm.log_loss(_ti, np.clip(_pred, 1e-15, 1 - 1e-15), labels=[0, 1]),",
+            "        'accuracy': float(np.mean(_cls_pred == _ti)),",
+            "        'precision': _skm.precision_score(_ti, _cls_pred, zero_division=0),",
+            "        'recall': _skm.recall_score(_ti, _cls_pred, zero_division=0),",
+            "        'f1': _skm.f1_score(_ti, _cls_pred, zero_division=0),",
+            "    })",
+        ]
+    elif payload.kind == "ols":
+        lines += [
+            "    _err = _te_y - _pred",
+            "    _ss_tot = float(np.sum((_te_y - np.mean(_te_y)) ** 2))",
+            "    _cv_rows.append({",
+            "        'fold': _i,",
+            "        'rmse': float(np.sqrt(np.mean(_err ** 2))),",
+            "        'mae': float(np.mean(np.abs(_err))),",
+            "        'r_squared': 1.0 - float(np.sum(_err ** 2)) / _ss_tot if _ss_tot > 0 else 0.0,",
+            "    })",
+        ]
+    else:  # poisson / negbin
+        lines += [
+            "    _err = _te_y - _pred",
+            "    _safe_mu = np.where(_pred > 0, _pred, np.nan)",
+            "    _safe_y = np.where(_te_y > 0, _te_y, np.nan)",
+            "    _log_term = np.where(_te_y > 0, _safe_y * np.log(_safe_y / _safe_mu), 0.0)",
+            "    _cv_rows.append({",
+            "        'fold': _i,",
+            "        'rmse': float(np.sqrt(np.mean(_err ** 2))),",
+            "        'mae': float(np.mean(np.abs(_err))),",
+            "        'pearson_chi2': float(np.nansum(_err ** 2 / _safe_mu)),",
+            "        'deviance': float(2.0 * np.nansum(_log_term - (_te_y - _pred))),",
+            "    })",
+        ]
+    lines += ["pd.DataFrame(_cv_rows).set_index('fold').agg(['mean', 'std'])"]
+    return "\n".join(lines)
+
+
 def _record_cross_validate(payload: CrossValidateInput, result: dict[str, Any]) -> None:
-    """Markdown + code cell — placeholder body, replaced in the recorder task."""
+    """Markdown + code cell for the CV table."""
     key = _PRIMARY_METRIC[payload.kind]
     m = result["metrics"][key]
     md = (
@@ -350,5 +453,5 @@ def _record_cross_validate(payload: CrossValidateInput, result: dict[str, Any]) 
         f"- {key} = {m['mean']:.4g} ± {m['std']:.4g}\n"
         f"- {result['interpretation']}"
     )
-    code = f"# cross_validate({payload.name!r}) — replay source lands in the recorder task"
+    code = _cv_cell_source(payload)
     get_recorder().record(markdown=md, code=code, tool_name="cross_validate")
