@@ -148,6 +148,7 @@ def split_replay_source(
     stratify_by: str | None,
     rid_column: str,
     membership_checksum: str,
+    include_train: bool = True,
 ) -> str:
     """Self-contained notebook snippet that recreates a train/test split.
 
@@ -158,6 +159,13 @@ def split_replay_source(
     derived sources whose SQL is not order-preserving, row-order drift
     fails loudly here instead of silently changing the split (spec §5.6b
     row-order tiers).
+
+    ``include_train`` (setup-cell only): when the train side was later
+    overwritten by ``materialize_query`` its split recipe is gone, so the
+    train ``CREATE`` is skipped — re-creating it here would clobber the
+    derived table the second pass already built. The per-call cell keeps
+    the default (both sides are fresh at call time); the test ``CREATE`` and
+    the membership checksum assert are always emitted.
     """
     src_q = '"' + source.replace('"', '""') + '"'
     train_q = '"' + train_name.replace('"', '""') + '"'
@@ -176,12 +184,15 @@ def split_replay_source(
     train_stmt = f"CREATE OR REPLACE TABLE {train_q} AS {base} WHERE NOT a.is_test"
     test_stmt = f"CREATE OR REPLACE TABLE {test_q} AS {base} WHERE a.is_test"
     message = f"Split membership for {test_name!r} drifted at replay (source row order changed)."
-    lines.extend(
+    exec_lines = [
+        "_split_assign = pd.DataFrame({'rid': np.arange(len(_split_is_test), "
+        "dtype=np.int64), 'is_test': _split_is_test})",
+        "con.register('__data_analyst_split_assign', _split_assign)",
+    ]
+    if include_train:
+        exec_lines.append(f"con.execute({train_stmt!r})")
+    exec_lines.extend(
         [
-            "_split_assign = pd.DataFrame({'rid': np.arange(len(_split_is_test), "
-            "dtype=np.int64), 'is_test': _split_is_test})",
-            "con.register('__data_analyst_split_assign', _split_assign)",
-            f"con.execute({train_stmt!r})",
             f"con.execute({test_stmt!r})",
             "con.unregister('__data_analyst_split_assign')",
             _SPLIT_CHECKSUM_DEF,
@@ -189,6 +200,7 @@ def split_replay_source(
             f"{membership_checksum!r}, {message!r}",
         ]
     )
+    lines.extend(exec_lines)
     return "\n".join(lines)
 
 
@@ -317,10 +329,19 @@ def _build_setup_source() -> str:
     # the upstream datasets, which already carry their own asserts via the
     # model rehydration block when models depend on them. Split blocks are
     # emitted once per pair, keyed off the test-role entry (which carries
-    # the membership checksum). Overwriting a split output with
-    # materialize_query drops that side's split recipe; replay then fails
-    # loudly (missing table / checksum) rather than silently recomputing.
-    for name, entry in _session.get_datasets().items():
+    # the membership checksum) and are *side-aware*: the block always
+    # re-creates the test table (behind the checksum assert), but re-creates
+    # the train table only while the train side still belongs to this split.
+    # Overwriting a split output with materialize_query drops that side's
+    # split recipe — the overwritten side becomes a derived entry emitted
+    # above, and the split block must NOT clobber it. For a train-side
+    # overwrite we therefore skip the train CREATE (``include_train=False``);
+    # for a test-side overwrite the test-keyed branch below never fires, so
+    # no split block is emitted at all. Either way replay honors the derived
+    # CREATE and fails loudly (missing table / checksum) rather than silently
+    # recomputing the split.
+    datasets = _session.get_datasets()
+    for name, entry in datasets.items():
         if entry.format == "derived":
             derived_sql = entry.read_options.get("sql", "")
             stmt = f'CREATE OR REPLACE TABLE "{name}" AS {derived_sql}'
@@ -330,6 +351,18 @@ def _build_setup_source() -> str:
             lines.append(f"con.execute({stmt!r})")
         elif entry.format == "split" and entry.read_options.get("role") == "test":
             opts = entry.read_options
+            # The train side still belongs to this split only if its current
+            # registry entry is the matching train-role split output. If a
+            # materialize_query overwrite replaced it with a derived entry,
+            # its split recipe is gone and re-creating it here would clobber
+            # the derived table emitted above.
+            train_entry = datasets.get(str(opts["train_name"]))
+            include_train = (
+                train_entry is not None
+                and train_entry.format == "split"
+                and train_entry.read_options.get("role") == "train"
+                and train_entry.read_options.get("test_name") == name
+            )
             lines.append(
                 split_replay_source(
                     source=str(opts["source"]),
@@ -340,6 +373,7 @@ def _build_setup_source() -> str:
                     stratify_by=opts.get("stratify_by"),
                     rid_column=str(opts["rid_column"]),
                     membership_checksum=str(opts["membership_checksum"]),
+                    include_train=include_train,
                 )
             )
 
