@@ -306,3 +306,163 @@ def test_split_dataset_unknown_stratify_column(call_tool: Any, load_df_into_sess
     result = call_tool("split_dataset", {"name": "base", "stratify_by": "ghost"})
     assert result["ok"] is False
     assert result["error"]["type"] == "stratify_column_missing"
+
+
+def _setup_source(call_tool: Any) -> str:
+    from data_analyst_mcp.recorder import get_recorder
+
+    nb = get_recorder().to_notebook(include_setup=True)
+    return nb.cells[0]["source"]
+
+
+def test_split_setup_cell_recreates_both_tables_with_checksum_assert(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    from data_analyst_mcp import session as _session
+
+    _load_ten_rows(load_df_into_session)
+    result = call_tool("split_dataset", {"name": "base"})
+    assert result["ok"] is True
+
+    src = _setup_source(call_tool)
+    assert 'CREATE OR REPLACE TABLE "base_train"' in src
+    assert 'CREATE OR REPLACE TABLE "base_test"' in src
+    assert "RandomState(42)" in src
+    checksum = _session.get_datasets()["base_test"].read_options["membership_checksum"]
+    assert checksum in src
+    assert "drifted at replay" in src
+    # The first (file-backed) pass must SKIP split entries — no bogus
+    # reload of the "(split)" placeholder path may appear anywhere.
+    assert "'(split)'" not in src
+
+
+def test_split_percall_cell_uses_same_replay_source(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    from data_analyst_mcp.recorder import get_recorder
+
+    _load_ten_rows(load_df_into_session)
+    call_tool("split_dataset", {"name": "base"})
+
+    code_cells = [
+        c
+        for c in get_recorder().cells
+        if c["cell_type"] == "code" and c["metadata"]["tool_name"] == "split_dataset"
+    ]
+    assert len(code_cells) == 1
+    assert "RandomState(42)" in code_cells[0]["source"]
+    assert 'CREATE OR REPLACE TABLE "base_test"' in code_cells[0]["source"]
+
+
+def test_split_replay_snippet_executes_and_reproduces_membership(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Execute the emitted snippet against a fresh DuckDB connection loaded
+    with the same rows — the checksum assert inside the snippet must pass,
+    proving the snippet's algorithm matches the live one."""
+    import duckdb
+    import numpy as np
+    import pandas as pd
+
+    from data_analyst_mcp import session as _session
+    from data_analyst_mcp.recorder import split_replay_source
+
+    _load_ten_rows(load_df_into_session)
+    result = call_tool("split_dataset", {"name": "base"})
+    assert result["ok"] is True
+    entry = _session.get_datasets()["base_test"]
+
+    snippet = split_replay_source(
+        source="base",
+        train_name="base_train",
+        test_name="base_test",
+        seed=42,
+        test_fraction=0.25,
+        stratify_by=None,
+        rid_column=entry.read_options["rid_column"],
+        membership_checksum=entry.read_options["membership_checksum"],
+    )
+    con = duckdb.connect()
+    con.register("__base_src", pd.DataFrame({"x": list(range(10))}))
+    con.execute('CREATE TABLE "base" AS SELECT * FROM __base_src')
+    exec(snippet, {"con": con, "np": np, "pd": pd})  # replay snippet under test
+    test_x = sorted(r[0] for r in con.execute('SELECT x FROM "base_test"').fetchall())
+    assert test_x == [1, 8]
+
+
+def test_split_stratified_setup_cell_replays(call_tool: Any, load_df_into_session: Any) -> None:
+    _load_strata(load_df_into_session)
+    result = call_tool("split_dataset", {"name": "strat", "stratify_by": "g"})
+    assert result["ok"] is True
+    src = _setup_source(call_tool)
+    assert 'CREATE OR REPLACE TABLE "strat_test"' in src
+    assert "isna" in src  # stratified branch emitted
+
+
+def test_split_membership_stable_under_multithreaded_scan(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Explicit spec check: threads > 1 must not change file/table scan
+    order, hence not membership."""
+    from data_analyst_mcp import session as _session
+
+    _load_ten_rows(load_df_into_session)
+    call_tool("split_dataset", {"name": "base"})
+    con = _session.get_connection()
+    before = sorted(r[0] for r in con.execute('SELECT x FROM "base_test"').fetchall())
+    con.execute("SET threads=4")
+    try:
+        call_tool("split_dataset", {"name": "base", "train_name": "mt_tr", "test_name": "mt_te"})
+        after = sorted(r[0] for r in con.execute('SELECT x FROM "mt_te"').fetchall())
+    finally:
+        con.execute("SET threads=1")
+    assert before == after
+
+
+def test_model_fit_on_split_then_overwritten_raises_at_replay(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """A model fit on a split output that is later overwritten by
+    materialize_query has no truthful re-fit source — the setup cell must
+    emit a hard raise for it, never a silent re-fit on the post-transform
+    table."""
+    import pandas as pd
+
+    # Two columns: fit_model's OLS diagnostics (Breusch-Pagan) reject
+    # intercept-only exog, so the model needs a real regressor.
+    load_df_into_session(
+        "base",
+        pd.DataFrame({"x": list(range(10)), "y": [float(i % 3 + i) for i in range(10)]}),
+    )
+    call_tool("split_dataset", {"name": "base"})
+    r = call_tool(
+        "fit_model",
+        {"name": "base_train", "formula": "y ~ x", "model_name": "m_split"},
+    )
+    assert r["ok"] is True
+    r = call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base_train" WHERE x > 2', "name": "base_train", "overwrite": True},
+    )
+    assert r["ok"] is True
+
+    src = _setup_source(call_tool)
+    assert "raise AssertionError" in src
+    assert "m_split" in src
+
+
+def test_materialize_overwrite_of_split_entry_keeps_base_loader_none(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """A split entry has no file loader; materialize overwrite must not
+    fabricate one with path '(split)'."""
+    from data_analyst_mcp import session as _session
+
+    _load_ten_rows(load_df_into_session)
+    call_tool("split_dataset", {"name": "base"})
+    result = call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base_train" WHERE x > 2', "name": "base_train", "overwrite": True},
+    )
+    assert result["ok"] is True
+    assert _session.get_datasets()["base_train"].base_loader is None
