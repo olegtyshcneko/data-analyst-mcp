@@ -10,6 +10,8 @@ from data_analyst_mcp.read_options import render_read_options_fragment
 if TYPE_CHECKING:
     import nbformat
 
+    from data_analyst_mcp.session import DatasetEntry
+
 
 _SETUP_IMPORTS = """\
 import duckdb
@@ -250,6 +252,36 @@ def _hash_guard_lines(var: str, display_name: str, path: str, hash_val: str) -> 
     ]
 
 
+def _split_side_overwritten(name: str, datasets: dict[str, DatasetEntry]) -> tuple[str, str] | None:
+    """Did the derived entry ``name`` overwrite one side of a still-live split?
+
+    A ``materialize_query`` overwrite of a split output turns that side into a
+    ``format == "derived"`` entry while its sibling stays ``format == "split"``.
+    The surviving sibling still points back at the overwritten name, so the
+    overwrite is detectable from the live registry alone:
+
+    - a surviving ``role == "test"`` split entry whose ``train_name == name``
+      means ``name`` overwrote the **train** side of that split;
+    - a surviving ``role == "train"`` split entry whose ``test_name == name``
+      means ``name`` overwrote the **test** side.
+
+    Returns ``(side, source)`` — ``side`` is ``"train"``/``"test"`` and
+    ``source`` is the surviving split entry's original source dataset — or
+    ``None`` when ``name`` did not overwrite a split side (an ordinary derived
+    dataset), in which case its CREATE is emitted bare.
+    """
+    for other in datasets.values():
+        if other.format != "split":
+            continue
+        opts = other.read_options
+        role = opts.get("role")
+        if role == "test" and opts.get("train_name") == name:
+            return "train", str(opts["source"])
+        if role == "train" and opts.get("test_name") == name:
+            return "test", str(opts["source"])
+    return None
+
+
 def _build_setup_source() -> str:
     """Compose the setup-cell body from the live session registry.
 
@@ -348,7 +380,30 @@ def _build_setup_source() -> str:
             # repr() escapes embedded quotes (including ``\"\"\"``) so the
             # emitted Python source compiles regardless of what SQL the user
             # passed to materialize_query.
-            lines.append(f"con.execute({stmt!r})")
+            overwrite = _split_side_overwritten(name, datasets)
+            if overwrite is None:
+                lines.append(f"con.execute({stmt!r})")
+            else:
+                # This derived entry overwrote one side of a still-live split.
+                # The pre-overwrite split table is deliberately NOT recreated
+                # at replay (that would clobber this derived table), so a
+                # self-referential overwrite SQL (``SELECT ... FROM "{name}"``)
+                # hits a DuckDB catalog error at its own CREATE. Wrap it so the
+                # replay explains why the table is missing instead of surfacing
+                # a bare CatalogException; the CREATE is otherwise unchanged, so
+                # a non-self-referential overwrite still succeeds transparently.
+                side, split_source = overwrite
+                msg = (
+                    f"Dataset {name!r} was created by overwriting the {side} side "
+                    f"of the split of {split_source!r}. Its pre-overwrite split "
+                    f"table is deliberately not recreated at replay (that would "
+                    f"clobber this dataset), so this SQL cannot read from {name!r} "
+                    f"itself; rematerialize it from a table that exists at replay."
+                )
+                lines.append("try:")
+                lines.append(f"    con.execute({stmt!r})")
+                lines.append("except duckdb.CatalogException as exc:")
+                lines.append(f"    raise AssertionError({msg!r}) from exc")
         elif entry.format == "split" and entry.read_options.get("role") == "test":
             opts = entry.read_options
             # The train side still belongs to this split only if its current
