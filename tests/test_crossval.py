@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import pytest
 
 
 def _load_linear(load_df_into_session: Any, n: int = 40) -> None:
@@ -183,3 +184,127 @@ def test_cross_validate_nonbinary_outcome_rejected(
     result = call_tool("cross_validate", {"name": "multi", "formula": "y ~ x", "kind": "logistic"})
     assert result["ok"] is False
     assert result["error"]["type"] == "outcome_dtype_mismatch"
+
+
+def test_cross_validate_unknown_dataset(call_tool: Any) -> None:
+    result = call_tool("cross_validate", {"name": "ghost", "formula": "y ~ x"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "dataset_not_found"
+
+
+@pytest.mark.parametrize("k", [1, 0, 21, -3])
+def test_cross_validate_k_static_range(call_tool: Any, load_df_into_session: Any, k: int) -> None:
+    _load_linear(load_df_into_session)
+    result = call_tool("cross_validate", {"name": "lin", "formula": "y ~ x", "k": k})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "k_out_of_range"
+
+
+def test_cross_validate_k_exceeds_post_drop_rows(call_tool: Any, load_df_into_session: Any) -> None:
+    import pandas as pd
+
+    load_df_into_session(
+        "holey",
+        pd.DataFrame({"x": [1.0, 2.0, 3.0, None, None, None], "y": [1.0] * 6}),
+    )
+    result = call_tool("cross_validate", {"name": "holey", "formula": "y ~ x", "k": 5})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "k_out_of_range"
+    assert "after NaN drops" in result["error"]["message"]
+
+
+def test_cross_validate_fold_too_small(call_tool: Any, load_df_into_session: Any) -> None:
+    """n=8, k=4 → train slices of 6 rows vs 7 design params."""
+    import pandas as pd
+
+    rng = np.random.RandomState(3)
+    cols = {f"x{i}": rng.normal(size=8) for i in range(6)}
+    load_df_into_session("wide", pd.DataFrame({**cols, "y": rng.normal(size=8)}))
+    formula = "y ~ x0 + x1 + x2 + x3 + x4 + x5"
+    result = call_tool("cross_validate", {"name": "wide", "formula": formula, "k": 4})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "fold_too_small"
+
+
+def test_cross_validate_robust_negbin_rejected(call_tool: Any, load_df_into_session: Any) -> None:
+    _load_linear(load_df_into_session)
+    result = call_tool(
+        "cross_validate",
+        {"name": "lin", "formula": "y ~ x", "kind": "negbin", "robust": True},
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "robust_not_supported"
+
+
+@pytest.mark.parametrize("threshold", [0.0, 1.0])
+def test_cross_validate_threshold_endpoints_rejected(
+    call_tool: Any, load_df_into_session: Any, threshold: float
+) -> None:
+    _load_linear(load_df_into_session)
+    result = call_tool(
+        "cross_validate", {"name": "lin", "formula": "y ~ x", "threshold": threshold}
+    )
+    assert result["ok"] is False
+    assert result["error"]["type"] == "threshold_out_of_range"
+
+
+def test_cross_validate_formula_error_from_preflight(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    _load_linear(load_df_into_session)
+    result = call_tool("cross_validate", {"name": "lin", "formula": "y ~ ghost_col"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "formula_error"
+
+
+def test_cross_validate_perfect_separation_from_preflight(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    import pandas as pd
+
+    x = np.arange(20, dtype=float)
+    y = (x >= 10).astype(int)
+    load_df_into_session("sep", pd.DataFrame({"x": x, "y": y}))
+    result = call_tool("cross_validate", {"name": "sep", "formula": "y ~ x", "kind": "logistic"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "perfect_separation"
+
+
+def test_cross_validate_poisson_metric_keys(call_tool: Any, load_df_into_session: Any) -> None:
+    import pandas as pd
+
+    rng = np.random.RandomState(4)
+    x = rng.normal(size=50)
+    y = rng.poisson(np.exp(0.5 + 0.3 * x))
+    load_df_into_session("counts", pd.DataFrame({"x": x, "y": y}))
+
+    result = call_tool(
+        "cross_validate", {"name": "counts", "formula": "y ~ x", "kind": "poisson", "k": 3}
+    )
+
+    assert result["ok"] is True
+    assert set(result["metrics"].keys()) == {"rmse", "mae", "pearson_chi2", "deviance"}
+
+
+def test_cross_validate_unknown_kind_is_structured(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    _load_linear(load_df_into_session)
+    result = call_tool("cross_validate", {"name": "lin", "formula": "y ~ x", "kind": "quantile"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "invalid_kind"
+
+
+def test_classify_fold_failure_maps_exceptions() -> None:
+    from numpy.linalg import LinAlgError
+    from statsmodels.tools.sm_exceptions import PerfectSeparationError
+
+    from data_analyst_mcp.tools.crossval import _classify_fold_failure
+
+    assert (
+        _classify_fold_failure("logistic", PerfectSeparationError("sep"), None)
+        == "perfect_separation"
+    )
+    assert _classify_fold_failure("logistic", LinAlgError("singular"), None) == "perfect_separation"
+    assert _classify_fold_failure("ols", ValueError("boom"), None) == "convergence_failed"
+    assert _classify_fold_failure("poisson", RuntimeError("nan"), None) == "convergence_failed"
