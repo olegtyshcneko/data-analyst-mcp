@@ -308,3 +308,40 @@ def test_classify_fold_failure_maps_exceptions() -> None:
     assert _classify_fold_failure("logistic", LinAlgError("singular"), None) == "perfect_separation"
     assert _classify_fold_failure("ols", ValueError("boom"), None) == "convergence_failed"
     assert _classify_fold_failure("poisson", RuntimeError("nan"), None) == "convergence_failed"
+
+
+def test_cross_validate_records_replayable_cell(call_tool: Any, load_df_into_session: Any) -> None:
+    from data_analyst_mcp.recorder import get_recorder
+
+    _load_linear(load_df_into_session)
+    call_tool("cross_validate", {"name": "lin", "formula": "y ~ x", "k": 4, "seed": 7})
+
+    code_cells = [
+        c
+        for c in get_recorder().cells
+        if c["cell_type"] == "code" and c["metadata"]["tool_name"] == "cross_validate"
+    ]
+    assert len(code_cells) == 1
+    src = code_cells[0]["source"]
+    assert "RandomState(7)" in src
+    assert "smf.ols('y ~ x'" in src  # formulas render via !r — repr quoting
+    assert "sm.OLS" in src
+    assert "% 4" in src
+    assert "pd.DataFrame(_cv_rows)" in src
+
+
+def test_cross_validate_logistic_cell_is_stratified(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    from data_analyst_mcp.recorder import get_recorder
+
+    _load_binary(load_df_into_session)
+    call_tool("cross_validate", {"name": "bin", "formula": "y ~ x", "kind": "logistic", "k": 3})
+    src = [  # noqa: RUF015
+        c
+        for c in get_recorder().cells
+        if c["cell_type"] == "code" and c["metadata"]["tool_name"] == "cross_validate"
+    ][0]["source"]
+    assert "for _cls in (0, 1):" in src
+    assert "sm.Logit" in src
+    assert "roc_auc_score" in src
