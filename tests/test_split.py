@@ -218,3 +218,91 @@ def test_split_dataset_rejects_single_row_source(call_tool: Any, load_df_into_se
     result = call_tool("split_dataset", {"name": "tiny"})
     assert result["ok"] is False
     assert result["error"]["type"] == "dataset_too_small"
+
+
+def _load_strata(load_df_into_session: Any) -> None:
+    import pandas as pd
+
+    # 4×'a', 3×'b', 3×NULL — 10 rows.
+    load_df_into_session(
+        "strat",
+        pd.DataFrame(
+            {
+                "g": ["a", "a", "a", "a", "b", "b", "b", None, None, None],
+                "x": list(range(10)),
+            }
+        ),
+    )
+
+
+def test_split_dataset_stratified_counts_and_strata_table(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """fraction=0.25: 'a' (4 rows) → 1 test; 'b' (3) → 1 test; NULL (3) → 1 test."""
+    _load_strata(load_df_into_session)
+
+    result = call_tool(
+        "split_dataset", {"name": "strat", "stratify_by": "g", "test_fraction": 0.25}
+    )
+
+    assert result["ok"] is True
+    assert result["test"]["rows"] == 3
+    assert result["train"]["rows"] == 7
+    strata = result["strata"]
+    assert [s["value"] for s in strata] == ["a", "b", None]
+    assert [(s["train_rows"], s["test_rows"]) for s in strata] == [(3, 1), (2, 1), (2, 1)]
+
+
+def test_split_dataset_stratified_is_deterministic(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    from data_analyst_mcp import session as _session
+
+    _load_strata(load_df_into_session)
+    call_tool("split_dataset", {"name": "strat", "stratify_by": "g"})
+    call_tool(
+        "split_dataset",
+        {"name": "strat", "stratify_by": "g", "train_name": "t2", "test_name": "e2"},
+    )
+    con = _session.get_connection()
+    a = sorted(r[0] for r in con.execute('SELECT x FROM "strat_test"').fetchall())
+    b = sorted(r[0] for r in con.execute('SELECT x FROM "e2"').fetchall())
+    assert a == b
+
+
+def test_split_dataset_small_strata_go_to_train_with_warning(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    import pandas as pd
+
+    load_df_into_session(
+        "mixed",
+        pd.DataFrame({"g": ["a"] * 8 + ["solo"], "x": list(range(9))}),
+    )
+
+    result = call_tool("split_dataset", {"name": "mixed", "stratify_by": "g"})
+
+    assert result["ok"] is True
+    assert "small_strata" in result["warnings"]
+    solo = [s for s in result["strata"] if s["value"] == "solo"][0]  # noqa: RUF015
+    assert solo == {"value": "solo", "train_rows": 1, "test_rows": 0}
+
+
+def test_split_dataset_all_singleton_strata_rejected(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    import pandas as pd
+
+    load_df_into_session("singles", pd.DataFrame({"g": ["a", "b", "c"], "x": [1, 2, 3]}))
+
+    result = call_tool("split_dataset", {"name": "singles", "stratify_by": "g"})
+
+    assert result["ok"] is False
+    assert result["error"]["type"] == "stratification_too_sparse"
+
+
+def test_split_dataset_unknown_stratify_column(call_tool: Any, load_df_into_session: Any) -> None:
+    _load_ten_rows(load_df_into_session)
+    result = call_tool("split_dataset", {"name": "base", "stratify_by": "ghost"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "stratify_column_missing"
