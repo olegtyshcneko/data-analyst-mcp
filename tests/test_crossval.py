@@ -92,3 +92,94 @@ def test_cross_validate_same_seed_is_deterministic(
     a = call_tool("cross_validate", {"name": "lin", "formula": "y ~ x"})
     b = call_tool("cross_validate", {"name": "lin", "formula": "y ~ x"})
     assert a["metrics"] == b["metrics"]
+
+
+def _load_binary(load_df_into_session: Any, n: int = 60) -> None:
+    """Noisy logistic fixture — not separable, both classes populated."""
+    import pandas as pd
+
+    rng = np.random.RandomState(1)
+    x = rng.normal(0, 1, size=n)
+    p = 1.0 / (1.0 + np.exp(-1.5 * x))
+    y = (rng.uniform(size=n) < p).astype(int)
+    # Force both classes present regardless of draw.
+    y[0], y[1] = 0, 1
+    load_df_into_session("bin", pd.DataFrame({"x": x, "y": y}))
+
+
+def test_cross_validate_logistic_is_stratified_with_full_metrics(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    _load_binary(load_df_into_session)
+
+    result = call_tool(
+        "cross_validate", {"name": "bin", "formula": "y ~ x", "kind": "logistic", "k": 3}
+    )
+
+    assert result["ok"] is True
+    assert result["stratified"] is True
+    assert set(result["metrics"].keys()) == {
+        "roc_auc",
+        "pr_auc",
+        "brier",
+        "log_loss",
+        "accuracy",
+        "precision",
+        "recall",
+        "f1",
+    }
+    for m in result["metrics"].values():
+        assert len(m["per_fold"]) == 3
+
+
+def test_cross_validate_logistic_folds_keep_class_balance(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Every fold's minority-class count differs from the ideal share by
+    at most 1 — the structural guarantee that makes single-class folds
+    impossible."""
+    import statsmodels.formula.api as smf
+
+    from data_analyst_mcp import session as _session
+    from data_analyst_mcp.tools.crossval import _fold_ids
+
+    _load_binary(load_df_into_session)
+    df = _session.get_connection().execute('SELECT * FROM "bin"').df()
+    full = smf.logit("y ~ x", data=df).fit(disp=0)
+    y = np.asarray(full.model.endog, dtype=float)
+    fold = _fold_ids(y, 3, 42, stratified=True)
+    n_pos = int(np.sum(y == 1))
+    for i in range(3):
+        pos_in_fold = int(np.sum(y[fold == i] == 1))
+        assert abs(pos_in_fold - n_pos / 3) <= 1
+        assert pos_in_fold >= 1
+
+
+def test_cross_validate_minority_class_smaller_than_k(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    import pandas as pd
+
+    rng = np.random.RandomState(2)
+    load_df_into_session(
+        "rare",
+        pd.DataFrame({"x": rng.normal(size=30), "y": [1, 1] + [0] * 28}),
+    )
+
+    result = call_tool(
+        "cross_validate", {"name": "rare", "formula": "y ~ x", "kind": "logistic", "k": 5}
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["type"] == "outcome_class_too_small"
+
+
+def test_cross_validate_nonbinary_outcome_rejected(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    import pandas as pd
+
+    load_df_into_session("multi", pd.DataFrame({"x": range(20), "y": [0, 1, 2, 3] * 5}))
+    result = call_tool("cross_validate", {"name": "multi", "formula": "y ~ x", "kind": "logistic"})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "outcome_dtype_mismatch"
