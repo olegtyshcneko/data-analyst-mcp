@@ -13,6 +13,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from data_analyst_mcp.errors import build_error
+from data_analyst_mcp.tools import crossval as _crossval
 from data_analyst_mcp.tools import datasets as _datasets
 from data_analyst_mcp.tools import evaluate as _evaluate
 from data_analyst_mcp.tools import materialize as _materialize
@@ -630,6 +631,62 @@ def evaluate_model(
         return _evaluate.evaluate_model(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("evaluate_model failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def cross_validate(
+    name: str,
+    formula: str,
+    kind: str = "ols",
+    robust: bool = False,
+    k: int = 5,
+    seed: int = 42,
+    threshold: float = 0.5,
+) -> dict[str, Any]:
+    """k-fold cross-validated metrics for a model formula on a dataset.
+
+    The re-fitting complement to ``evaluate_model``: fits are ephemeral
+    and the model registry is never touched. A full-data preflight fit
+    surfaces fit_model's error taxonomy (formula_error,
+    perfect_separation, convergence_failed, ...) before any fold work;
+    the folds reuse its design matrices so categorical levels are
+    encoded globally. Logistic folds are auto-stratified by outcome
+    class (requires >= k rows per class). Metrics match
+    evaluate_model's families; response reports mean, std (ddof=1), and
+    per-fold values. Errors: dataset_not_found, invalid_kind,
+    formula_error, perfect_separation, convergence_failed,
+    outcome_dtype_mismatch, outcome_class_too_small, k_out_of_range,
+    fold_too_small, cv_fit_failed, robust_not_supported,
+    threshold_out_of_range.
+    """
+    try:
+        from pydantic import ValidationError
+
+        try:
+            payload = _crossval.CrossValidateInput.model_validate(
+                {
+                    "name": name,
+                    "formula": formula,
+                    "kind": kind,
+                    "robust": robust,
+                    "k": k,
+                    "seed": seed,
+                    "threshold": threshold,
+                }
+            )
+        except ValidationError as ve:
+            for err in ve.errors():
+                if err.get("loc") == ("kind",):
+                    return build_error(
+                        type="invalid_kind",
+                        message=f"Unknown kind {kind!r}.",
+                        hint="Allowed kinds: ['logistic', 'negbin', 'ols', 'poisson'].",
+                    )
+            raise
+        return _crossval.cross_validate(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("cross_validate failed")
         return build_error(type="internal", message=str(exc))
 
 
