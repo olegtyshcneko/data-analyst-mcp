@@ -155,8 +155,10 @@ def split_dataset(payload: SplitDatasetInput) -> dict[str, Any]:
             message=f"test_fraction must be in the open interval (0, 1); got {payload.test_fraction}.",
             hint="Pick a fraction strictly between 0 and 1, e.g. 0.25.",
         )
-    train_name = payload.train_name or f"{payload.name}_train"
-    test_name = payload.test_name or f"{payload.name}_test"
+    # `is None` (not truthiness): an explicit "" is a caller-supplied name to
+    # be rejected as invalid below, not a request for the default.
+    train_name = f"{payload.name}_train" if payload.train_name is None else payload.train_name
+    test_name = f"{payload.name}_test" if payload.test_name is None else payload.test_name
     for candidate in (train_name, test_name):
         if not _NAME_RE.fullmatch(candidate):
             return build_error(
