@@ -354,6 +354,30 @@ Every tool follows this contract:
 
 **Errors**: `write_not_allowed`, `dataset_name_collision`, `invalid_name`, `query_error`, `internal`.
 
+### 5.6b `split_dataset`
+
+**Purpose**: partition a registered dataset into seeded train/test derived datasets. Closes the gap the Phase-5 registry left open — `fit_model` / `predict` / `evaluate_model` assume a held-out set exists but nothing produced one — so the split composes with the registry and the recorder instead of forcing a pre-split outside the server.
+
+**Input**:
+- `name: str` — source dataset (file-backed or derived); must exist.
+- `test_fraction: float = 0.25` — open interval `(0, 1)`; endpoints rejected.
+- `seed: int = 42`.
+- `stratify_by: str | None = None` — column to stratify on.
+- `train_name: str | None = None`, `test_name: str | None = None` — default `{name}_train` / `{name}_test`; same identifier regex as `materialize_query` (`^[A-Za-z_][A-Za-z0-9_]*$`).
+- `overwrite: bool = False` — same collision scheme as `materialize_query`.
+
+**Behavior**:
+1. **Name preflight (atomic).** The three names (source, train, test) must be pairwise distinct → `split_name_conflict` otherwise. Collisions with existing datasets are checked for *both* output names before either table is created, so a half-applied split cannot occur; with `overwrite=False`, either output name already registered → `dataset_name_collision`.
+2. **Determinism.** Row assignment uses `np.random.RandomState(seed).permutation(n)` in Python — not DuckDB `hash()` or `USING SAMPLE`. NumPy's NEP 19 policy froze the legacy `RandomState` (MT19937) stream, so the same seed yields the same permutation on any NumPy version (the modern `Generator` API carries no such guarantee, which is why it is not used); DuckDB's hash/sample output is not contractually stable across DuckDB versions, and the replay environment may run a different DuckDB. The permuted test indices load into a temp index table; the train/test tables are created by join / anti-join on `row_number() OVER ()`.
+3. **Row-order tiers** (mirror the SHA-256 hash-guard tiers). *File-backed sources*: scan order is replay-stable — DuckDB preserves insertion order for CSV/Parquet under the default `preserve_insertion_order=true` (never toggled) and the bytes are already SHA-256-guarded — so the split is a pure function of (source rows, seed) and replays exactly. *Derived sources* (`materialize_query` or a previous split): at replay the derived table is recreated by re-running its SQL, and joins / group-bys carry no order guarantee, so the split cell asserts an order-independent **membership checksum** — row count plus XOR and sum of per-row hashes, so duplicate rows cannot cancel — of the recreated test table against the session's value; deterministic replays pass, order drift fails loudly, exactly like the SHA-256 file guards. The checksum is asserted for file-backed sources too (cheap, catches the unexpected).
+4. **Sizing.** Unstratified: `n_test = round(n * test_fraction)` clamped to `[1, n - 1]`; source with `n < 2` → `dataset_too_small`.
+5. **Stratification.** The same sizing rule is applied within each stratum, with a single `RandomState(seed)` instance consumed across strata in sorted-stratum order (`NULL` stratum last) so assignment stays deterministic; a stratum with fewer than 2 rows goes entirely to train and adds a `small_strata` warning. After assignment both sides must be non-empty — if singleton strata (or rounding) leave train or test with zero rows, the split is rejected with `stratification_too_sparse` and nothing is registered.
+6. **Registration.** Both outputs register as first-class datasets with a dedicated `format="split"` (path `"(split)"`) — a distinct format keeps the recorder's rehydration branch and `materialize_query`'s overwrite logic from misreading a split as SQL-derived — with `read_options` carrying `{source, seed, test_fraction, stratify_by, train_name, test_name, rid_column, role}` plus `membership_checksum` on the test entry, so the recorder can rehydrate and guard them. Every existing tool can then target them by name. The recorder's setup cell recreates split-derived entries *after* file-backed and `materialize_query`-derived lines, in registration order (a split of a split works because chains register in order).
+
+**Output**: `{ok, source, train: {name, rows}, test: {name, rows}, seed, test_fraction, stratify_by, strata: [{value, train_rows, test_rows}] | null, warnings}`.
+
+**Errors**: `dataset_not_found`, `dataset_name_collision`, `invalid_name`, `split_name_conflict`, `test_fraction_out_of_range`, `stratify_column_missing`, `dataset_too_small`, `stratification_too_sparse`, `internal`.
+
 ### 5.7 `correlate`
 
 **Input**:
@@ -567,6 +591,26 @@ Outcome dtype validation: logistic requires binary 0/1 or boolean; OLS requires 
 **Output**: `{ok, model_name, dataset, metrics, n_obs, warnings}` plus `confusion_matrix` and `calibration` (logistic only). Recorder cell emits sklearn-based code; calibration DataFrame is included in code-cell output, summary stats in markdown.
 
 **Errors**: `model_not_found`, `dataset_not_found`, `outcome_column_missing`, `outcome_dtype_mismatch`, `n_calibration_bins_out_of_range`.
+
+### 5.11d `cross_validate`
+
+**Purpose**: k-fold cross-validated metrics for a model formula on a dataset — the re-fitting complement to `evaluate_model`'s score-a-registered-fit. No `model_name` parameter exists; fits are ephemeral and the registry is untouched.
+
+**Input**:
+- `name: str` — dataset.
+- `formula: str`, `kind: Literal["ols", "logistic", "poisson", "negbin"] = "ols"`, `robust: bool = False` — identical contract and validation to `fit_model`.
+- `k: int = 5` — range `[2, 20]`.
+- `seed: int = 42` — fold assignment.
+- `threshold: float = 0.5` — logistic confusion-derived metrics; open interval `(0, 1)`.
+
+**Behavior**:
+1. **Preflight fit.** Before any folding, fit the formula once on the full dataset through the same validation / coercion path `fit_model` uses (`models.fit_prepared`: boolean-outcome coercion, negbin non-negative-integer count checks, separation detection). This single fit surfaces `fit_model`'s whole error taxonomy top-level — `formula_error`, `perfect_separation`, `convergence_failed`, `outcome_dtype_mismatch` — before any fold work, and its patsy design matrices are reused for the folds, so `cross_validate` cannot drift from `fit_model`'s semantics.
+2. **Fold construction.** Slice the preflight `y, X` per fold (NaN-dropped rows reported as `dropped_rows`, like `predict`). The global design matrix encodes categorical levels consistently, so a level appearing in only one fold can never crash held-out scoring (the classic naive-CV failure). Fold assignment is a `RandomState(seed)` permutation over the post-drop rows; post-drop `n_obs < k` → `k_out_of_range` (the message states the post-drop count). For `kind="logistic"` folds are stratified by outcome class automatically and the response reports `stratified: true` — auto-and-report, no knob, same philosophy as `compare_groups`' test selection. Stratification requires each outcome class to have at least `k` members → `outcome_class_too_small` otherwise; this makes single-class holdout folds structurally impossible, so ROC-AUC / log-loss are always defined (the recorder cell still passes explicit `labels=[0, 1]` to sklearn's `log_loss` defensively).
+3. **Per-fold scoring.** Fit on k−1 folds, score the held-out fold with the same metric families as `evaluate_model` — logistic: ROC-AUC, PR-AUC, Brier, log-loss, accuracy / precision / recall / F1 at `threshold`; OLS: RMSE, MAE, R²; Poisson / negbin: RMSE, MAE, Pearson χ², deviance. Fold-local fit failures (separation or non-convergence the full-data preflight did not exhibit) are recorded in `fold_failures` — fold index plus the same error-type string `fit_model` would have used — and excluded from aggregates with a warning; all folds failing → `cv_fit_failed`. A fold whose training slice has ≤ n_params rows → `fold_too_small`.
+
+**Output**: `{ok, name, formula, kind, k, seed, stratified, metrics: {<metric>: {mean, std, per_fold}}, fold_sizes, n_obs, dropped_rows, fold_failures, warnings, interpretation}` — `std` is ddof=1.
+
+**Errors**: `dataset_not_found`, `invalid_kind`, `formula_error`, `perfect_separation`, `convergence_failed`, `outcome_dtype_mismatch`, `outcome_class_too_small`, `k_out_of_range`, `fold_too_small`, `cv_fit_failed`, `robust_not_supported`, `threshold_out_of_range`, `internal`. (`perfect_separation` / `convergence_failed` refer to the full-data preflight fit; the fold-local variants land in `fold_failures`. `invalid_kind` is the wrapper-level mapping of the pydantic `Literal` violation on `kind`.)
 
 ### 5.12 `plot`
 
@@ -833,7 +877,7 @@ README with worked example, `DEPS.md`, LICENSE, ROADMAP, tag `v0.1.0`, `uv build
 - Loading entire datasets into pandas at tool-call time.
 - Adding `plotly`, `seaborn`, `altair`, `bokeh`, `dash`, `streamlit`, `polars`, `dask`, `ray`.
 - Adding `Anthropic`/`OpenAI` clients to call an LLM from inside the server.
-- Adding tools beyond the 22 in §5 (park in `ROADMAP.md`).
+- Adding tools beyond the 24 in §5 (park in `ROADMAP.md`).
 - Silently coercing data types in `load_dataset`.
 - Making the recorder optional/feature-flagged.
 - `emit_notebook` depending on internet, API key, or anything non-local.
