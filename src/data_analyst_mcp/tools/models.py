@@ -134,25 +134,13 @@ def fit_model(payload: FitModelInput) -> dict[str, Any]:
             )
     try:
         df = _materialize_dataframe(payload.name)
-        # Pre-fit guard: NB requires non-negative integer endog.
-        extra_warnings: list[str] = []
-        if payload.kind == "negbin":
-            df, validation_error, coerce_warning = _validate_negbin_endog(df, payload.formula)
-            if validation_error is not None:
-                return validation_error
-            if coerce_warning is not None:
-                extra_warnings.append(coerce_warning)
-        result = _fit_dispatch(payload, df)
+        result = fit_prepared(payload, df)
     except _FormulaError as fe:
         return build_error(
             type="formula_error",
             message=str(fe),
             hint=("Verify column names exist and the formula parses, e.g. 'y ~ x + C(group)'."),
         )
-    if result.get("ok") and extra_warnings:
-        # Prepend pre-fit warnings so they appear before model-derived ones.
-        existing: list[str] = list(result.get("warnings") or [])
-        result["warnings"] = extra_warnings + existing
     # Extract the live statsmodels Results before recording / returning so
     # JSON serialization never sees it. ``_result`` is keyed underscore-
     # prefixed precisely to make leaks visually obvious if a future caller
@@ -329,6 +317,34 @@ def _code_for_fit(payload: FitModelInput) -> str:
 
 class _FormulaError(Exception):
     """Internal marker for formula / patsy / column-binding failures."""
+
+
+# Public alias so sibling tools (cross_validate) can catch formula failures
+# without reaching into a private name.
+FormulaError = _FormulaError
+
+
+def fit_prepared(payload: FitModelInput, df: Any) -> dict[str, Any]:
+    """Shared fit path: negbin endog validation + dispatch, warnings merged.
+
+    Returns the result dict — ``{"ok": True, ..., "_result": Results}`` on
+    success, or a ``build_error`` envelope. Raises :class:`FormulaError`
+    on patsy/column-binding failures. ``fit_model`` and ``cross_validate``
+    both go through here so their validation/error taxonomy can never
+    drift apart.
+    """
+    extra_warnings: list[str] = []
+    if payload.kind == "negbin":
+        df, validation_error, coerce_warning = _validate_negbin_endog(df, payload.formula)
+        if validation_error is not None:
+            return validation_error
+        if coerce_warning is not None:
+            extra_warnings.append(coerce_warning)
+    result = _fit_dispatch(payload, df)
+    if result.get("ok") and extra_warnings:
+        existing: list[str] = list(result.get("warnings") or [])
+        result["warnings"] = extra_warnings + existing
+    return result
 
 
 def _coerce_bool_columns(df: Any) -> Any:

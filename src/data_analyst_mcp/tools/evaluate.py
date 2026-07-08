@@ -491,3 +491,9 @@ def _count_metrics(*, y_true: Any, mu: Any, kind: str) -> dict[str, float]:
         "pearson_chi2": pearson,
         "deviance": deviance,
     }
+
+
+# Public aliases shared with cross_validate (tools/crossval.py).
+formula_outcome = _formula_outcome
+validate_outcome_dtype = _validate_outcome_dtype
+count_metrics = _count_metrics
