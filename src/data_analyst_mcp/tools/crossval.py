@@ -354,8 +354,10 @@ def _cv_cell_source(payload: CrossValidateInput) -> str:
     (matches fit_model's ``_code_for_fit`` cells): the cell calls smf
     directly without the live path's boolean-column coercion, so a
     boolean logistic outcome that succeeded live needs a manual cast at
-    replay. Fold-local fit failures are skipped with try/except, the
-    same exclusion the live aggregates apply.
+    replay. The cell skips folds whose fit *raises* (try/except); the
+    live path additionally excludes returned-but-non-converged fits
+    (``_fold_converged`` / degenerate-separation checks), so the replay
+    aggregates can differ from the live ones on that edge.
     """
     smf_fn = _SMF_FN[payload.kind]
     sm_cls = _SM_CLASS[payload.kind]

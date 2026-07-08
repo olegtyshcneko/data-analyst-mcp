@@ -24,6 +24,7 @@ No active proposals (the tier-1 bundle closed the current cohort; see `docs/prop
 
 - **`load_session_from_notebook`.** The inverse of `emit_notebook` — read a previously-emitted `.ipynb` and rehydrate the dataset registry from the setup cell. Useful for "pick up where I left off."
 - **Notebook diff.** `compare_notebooks(a, b)` — compares two emitted sessions, highlights numeric drift.
+- **Pure-query fit-then-overwrite guard gap.** A model fit on a pure-query derived dataset (no carryable file loader) that is *later* overwritten by another `materialize_query` keeps the identical `sentinel:no-file:(query)` source hash across both states, so the setup cell's fit-then-overwrite guards cannot tell them apart and the model silently re-fits on the recreated post-transform table. Split-format `(split)` and dataframe `(dataframe)` sentinels are distinct, so those cases correctly raise (shipped in 1.3.0); closing the pure-query case needs a per-materialization discriminator in the sentinel, not just the format tag.
 
 ## Polish / DX
 
