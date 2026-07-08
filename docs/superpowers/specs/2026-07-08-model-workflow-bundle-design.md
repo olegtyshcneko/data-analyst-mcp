@@ -38,27 +38,48 @@ shipping `split_dataset` alone (holdout-only evaluation stays the acknowledged w
   (`^[A-Za-z_][A-Za-z0-9_]*$`).
 - `overwrite: bool = False` — same collision scheme as `materialize_query`.
 
+**Name preflight (atomic):** the three names (source, train, test) must be pairwise
+distinct → `split_name_conflict` otherwise. Collisions with existing datasets are checked
+for *both* output names before either table is created, so a half-applied split cannot
+occur; with `overwrite=False`, either output name already registered →
+`dataset_name_collision`.
+
 **Determinism (the load-bearing decision):** row assignment uses
 `np.random.RandomState(seed).permutation(n)` in Python — not DuckDB `hash()` or
-`USING SAMPLE`. `RandomState` (MT19937) is frozen by NumPy's NEP 19 compatibility policy,
-so the same seed yields the same permutation on any NumPy version; DuckDB's hash/sample
+`USING SAMPLE`. NumPy's NEP 19 policy froze the legacy `RandomState` (MT19937) stream:
+the same seed yields the same permutation on any NumPy version (the modern `Generator`
+API carries no such guarantee, which is why we do not use it). DuckDB's hash/sample
 output is not contractually stable across DuckDB versions, and the replay environment may
 run a different DuckDB. The permuted test indices are loaded into a temp index table and
-the train/test tables are created by join/anti-join on `row_number() OVER ()`. Row numbers
-are stable because DuckDB preserves insertion order and the source reload is already
-SHA-256-guarded — so the split is guarded *transitively*: setup cell asserts the source
-hash; the split is a pure function of (source rows, seed).
+the train/test tables are created by join/anti-join on `row_number() OVER ()`.
+
+**Row-order tiers (mirrors the existing hash-guard tiers):**
+
+- *File-backed sources:* scan order is replay-stable — DuckDB preserves insertion order
+  for CSV/Parquet reads under the default `preserve_insertion_order=true` (the server
+  never toggles it), and the file bytes are already SHA-256-guarded. Here the split is a
+  pure function of (source rows, seed) and replays exactly.
+- *Derived sources (`materialize_query` or a previous split):* at replay the derived
+  table is recreated by re-running its SQL, and joins/group-bys carry no order guarantee.
+  Recomputed row numbers could silently differ, so the split cell asserts a
+  **membership checksum** — an order-independent digest (XOR/sum of per-row hashes) of
+  the recreated test table against the session's value. Deterministic replays pass;
+  order drift fails loudly at the assert, exactly like the existing SHA-256 file guards.
+  The checksum is asserted for file-backed sources too (it is cheap and catches the
+  unexpected).
 
 **Sizing and stratification:** unstratified, `n_test = round(n * test_fraction)` clamped
 to `[1, n - 1]`; source with `n < 2` → `dataset_too_small`. Stratified: the same sizing
 rule is applied within each stratum, with a single `RandomState(seed)` instance consumed
 across strata in sorted-stratum order (`NULL` stratum last) so the assignment stays
 deterministic; a stratum with fewer than 2 rows goes entirely to train and adds a
-`small_strata` warning.
+`small_strata` warning. After assignment, both sides must be non-empty — if singleton
+strata (or rounding) leave train or test with zero rows, the split is rejected with
+`stratification_too_sparse` and nothing is registered.
 
 **Registration:** both outputs register as `format="derived"` datasets (path `"(split)"`),
-with `read_options` carrying `{source, seed, test_fraction, stratify_by, role}` so the
-recorder can rehydrate them. Every existing tool can then target them by name.
+with `read_options` carrying `{source, seed, test_fraction, stratify_by, role}` plus the
+membership checksum, so the recorder can rehydrate and guard them. Every existing tool can then target them by name.
 
 **Output:**
 
@@ -68,7 +89,8 @@ recorder can rehydrate them. Every existing tool can then target them by name.
 ```
 
 **Errors:** `dataset_not_found`, `dataset_name_collision`, `invalid_name`,
-`test_fraction_out_of_range`, `stratify_column_missing`, `dataset_too_small`, `internal`.
+`split_name_conflict`, `test_fraction_out_of_range`, `stratify_column_missing`,
+`dataset_too_small`, `stratification_too_sparse`, `internal`.
 
 ## `cross_validate` (SPEC §5.11d)
 
@@ -85,20 +107,35 @@ parameter exists; fits are ephemeral and the registry is untouched.
 - `seed: int = 42` — fold assignment.
 - `threshold: float = 0.5` — logistic confusion-derived metrics; open interval `(0, 1)`.
 
-**Fold construction:** build `y, X` **once** via patsy on the full dataset (NaN-dropped
-rows reported as `dropped_rows`, like `predict`), then slice rows per fold. The global
-design matrix encodes categorical levels consistently, so a level appearing in only one
-fold can never crash held-out scoring (the classic naive-CV failure). Fold assignment is a
-`RandomState(seed)` permutation; for `kind="logistic"` folds are stratified by outcome
-class automatically and the response reports `stratified: true` — auto-and-report, no
-knob, same philosophy as `compare_groups`' test selection.
+**Preflight fit:** before any folding, fit the formula once on the full dataset through
+the same validation/coercion path `fit_model` uses (boolean-outcome coercion, negbin
+non-negative-integer count checks, separation detection). This single fit surfaces
+`fit_model`'s whole error taxonomy top-level — `formula_error`, `perfect_separation`,
+`convergence_failed`, `outcome_dtype_mismatch` — before any fold work, and its patsy
+design matrices are reused for the folds, so `cross_validate` cannot drift from
+`fit_model`'s semantics.
+
+**Fold construction:** slice the preflight `y, X` per fold (NaN-dropped rows reported as
+`dropped_rows`, like `predict`). The global design matrix encodes categorical levels
+consistently, so a level appearing in only one fold can never crash held-out scoring (the
+classic naive-CV failure). Fold assignment is a `RandomState(seed)` permutation over the
+post-drop rows; post-drop `n_obs < k` → `k_out_of_range` (the message states the
+post-drop count). For `kind="logistic"` folds are stratified by outcome class
+automatically and the response reports `stratified: true` — auto-and-report, no knob,
+same philosophy as `compare_groups`' test selection. Stratification requires each
+outcome class to have at least `k` members → `outcome_class_too_small` otherwise; this
+makes single-class holdout folds structurally impossible, so ROC-AUC / log-loss are
+always defined (the recorder cell still passes explicit `labels=[0, 1]` to sklearn's
+`log_loss` as a defensive measure).
 
 **Per-fold behavior:** fit on k−1 folds, score the held-out fold with the same metric
 families as `evaluate_model` — logistic: ROC-AUC, PR-AUC, Brier, log-loss,
 accuracy/precision/recall/F1 at `threshold`; OLS: RMSE, MAE, R²; Poisson/negbin: RMSE,
-MAE, Pearson χ², deviance. A fold that fails to fit (e.g. separation within the fold) is recorded in
-`fold_failures` and excluded from aggregates with a warning; all folds failing →
-`cv_fit_failed`. A fold whose training slice has ≤ n_params rows → `fold_too_small`.
+MAE, Pearson χ², deviance. Fold-local fit failures (separation or non-convergence that
+the full-data preflight fit did not exhibit) are recorded in `fold_failures` — fold index
+plus the same error-type string `fit_model` would have used — and excluded from
+aggregates with a warning; all folds failing → `cv_fit_failed`. A fold whose training
+slice has ≤ n_params rows → `fold_too_small`.
 
 **Output:**
 
@@ -108,19 +145,23 @@ MAE, Pearson χ², deviance. A fold that fails to fit (e.g. separation within th
  dropped_rows, fold_failures, warnings, interpretation}
 ```
 
-**Errors:** `dataset_not_found`, `formula_error`, `k_out_of_range`, `fold_too_small`,
-`cv_fit_failed`, `outcome_dtype_mismatch`, `robust_not_supported`,
-`threshold_out_of_range`, `internal`.
+**Errors:** `dataset_not_found`, `formula_error`, `perfect_separation`,
+`convergence_failed`, `outcome_dtype_mismatch`, `outcome_class_too_small`,
+`k_out_of_range`, `fold_too_small`, `cv_fit_failed`, `robust_not_supported`,
+`threshold_out_of_range`, `internal`. (`perfect_separation` / `convergence_failed` refer
+to the full-data preflight fit; the fold-local variants land in `fold_failures`.)
 
 ## Recorder / replay
 
 - `split_dataset` emits a code cell running the identical
   `RandomState(seed).permutation` + index-table + join sequence against the notebook's
-  DuckDB connection.
+  DuckDB connection, followed by the membership-checksum assert (order-independent digest
+  of the recreated test table vs. the session's value).
 - The setup cell gains a third rehydration branch: split-derived entries are recreated
   **after** file-backed and `materialize_query`-derived lines (their source must exist
-  first), in registration order. No new hash guard — the split is transitively covered by
-  the source dataset's existing SHA-256 assert.
+  first), in registration order — a split of a split works because chains register in
+  order. File-backed provenance stays covered by the existing SHA-256 assert; the
+  membership checksum covers row-order drift in derived sources.
 - `cross_validate` emits a self-contained cell: same fold assignment, statsmodels fits in
   a loop, sklearn metrics, printing the per-fold and aggregate table.
 - Overwrite interactions follow the existing `materialize_query` collision scheme,
@@ -133,11 +174,17 @@ TDD (`red:` / `green:`) as enforced by `check_tdd_commits.py`.
 - **Known-answer:** exact train/test row sets for a pinned seed on a small fixture;
   stratified per-stratum proportions; CV aggregates cross-checked against a hand-run
   sklearn `KFold` on the same fixture.
-- **Error paths:** one test per error type listed above.
+- **Error paths:** one test per error type listed above, including the preflight name
+  rules (`train_name == test_name`, output name equal to source, one-of-two collision
+  leaves nothing registered), all-singleton strata → `stratification_too_sparse`,
+  post-drop `n_obs < k`, and logistic minority class < k → `outcome_class_too_small`.
+- **Determinism:** same seed twice → identical membership; split of a derived
+  (join/group-by) source and split-of-a-split both replay through the checksum assert;
+  a multi-threaded DuckDB run (`threads > 1`) produces the same split as single-threaded
+  for file-backed sources.
 - **Integration evals:** emit → `jupyter nbconvert --execute` replay reproduces the
-  identical split (assert on a hash of sorted row ids) and the identical CV metric table;
-  drift case — edit the source file, replay must fail at the setup-cell assert before any
-  split runs.
+  identical split (membership checksum) and the identical CV metric table; drift case —
+  edit the source file, replay must fail at the setup-cell assert before any split runs.
 
 ## Rollout
 
