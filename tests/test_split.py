@@ -537,9 +537,11 @@ def test_split_setup_cell_train_overwrite_self_ref_raises_at_replay(
     call_tool: Any, tmp_path: Any
 ) -> None:
     """A self-referential train-side overwrite drops the split train recipe and
-    leaves a derived CREATE that references a table nothing recreates — replay
-    must fail loudly (DuckDB catalog error), never silently re-fabricate the
-    train table from the stale split recipe."""
+    leaves a derived CREATE that references a table nothing recreates. Replay
+    must fail with a purpose-written ``AssertionError`` that names the
+    overwritten split side and says to rematerialize from a table that exists —
+    never a silent re-fabrication from the stale split recipe. The original
+    DuckDB catalog error stays chained as ``__cause__``."""
     import duckdb
     import pandas as pd
 
@@ -556,5 +558,81 @@ def test_split_setup_cell_train_overwrite_self_ref_raises_at_replay(
 
     src = _setup_source(call_tool)
     ns: dict[str, Any] = {}
-    with pytest.raises(duckdb.CatalogException):
-        exec(src, ns)  # self-ref recipe with no table to build from → loud failure
+    with pytest.raises(AssertionError, match="overwriting the train side") as excinfo:
+        exec(src, ns)  # self-ref recipe with no table to build from → friendly failure
+    assert isinstance(excinfo.value.__cause__, duckdb.CatalogException)
+
+
+def test_split_setup_cell_test_overwrite_self_ref_raises_at_replay(
+    call_tool: Any, tmp_path: Any
+) -> None:
+    """Symmetric to the train-side case: a self-referential test-side overwrite
+    drops that side's split recipe (the split block, keyed off the test entry,
+    is then not emitted at all), leaving a derived CREATE for ``base_test`` that
+    reads from a table nothing recreates. Replay must fail with the same
+    purpose-written ``AssertionError``, this time naming the ``test`` side, with
+    the DuckDB catalog error chained as ``__cause__``."""
+    import duckdb
+    import pandas as pd
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame({"x": list(range(20))}).to_csv(csv, index=False)
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+    result = call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base_test" WHERE x > 10', "name": "base_test", "overwrite": True},
+    )
+    assert result["ok"] is True
+
+    src = _setup_source(call_tool)
+    ns: dict[str, Any] = {}
+    with pytest.raises(AssertionError, match="overwriting the test side") as excinfo:
+        exec(src, ns)  # test-side self-ref recipe with no table to build from → friendly failure
+    assert isinstance(excinfo.value.__cause__, duckdb.CatalogException)
+
+
+def test_plain_derived_create_not_wrapped_beside_split_overwrite(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """The catalog-error wrapper is scoped to split-side overwrites only. In a
+    session that has *both* a self-referential split overwrite (whose derived
+    CREATE is wrapped in a ``try/except duckdb.CatalogException``) and an
+    ordinary ``materialize_query`` (a brand-new derived table), the plain
+    derived CREATE must stay a bare, unindented ``con.execute(...)`` with no
+    wrapper — ordinary materialize_query notebooks stay byte-identical to
+    today."""
+    _load_ten_rows(load_df_into_session)
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+    # Train-side self-referential overwrite → its derived CREATE is wrapped.
+    assert (
+        call_tool(
+            "materialize_query",
+            {
+                "sql": 'SELECT * FROM "base_train" WHERE x > 2',
+                "name": "base_train",
+                "overwrite": True,
+            },
+        )["ok"]
+        is True
+    )
+    # Ordinary materialize_query → a brand-new derived table, never wrapped.
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": 'SELECT * FROM "base" WHERE x > 4', "name": "plain"},
+        )["ok"]
+        is True
+    )
+
+    src = _setup_source(call_tool)
+    # The split-overwrite path IS wrapped: the base_train CREATE is indented
+    # under a try, and exactly one CatalogException handler is emitted.
+    assert '\n    con.execute(\'CREATE OR REPLACE TABLE "base_train"' in src
+    assert src.count("except duckdb.CatalogException") == 1
+    # The plain derived CREATE is bare (unindented, no wrapper attached).
+    assert (
+        '\ncon.execute(\'CREATE OR REPLACE TABLE "plain" AS SELECT * FROM "base" WHERE x > 4\')'
+        in src
+    )
