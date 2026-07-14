@@ -974,3 +974,47 @@ def test_split_block_not_claimed_by_unrelated_split_reusing_a_name(
     src = _setup_source(call_tool)
     # The original train side still gets recreated (train-only block).
     assert '"base_train" AS SELECT s.* EXCLUDE' in src
+
+
+def test_setup_cell_second_pass_orders_by_revision_for_reused_names(
+    call_tool: Any, tmp_path: Any
+) -> None:
+    """Problem 8 (review r2, reproduced): dict insertion order is NOT
+    registration order for overwrites — a pre-registered name keeps its old
+    dict position when split_dataset(overwrite=True) re-assigns it. The
+    derived test-side overwrite here reads from the surviving train table,
+    so its CREATE must emit AFTER the train-only split block; in dict order
+    it emits first and replay dies in the provenance wrapper even though
+    the recipe is replayable."""
+    import pandas as pd
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame({"x": list(range(20))}).to_csv(csv, index=False)
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
+    # Pre-register the future test name at an EARLY dict position.
+    assert call_tool(
+        "materialize_query", {"sql": 'SELECT * FROM "base"', "name": "t_test"}
+    )["ok"] is True
+    assert call_tool(
+        "split_dataset",
+        {"name": "base", "train_name": "t_train", "test_name": "t_test", "overwrite": True},
+    )["ok"] is True
+    # Overwrite the test side with SQL that reads the surviving train side.
+    assert call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "t_train" WHERE x > 10', "name": "t_test", "overwrite": True},
+    )["ok"] is True
+
+    src = _setup_source(call_tool)
+    # The train-only block must precede the derived CREATE that reads it.
+    assert src.index('"t_train" AS SELECT s.* EXCLUDE') < src.index(
+        'CREATE OR REPLACE TABLE "t_test" AS SELECT * FROM "t_train" WHERE x > 10'
+    )
+    ns: dict[str, Any] = {}
+    exec(src, ns)  # replayable recipe — must succeed once ordered correctly
+    con = ns["con"]
+    test_x = sorted(r[0] for r in con.execute('SELECT x FROM "t_test"').fetchall())
+    train_x = {r[0] for r in con.execute('SELECT x FROM "t_train"').fetchall()}
+    assert test_x == sorted(x for x in train_x if x > 10)
+    assert len(test_x) > 0
