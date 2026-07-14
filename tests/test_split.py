@@ -731,3 +731,107 @@ def test_split_stores_membership_checksum_on_both_sides(
         datasets["base_train"].read_options["membership_checksum"]
         != datasets["base_test"].read_options["membership_checksum"]
     )
+
+
+def test_split_replay_source_emits_per_side_checksum_asserts() -> None:
+    from data_analyst_mcp.recorder import split_replay_source
+
+    snippet = split_replay_source(
+        source="base",
+        train_name="base_train",
+        test_name="base_test",
+        seed=42,
+        test_fraction=0.25,
+        stratify_by=None,
+        rid_column="__split_rid",
+        membership_checksum="aa",
+        train_membership_checksum="bb",
+    )
+    assert "'aa'" in snippet
+    assert "'bb'" in snippet
+    assert snippet.count("drifted at replay") == 2
+    assert "SELECT * FROM \"base_train\"" in snippet
+
+
+def test_split_replay_source_train_only_block() -> None:
+    """Train-only shape (surviving train side, test overwritten): recreates
+    and asserts ONLY the train table."""
+    import duckdb
+    import numpy as np
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import split_replay_source
+    from data_analyst_mcp.tools.split import _assign_is_test, membership_checksum
+
+    df = pd.DataFrame({"x": list(range(10))})
+    is_test, _ = _assign_is_test(10, 0.25, 42, None)
+    train_checksum = membership_checksum(df[~is_test])
+
+    snippet = split_replay_source(
+        source="base",
+        train_name="base_train",
+        test_name="base_test",
+        seed=42,
+        test_fraction=0.25,
+        stratify_by=None,
+        rid_column="__split_rid",
+        membership_checksum=None,
+        train_membership_checksum=train_checksum,
+        include_train=True,
+        include_test=False,
+    )
+    con = duckdb.connect()
+    con.register("__base_src", df)
+    con.execute('CREATE TABLE "base" AS SELECT * FROM __base_src')
+    exec(snippet, {"con": con, "np": np, "pd": pd})  # train-only replay under test
+    train_x = sorted(r[0] for r in con.execute('SELECT x FROM "base_train"').fetchall())
+    assert train_x == [0, 2, 3, 4, 5, 6, 7, 9]
+    tables = {row[0] for row in con.execute("SHOW TABLES").fetchall()}
+    assert "base_test" not in tables
+
+
+def test_split_replay_snippet_train_only_drift_fails_train_checksum(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """S16 core (review r2, reproduced): replay-time source rows differ at a
+    TRAIN-side position only. Test rows are byte-identical, so the test
+    checksum passes; only the train-side assert can catch the drift."""
+    import duckdb
+    import numpy as np
+    import pandas as pd
+
+    from data_analyst_mcp import session as _session
+    from data_analyst_mcp.recorder import split_replay_source
+
+    load_df_into_session("base", pd.DataFrame({"x": list(range(20))}))
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+    datasets = _session.get_datasets()
+    test_opts = datasets["base_test"].read_options
+
+    snippet = split_replay_source(
+        source="base",
+        train_name="base_train",
+        test_name="base_test",
+        seed=42,
+        test_fraction=0.25,
+        stratify_by=None,
+        rid_column=str(test_opts["rid_column"]),
+        membership_checksum=str(test_opts["membership_checksum"]),
+        train_membership_checksum=str(
+            datasets["base_train"].read_options["membership_checksum"]
+        ),
+    )
+
+    # Membership is positional: find a position the seed sends to TRAIN and
+    # perturb only that value in the replayed source.
+    perm = np.random.RandomState(42).permutation(20)
+    test_positions = set(perm[:5].tolist())
+    train_pos = min(set(range(20)) - test_positions)
+    drifted = pd.DataFrame({"x": list(range(20))})
+    drifted.loc[train_pos, "x"] = 999
+
+    con = duckdb.connect()
+    con.register("__base_src", drifted)
+    con.execute('CREATE TABLE "base" AS SELECT * FROM __base_src')
+    with pytest.raises(AssertionError, match="base_train"):
+        exec(snippet, {"con": con, "np": np, "pd": pd})  # train drift must be loud
