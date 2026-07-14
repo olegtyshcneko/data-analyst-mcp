@@ -363,13 +363,14 @@ def _build_setup_source() -> str:
         stmt = _file_load_stmt(name, entry.format, entry.path, entry.read_options)
         lines.append(f"con.execute({stmt!r})")
 
-    # Second pass: derived and split datasets, in registration order.
-    # Registration order IS topological order — a derived/split entry can
-    # only reference earlier-registered tables, and ``_session.get_datasets()``
-    # is a regular dict whose insertion order Python preserves, so chained
-    # derived datasets (derived_b SELECTs FROM derived_a) are emitted after
-    # their upstream — one interleaved loop replaces the old derived-only
-    # pass. Derived recipes get no hash assert: the recipe is the SQL plus
+    # Second pass: derived and split datasets, in REVISION order. Revisions
+    # are true temporal order; dict insertion order is not — re-assigning an
+    # existing key keeps its old position, so a pre-registered name that is
+    # later overwritten (split_dataset/materialize_query with overwrite=True)
+    # would emit too early. Registration (revision) order is topological
+    # order: a derived/split entry can only reference tables that existed —
+    # i.e. were registered — before it.
+    # Derived recipes get no hash assert: the recipe is the SQL plus
     # the upstream datasets, which already carry their own asserts via the
     # model rehydration block when models depend on them. A split pair emits
     # at most one block, owned by whichever side(s) survive as split entries
@@ -384,7 +385,7 @@ def _build_setup_source() -> str:
     # honors the derived CREATE and fails loudly (missing table / checksum)
     # rather than silently recomputing the split.
     datasets = _session.get_datasets()
-    for name, entry in datasets.items():
+    for name, entry in sorted(datasets.items(), key=lambda kv: kv[1].revision):
         if entry.format == "derived":
             derived_sql = entry.read_options.get("sql", "")
             stmt = f'CREATE OR REPLACE TABLE "{name}" AS {derived_sql}'
