@@ -636,3 +636,69 @@ def test_plain_derived_create_not_wrapped_beside_split_overwrite(
         '\ncon.execute(\'CREATE OR REPLACE TABLE "plain" AS SELECT * FROM "base" WHERE x > 4\')'
         in src
     )
+
+
+def test_double_split_side_overwrite_raises_explained_at_replay(
+    call_tool, tmp_path: Any
+) -> None:
+    """S9 (ROADMAP gap): BOTH sides self-referentially overwritten — no split
+    entry survives, so sibling inference finds nothing and replay dies with a
+    raw CatalogException today. Recorded provenance must wrap both CREATEs;
+    the first failing wrapper (train, earlier revision) halts the cell with
+    the pinned friendly message and the catalog error chained."""
+    import duckdb
+    import pandas as pd
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame({"x": list(range(20))}).to_csv(csv, index=False)
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base_train" WHERE x > 10', "name": "base_train", "overwrite": True},
+    )["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base_test" WHERE x > 1', "name": "base_test", "overwrite": True},
+    )["ok"] is True
+
+    src = _setup_source(call_tool)
+    # Both derived CREATEs carry the provenance wrap.
+    assert src.count("except duckdb.CatalogException") == 2
+    ns: dict[str, Any] = {}
+    with pytest.raises(AssertionError, match="overwriting the train side") as excinfo:
+        exec(src, ns)  # first unreplayable CREATE halts the cell, explained
+    assert isinstance(excinfo.value.__cause__, duckdb.CatalogException)
+
+
+def test_both_sides_replayable_overwrite_replays_transparently(
+    call_tool, tmp_path: Any
+) -> None:
+    """S14 pin (success case): both sides overwritten with SQL that reads
+    only from the source table. The wraps must be transparent — replay
+    succeeds and both tables hold the overwrite results."""
+    import pandas as pd
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame({"x": list(range(20))}).to_csv(csv, index=False)
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base" WHERE x > 10', "name": "base_train", "overwrite": True},
+    )["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base" WHERE x <= 3', "name": "base_test", "overwrite": True},
+    )["ok"] is True
+
+    src = _setup_source(call_tool)
+    ns: dict[str, Any] = {}
+    exec(src, ns)  # wrapped but replayable: must run clean
+    con = ns["con"]
+    train_x = sorted(r[0] for r in con.execute('SELECT x FROM "base_train"').fetchall())
+    test_x = sorted(r[0] for r in con.execute('SELECT x FROM "base_test"').fetchall())
+    assert train_x == list(range(11, 20))
+    assert test_x == [0, 1, 2, 3]
