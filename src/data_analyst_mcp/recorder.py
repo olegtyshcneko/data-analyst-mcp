@@ -10,6 +10,8 @@ from data_analyst_mcp.read_options import render_read_options_fragment
 if TYPE_CHECKING:
     import nbformat
 
+    from data_analyst_mcp.session import DatasetEntry
+
 
 _SETUP_IMPORTS = """\
 import duckdb
@@ -266,6 +268,32 @@ def _hash_guard_lines(var: str, display_name: str, path: str, hash_val: str) -> 
     ]
 
 
+def _matching_split_sibling(
+    datasets: dict[str, DatasetEntry], *, opts: dict[str, Any], sibling_role: str
+) -> DatasetEntry | None:
+    """The reciprocal sibling entry of a split output, or ``None``.
+
+    "Matching" means reciprocal pair metadata: the entry at the recorded
+    sibling name is ``format == "split"``, has the expected role, and
+    records the same ``train_name`` / ``test_name`` pair. A name merely
+    reused by a *different* split (re-split of another source under the
+    same output name) does not match — the survivor then owns a one-sided
+    block of its own.
+    """
+    key = "train_name" if sibling_role == "train" else "test_name"
+    sibling = datasets.get(str(opts.get(key)))
+    if sibling is None or sibling.format != "split":
+        return None
+    sopts = sibling.read_options
+    if sopts.get("role") != sibling_role:
+        return None
+    if sopts.get("train_name") != opts.get("train_name"):
+        return None
+    if sopts.get("test_name") != opts.get("test_name"):
+        return None
+    return sibling
+
+
 def _build_setup_source() -> str:
     """Compose the setup-cell body from the live session registry.
 
@@ -343,19 +371,18 @@ def _build_setup_source() -> str:
     # their upstream — one interleaved loop replaces the old derived-only
     # pass. Derived recipes get no hash assert: the recipe is the SQL plus
     # the upstream datasets, which already carry their own asserts via the
-    # model rehydration block when models depend on them. Split blocks are
-    # emitted once per pair, keyed off the test-role entry (which carries
-    # the membership checksum) and are *side-aware*: the block always
-    # re-creates the test table (behind the checksum assert), but re-creates
-    # the train table only while the train side still belongs to this split.
-    # Overwriting a split output with materialize_query drops that side's
-    # split recipe — the overwritten side becomes a derived entry emitted
-    # above, and the split block must NOT clobber it. For a train-side
-    # overwrite we therefore skip the train CREATE (``include_train=False``);
-    # for a test-side overwrite the test-keyed branch below never fires, so
-    # no split block is emitted at all. Either way replay honors the derived
-    # CREATE and fails loudly (missing table / checksum) rather than silently
-    # recomputing the split.
+    # model rehydration block when models depend on them. A split pair emits
+    # at most one block, owned by whichever side(s) survive as split entries
+    # (block-owner contract, per _matching_split_sibling): both sides alive →
+    # the test-role entry owns a two-sided block asserting each side against
+    # its own membership checksum; a lone surviving test side → a test-only
+    # block; a lone surviving train side → a train-only block; neither →
+    # no block. Overwriting a split output with materialize_query drops that
+    # side's split recipe — the overwritten side becomes a derived entry
+    # emitted above, and the block must NOT clobber it, so the surviving
+    # side's block skips the overwritten side's CREATE. Either way replay
+    # honors the derived CREATE and fails loudly (missing table / checksum)
+    # rather than silently recomputing the split.
     datasets = _session.get_datasets()
     for name, entry in datasets.items():
         if entry.format == "derived":
@@ -390,33 +417,54 @@ def _build_setup_source() -> str:
                 lines.append(f"    con.execute({stmt!r})")
                 lines.append("except duckdb.CatalogException as exc:")
                 lines.append(f"    raise AssertionError({msg!r}) from exc")
-        elif entry.format == "split" and entry.read_options.get("role") == "test":
+        elif entry.format == "split":
             opts = entry.read_options
-            # The train side still belongs to this split only if its current
-            # registry entry is the matching train-role split output. If a
-            # materialize_query overwrite replaced it with a derived entry,
-            # its split recipe is gone and re-creating it here would clobber
-            # the derived table emitted above.
-            train_entry = datasets.get(str(opts["train_name"]))
-            include_train = (
-                train_entry is not None
-                and train_entry.format == "split"
-                and train_entry.read_options.get("role") == "train"
-                and train_entry.read_options.get("test_name") == name
-            )
-            lines.append(
-                split_replay_source(
-                    source=str(opts["source"]),
-                    train_name=str(opts["train_name"]),
-                    test_name=str(opts["test_name"]),
-                    seed=int(opts["seed"]),
-                    test_fraction=float(opts["test_fraction"]),
-                    stratify_by=opts.get("stratify_by"),
-                    rid_column=str(opts["rid_column"]),
-                    membership_checksum=str(opts["membership_checksum"]),
-                    include_train=include_train,
+            role = opts.get("role")
+            # Block-owner contract: with both matching sides alive the
+            # test-role entry owns the (two-sided) block; a lone surviving
+            # test side owns a test-only block; a lone surviving train side
+            # owns a train-only block; with neither alive no block is
+            # emitted. One-sided shapes skip the overwritten side's CREATE —
+            # the derived entry emitted above owns that name, and replay
+            # must not clobber it with stale split rows.
+            if role == "test":
+                train_entry = _matching_split_sibling(datasets, opts=opts, sibling_role="train")
+                lines.append(
+                    split_replay_source(
+                        source=str(opts["source"]),
+                        train_name=str(opts["train_name"]),
+                        test_name=str(opts["test_name"]),
+                        seed=int(opts["seed"]),
+                        test_fraction=float(opts["test_fraction"]),
+                        stratify_by=opts.get("stratify_by"),
+                        rid_column=str(opts["rid_column"]),
+                        membership_checksum=str(opts["membership_checksum"]),
+                        train_membership_checksum=(
+                            str(train_entry.read_options["membership_checksum"])
+                            if train_entry is not None
+                            else None
+                        ),
+                        include_train=train_entry is not None,
+                    )
                 )
-            )
+            elif role == "train" and _matching_split_sibling(
+                datasets, opts=opts, sibling_role="test"
+            ) is None:
+                lines.append(
+                    split_replay_source(
+                        source=str(opts["source"]),
+                        train_name=str(opts["train_name"]),
+                        test_name=str(opts["test_name"]),
+                        seed=int(opts["seed"]),
+                        test_fraction=float(opts["test_fraction"]),
+                        stratify_by=opts.get("stratify_by"),
+                        rid_column=str(opts["rid_column"]),
+                        membership_checksum=None,
+                        train_membership_checksum=str(opts["membership_checksum"]),
+                        include_train=True,
+                        include_test=False,
+                    )
+                )
 
     models = _session.get_models()
     if models:
