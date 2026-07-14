@@ -702,3 +702,32 @@ def test_both_sides_replayable_overwrite_replays_transparently(
     test_x = sorted(r[0] for r in con.execute('SELECT x FROM "base_test"').fetchall())
     assert train_x == list(range(11, 20))
     assert test_x == [0, 1, 2, 3]
+
+
+def test_split_stores_membership_checksum_on_both_sides(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Per-side checksums (spec Part 4): each entry stores its OWN side's
+    digest under the same 'membership_checksum' key. A split-source drift
+    that only changes train rows is invisible to the test checksum (S16) —
+    the train side needs its own."""
+    import re
+
+    from data_analyst_mcp import session as _session
+    from data_analyst_mcp.tools.split import membership_checksum
+
+    _load_ten_rows(load_df_into_session)
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+
+    datasets = _session.get_datasets()
+    con = _session.get_connection()
+    for side in ("base_train", "base_test"):
+        stored = datasets[side].read_options["membership_checksum"]
+        assert re.fullmatch(r"[0-9a-f]+:[0-9a-f]{32}:[0-9a-f]{32}", stored)
+        actual = membership_checksum(con.execute(f'SELECT * FROM "{side}"').df())
+        assert stored == actual
+    # Different rows on each side -> different digests.
+    assert (
+        datasets["base_train"].read_options["membership_checksum"]
+        != datasets["base_test"].read_options["membership_checksum"]
+    )
