@@ -242,8 +242,14 @@ def split_dataset(payload: SplitDatasetInput) -> dict[str, Any]:
     finally:
         con.unregister(view)
 
+    # One digest per side (one extra hashing pass over the train frame):
+    # test-side drift and train-side drift are independent failure modes —
+    # a split-source change that only moves train rows passes the test
+    # checksum (spec S16), so replay asserts each side against its own.
     test_df = con.execute(f"SELECT * FROM {_quote(test_name)}").df()
-    checksum = membership_checksum(test_df)
+    test_checksum = membership_checksum(test_df)
+    train_df = con.execute(f"SELECT * FROM {_quote(train_name)}").df()
+    train_checksum = membership_checksum(train_df)
 
     common_opts: dict[str, Any] = {
         "source": payload.name,
@@ -262,8 +268,7 @@ def split_dataset(payload: SplitDatasetInput) -> dict[str, Any]:
         out_describe = con.execute(f"DESCRIBE {_quote(out_name)}").fetchall()
         out_columns = [{"name": str(r[0]), "dtype": str(r[1])} for r in out_describe]
         opts = {**common_opts, "role": role}
-        if role == "test":
-            opts["membership_checksum"] = checksum
+        opts["membership_checksum"] = test_checksum if role == "test" else train_checksum
         session.register(
             name=out_name,
             path="(split)",
@@ -273,7 +278,7 @@ def split_dataset(payload: SplitDatasetInput) -> dict[str, Any]:
             columns=out_columns,
         )
 
-    _record_split(payload, train_name, test_name, n - n_test, n_test, checksum, rid)
+    _record_split(payload, train_name, test_name, n - n_test, n_test, test_checksum, rid)
 
     return {
         "ok": True,
