@@ -165,13 +165,28 @@ def test_reregistering_same_name_gets_a_fresh_revision() -> None:
 
     session.reset()
     session.register(
-        name="a", path="(query)", read_options={"sql": "SELECT 1"}, format="derived", rows=1, columns=[]
+        name="a",
+        path="(query)",
+        read_options={"sql": "SELECT 1"},
+        format="derived",
+        rows=1,
+        columns=[],
     )
     session.register(
-        name="b", path="(query)", read_options={"sql": "SELECT 2"}, format="derived", rows=1, columns=[]
+        name="b",
+        path="(query)",
+        read_options={"sql": "SELECT 2"},
+        format="derived",
+        rows=1,
+        columns=[],
     )
     session.register(
-        name="a", path="(query)", read_options={"sql": "SELECT 1"}, format="derived", rows=1, columns=[]
+        name="a",
+        path="(query)",
+        read_options={"sql": "SELECT 1"},
+        format="derived",
+        rows=1,
+        columns=[],
     )
 
     assert session.get_datasets()["a"].revision == 2

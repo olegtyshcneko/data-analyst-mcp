@@ -1128,21 +1128,27 @@ def test_setup_cell_raises_for_model_fit_on_pure_query_overwritten_dataset(
     from data_analyst_mcp.recorder import get_recorder
 
     csv = tmp_path / "base.csv"
-    pd.DataFrame(
-        {"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}
-    ).to_csv(csv, index=False)
+    pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}).to_csv(
+        csv, index=False
+    )
 
     assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
-    assert call_tool(
-        "materialize_query", {"sql": "SELECT y, x FROM base", "name": "d"}
-    )["ok"] is True
-    assert call_tool(
-        "fit_model", {"name": "d", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
-    )["ok"] is True
-    assert call_tool(
-        "materialize_query",
-        {"sql": "SELECT y * 10 AS y, x FROM base", "name": "d", "overwrite": True},
-    )["ok"] is True
+    assert (
+        call_tool("materialize_query", {"sql": "SELECT y, x FROM base", "name": "d"})["ok"] is True
+    )
+    assert (
+        call_tool("fit_model", {"name": "d", "formula": "y ~ x", "kind": "ols", "model_name": "m"})[
+            "ok"
+        ]
+        is True
+    )
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": "SELECT y * 10 AS y, x FROM base", "name": "d", "overwrite": True},
+        )["ok"]
+        is True
+    )
 
     setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
     assert "raise AssertionError" in setup_src
@@ -1164,29 +1170,42 @@ def test_emitted_notebook_pure_query_fit_overwrite_fails_loudly_end_to_end(
     import pandas as pd
 
     csv = tmp_path / "base.csv"
-    pd.DataFrame(
-        {"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}
-    ).to_csv(csv, index=False)
+    pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}).to_csv(
+        csv, index=False
+    )
 
     assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
-    assert call_tool(
-        "materialize_query", {"sql": "SELECT y, x FROM base", "name": "d"}
-    )["ok"] is True
-    assert call_tool(
-        "fit_model", {"name": "d", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
-    )["ok"] is True
-    assert call_tool(
-        "materialize_query",
-        {"sql": "SELECT y * 10 AS y, x FROM base", "name": "d", "overwrite": True},
-    )["ok"] is True
+    assert (
+        call_tool("materialize_query", {"sql": "SELECT y, x FROM base", "name": "d"})["ok"] is True
+    )
+    assert (
+        call_tool("fit_model", {"name": "d", "formula": "y ~ x", "kind": "ols", "model_name": "m"})[
+            "ok"
+        ]
+        is True
+    )
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": "SELECT y * 10 AS y, x FROM base", "name": "d", "overwrite": True},
+        )["ok"]
+        is True
+    )
 
     nb_path = tmp_path / "s4.ipynb"
     assert call_tool("emit_notebook", {"path": str(nb_path)})["ok"] is True
 
     result = subprocess.run(
         [
-            "uv", "run", "jupyter", "nbconvert", "--to", "notebook",
-            "--execute", "--inplace", str(nb_path),
+            "uv",
+            "run",
+            "jupyter",
+            "nbconvert",
+            "--to",
+            "notebook",
+            "--execute",
+            "--inplace",
+            str(nb_path),
             "--ExecutePreprocessor.timeout=120",
         ],
         capture_output=True,
@@ -1210,22 +1229,31 @@ def test_setup_cell_raises_for_model_fit_on_base_carrying_derived_then_overwritt
     from data_analyst_mcp.recorder import get_recorder
 
     csv = tmp_path / "base.csv"
-    pd.DataFrame(
-        {"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}
-    ).to_csv(csv, index=False)
+    pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}).to_csv(
+        csv, index=False
+    )
 
     assert call_tool("load_dataset", {"path": str(csv), "name": "data"})["ok"] is True
-    assert call_tool(
-        "materialize_query",
-        {"sql": "SELECT y * 2 AS y, x FROM data", "name": "data", "overwrite": True},
-    )["ok"] is True
-    assert call_tool(
-        "fit_model", {"name": "data", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
-    )["ok"] is True
-    assert call_tool(
-        "materialize_query",
-        {"sql": "SELECT y + 1 AS y, x FROM data", "name": "data", "overwrite": True},
-    )["ok"] is True
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": "SELECT y * 2 AS y, x FROM data", "name": "data", "overwrite": True},
+        )["ok"]
+        is True
+    )
+    assert (
+        call_tool(
+            "fit_model", {"name": "data", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
+        )["ok"]
+        is True
+    )
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": "SELECT y + 1 AS y, x FROM data", "name": "data", "overwrite": True},
+        )["ok"]
+        is True
+    )
 
     setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
     assert "raise AssertionError" in setup_src
@@ -1234,9 +1262,7 @@ def test_setup_cell_raises_for_model_fit_on_base_carrying_derived_then_overwritt
     compile(setup_src, "<setup>", "exec")
 
 
-def test_setup_cell_raises_for_model_fit_on_middle_materialization(
-    call_tool, tmp_path
-) -> None:
+def test_setup_cell_raises_for_model_fit_on_middle_materialization(call_tool, tmp_path) -> None:
     """S10: fresh derived name (base_loader stays None throughout),
     materialized twice with a fit in between — the middle state is gone;
     replay must raise instead of silently re-fitting on the latest table."""
@@ -1245,21 +1271,30 @@ def test_setup_cell_raises_for_model_fit_on_middle_materialization(
     from data_analyst_mcp.recorder import get_recorder
 
     csv = tmp_path / "base.csv"
-    pd.DataFrame(
-        {"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}
-    ).to_csv(csv, index=False)
+    pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}).to_csv(
+        csv, index=False
+    )
 
     assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
-    assert call_tool(
-        "materialize_query", {"sql": "SELECT y, x FROM base WHERE x < 5", "name": "d"}
-    )["ok"] is True
-    assert call_tool(
-        "fit_model", {"name": "d", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
-    )["ok"] is True
-    assert call_tool(
-        "materialize_query",
-        {"sql": "SELECT y, x FROM base WHERE x < 4", "name": "d", "overwrite": True},
-    )["ok"] is True
+    assert (
+        call_tool("materialize_query", {"sql": "SELECT y, x FROM base WHERE x < 5", "name": "d"})[
+            "ok"
+        ]
+        is True
+    )
+    assert (
+        call_tool("fit_model", {"name": "d", "formula": "y ~ x", "kind": "ols", "model_name": "m"})[
+            "ok"
+        ]
+        is True
+    )
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": "SELECT y, x FROM base WHERE x < 4", "name": "d", "overwrite": True},
+        )["ok"]
+        is True
+    )
 
     setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
     assert "raise AssertionError" in setup_src
@@ -1281,17 +1316,26 @@ def test_setup_cell_still_refits_from_base_file_after_chained_overwrites(
     expected = hashlib.sha256(csv.read_bytes()).hexdigest()
 
     assert call_tool("load_dataset", {"path": str(csv), "name": "train"})["ok"] is True
-    assert call_tool(
-        "fit_model", {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
-    )["ok"] is True
-    assert call_tool(
-        "materialize_query",
-        {"sql": "SELECT y * 10 AS y, x FROM train", "name": "train", "overwrite": True},
-    )["ok"] is True
-    assert call_tool(
-        "materialize_query",
-        {"sql": "SELECT y + 1 AS y, x FROM train", "name": "train", "overwrite": True},
-    )["ok"] is True
+    assert (
+        call_tool(
+            "fit_model", {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
+        )["ok"]
+        is True
+    )
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": "SELECT y * 10 AS y, x FROM train", "name": "train", "overwrite": True},
+        )["ok"]
+        is True
+    )
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": "SELECT y + 1 AS y, x FROM train", "name": "train", "overwrite": True},
+        )["ok"]
+        is True
+    )
 
     setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
     assert f"expected_hash_m = '{expected}'" in setup_src
@@ -1317,13 +1361,14 @@ def test_setup_cell_raises_for_model_fit_on_split_then_resplit(
         pd.DataFrame({"x": list(range(10)), "y": [float(i % 3 + i) for i in range(10)]}),
     )
     assert call_tool("split_dataset", {"name": "base", "seed": 1})["ok"] is True
-    assert call_tool(
-        "fit_model",
-        {"name": "base_train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
-    )["ok"] is True
-    assert call_tool(
-        "split_dataset", {"name": "base", "seed": 2, "overwrite": True}
-    )["ok"] is True
+    assert (
+        call_tool(
+            "fit_model",
+            {"name": "base_train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
+        )["ok"]
+        is True
+    )
+    assert call_tool("split_dataset", {"name": "base", "seed": 2, "overwrite": True})["ok"] is True
 
     setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
     assert "raise AssertionError" in setup_src
@@ -1344,9 +1389,12 @@ def test_setup_cell_raises_for_model_fit_on_replaced_dataframe_dataset(
     load_df_into_session(
         "t", pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0]})
     )
-    assert call_tool(
-        "fit_model", {"name": "t", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
-    )["ok"] is True
+    assert (
+        call_tool("fit_model", {"name": "t", "formula": "y ~ x", "kind": "ols", "model_name": "m"})[
+            "ok"
+        ]
+        is True
+    )
     load_df_into_session(
         "t", pd.DataFrame({"y": [5.0, 4.0, 3.0, 2.0, 1.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0]})
     )
@@ -1369,13 +1417,19 @@ def test_setup_cell_raises_for_model_fit_on_dataframe_then_materialize_overwrite
     load_df_into_session(
         "t", pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0]})
     )
-    assert call_tool(
-        "fit_model", {"name": "t", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
-    )["ok"] is True
-    assert call_tool(
-        "materialize_query",
-        {"sql": "SELECT y * 10 AS y, x FROM t", "name": "t", "overwrite": True},
-    )["ok"] is True
+    assert (
+        call_tool("fit_model", {"name": "t", "formula": "y ~ x", "kind": "ols", "model_name": "m"})[
+            "ok"
+        ]
+        is True
+    )
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": "SELECT y * 10 AS y, x FROM t", "name": "t", "overwrite": True},
+        )["ok"]
+        is True
+    )
 
     setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
     assert "raise AssertionError" in setup_src
@@ -1393,17 +1447,20 @@ def test_setup_cell_raises_for_model_fit_on_derived_replaced_by_load_dataset(
     from data_analyst_mcp.recorder import get_recorder
 
     csv = tmp_path / "base.csv"
-    pd.DataFrame(
-        {"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}
-    ).to_csv(csv, index=False)
+    pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}).to_csv(
+        csv, index=False
+    )
 
     assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
-    assert call_tool(
-        "materialize_query", {"sql": "SELECT y, x FROM base", "name": "d"}
-    )["ok"] is True
-    assert call_tool(
-        "fit_model", {"name": "d", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
-    )["ok"] is True
+    assert (
+        call_tool("materialize_query", {"sql": "SELECT y, x FROM base", "name": "d"})["ok"] is True
+    )
+    assert (
+        call_tool("fit_model", {"name": "d", "formula": "y ~ x", "kind": "ols", "model_name": "m"})[
+            "ok"
+        ]
+        is True
+    )
     assert call_tool("load_dataset", {"path": str(csv), "name": "d"})["ok"] is True
 
     setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
@@ -1420,16 +1477,19 @@ def test_setup_cell_raises_for_model_fit_on_split_replaced_by_load_dataset(
     from data_analyst_mcp.recorder import get_recorder
 
     csv = tmp_path / "base.csv"
-    pd.DataFrame(
-        {"x": list(range(10)), "y": [float(i % 3 + i) for i in range(10)]}
-    ).to_csv(csv, index=False)
+    pd.DataFrame({"x": list(range(10)), "y": [float(i % 3 + i) for i in range(10)]}).to_csv(
+        csv, index=False
+    )
 
     assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
     assert call_tool("split_dataset", {"name": "base"})["ok"] is True
-    assert call_tool(
-        "fit_model",
-        {"name": "base_train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
-    )["ok"] is True
+    assert (
+        call_tool(
+            "fit_model",
+            {"name": "base_train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
+        )["ok"]
+        is True
+    )
     assert call_tool("load_dataset", {"path": str(csv), "name": "base_train"})["ok"] is True
 
     setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
@@ -1448,9 +1508,12 @@ def test_setup_cell_raises_for_model_fit_on_dataframe_replaced_by_load_dataset(
 
     df = pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0]})
     load_df_into_session("t", df)
-    assert call_tool(
-        "fit_model", {"name": "t", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
-    )["ok"] is True
+    assert (
+        call_tool("fit_model", {"name": "t", "formula": "y ~ x", "kind": "ols", "model_name": "m"})[
+            "ok"
+        ]
+        is True
+    )
 
     csv = tmp_path / "t.csv"
     df.to_csv(csv, index=False)
@@ -1461,9 +1524,7 @@ def test_setup_cell_raises_for_model_fit_on_dataframe_replaced_by_load_dataset(
     assert "Training data for 'm' changed since the session was recorded." in setup_src
 
 
-def test_setup_cell_same_loader_reload_after_fit_stays_guarded_pass(
-    call_tool, tmp_path
-) -> None:
+def test_setup_cell_same_loader_reload_after_fit_stays_guarded_pass(call_tool, tmp_path) -> None:
     """S15: reloading the same file, same read_options, same content under
     the same name is the innocent case — the normal hash-guarded re-fit
     path must survive the revision mismatch (hash AND loader identity both
@@ -1475,15 +1536,18 @@ def test_setup_cell_same_loader_reload_after_fit_stays_guarded_pass(
     from data_analyst_mcp.recorder import get_recorder
 
     csv = tmp_path / "train.csv"
-    pd.DataFrame(
-        {"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}
-    ).to_csv(csv, index=False)
+    pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}).to_csv(
+        csv, index=False
+    )
     expected = hashlib.sha256(csv.read_bytes()).hexdigest()
 
     assert call_tool("load_dataset", {"path": str(csv), "name": "train"})["ok"] is True
-    assert call_tool(
-        "fit_model", {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
-    )["ok"] is True
+    assert (
+        call_tool(
+            "fit_model", {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
+        )["ok"]
+        is True
+    )
     assert call_tool("load_dataset", {"path": str(csv), "name": "train"})["ok"] is True
 
     setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
@@ -1505,20 +1569,26 @@ def test_setup_cell_raises_for_same_bytes_reload_with_changed_read_options(
     from data_analyst_mcp.recorder import get_recorder
 
     csv = tmp_path / "train.csv"
-    pd.DataFrame(
-        {"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}
-    ).to_csv(csv, index=False)
+    pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}).to_csv(
+        csv, index=False
+    )
 
     assert call_tool("load_dataset", {"path": str(csv), "name": "train"})["ok"] is True
-    assert call_tool(
-        "fit_model", {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
-    )["ok"] is True
+    assert (
+        call_tool(
+            "fit_model", {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
+        )["ok"]
+        is True
+    )
     # Same bytes, same name — but explicit read_options change the loader
     # identity (and would change parsing for options like nullstr/header).
-    assert call_tool(
-        "load_dataset",
-        {"path": str(csv), "name": "train", "read_options": {"header": True}},
-    )["ok"] is True
+    assert (
+        call_tool(
+            "load_dataset",
+            {"path": str(csv), "name": "train", "read_options": {"header": True}},
+        )["ok"]
+        is True
+    )
 
     setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
     assert "raise AssertionError" in setup_src
@@ -1543,8 +1613,12 @@ def test_setup_cell_remote_reload_same_url_keeps_unguarded_refit(call_tool) -> N
     con.unregister("__t_df")
     cols = [{"name": "y", "dtype": "DOUBLE"}, {"name": "x", "dtype": "DOUBLE"}]
     session.register(
-        name="train", path="s3://bucket/train.csv", read_options={}, format="csv",
-        rows=5, columns=cols,
+        name="train",
+        path="s3://bucket/train.csv",
+        read_options={},
+        format="csv",
+        rows=5,
+        columns=cols,
     )
     _models.fit_model(
         _models.FitModelInput(
@@ -1554,8 +1628,12 @@ def test_setup_cell_remote_reload_same_url_keeps_unguarded_refit(call_tool) -> N
     # Simulated re-load of the same URL (a real s3 read needs network; the
     # registry state is what the recorder consumes).
     session.register(
-        name="train", path="s3://bucket/train.csv", read_options={}, format="csv",
-        rows=5, columns=cols,
+        name="train",
+        path="s3://bucket/train.csv",
+        read_options={},
+        format="csv",
+        rows=5,
+        columns=cols,
     )
 
     setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source

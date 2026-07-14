@@ -448,9 +448,10 @@ def _build_setup_source() -> str:
                         include_train=train_entry is not None,
                     )
                 )
-            elif role == "train" and _matching_split_sibling(
-                datasets, opts=opts, sibling_role="test"
-            ) is None:
+            elif (
+                role == "train"
+                and _matching_split_sibling(datasets, opts=opts, sibling_role="test") is None
+            ):
                 lines.append(
                     split_replay_source(
                         source=str(opts["source"]),
@@ -510,7 +511,11 @@ def _build_setup_source() -> str:
             overwritten_base: dict[str, Any] | None = None
             if rev != ds_entry.revision:
                 base = ds_entry.base_loader
-                if ds_entry.format == "derived" and base is not None and rev == base.get("revision"):
+                if (
+                    ds_entry.format == "derived"
+                    and base is not None
+                    and rev == base.get("revision")
+                ):
                     overwritten_base = base
                 elif ds_entry.format in ("derived", "split", "dataframe"):
                     msg = (

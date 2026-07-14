@@ -641,9 +641,7 @@ def test_plain_derived_create_not_wrapped_beside_split_overwrite(
     )
 
 
-def test_double_split_side_overwrite_raises_explained_at_replay(
-    call_tool, tmp_path: Any
-) -> None:
+def test_double_split_side_overwrite_raises_explained_at_replay(call_tool, tmp_path: Any) -> None:
     """S9 (ROADMAP gap): BOTH sides self-referentially overwritten — no split
     entry survives, so sibling inference finds nothing and replay dies with a
     raw CatalogException today. Recorded provenance must wrap both CREATEs;
@@ -657,14 +655,28 @@ def test_double_split_side_overwrite_raises_explained_at_replay(
 
     assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
     assert call_tool("split_dataset", {"name": "base"})["ok"] is True
-    assert call_tool(
-        "materialize_query",
-        {"sql": 'SELECT * FROM "base_train" WHERE x > 10', "name": "base_train", "overwrite": True},
-    )["ok"] is True
-    assert call_tool(
-        "materialize_query",
-        {"sql": 'SELECT * FROM "base_test" WHERE x > 1', "name": "base_test", "overwrite": True},
-    )["ok"] is True
+    assert (
+        call_tool(
+            "materialize_query",
+            {
+                "sql": 'SELECT * FROM "base_train" WHERE x > 10',
+                "name": "base_train",
+                "overwrite": True,
+            },
+        )["ok"]
+        is True
+    )
+    assert (
+        call_tool(
+            "materialize_query",
+            {
+                "sql": 'SELECT * FROM "base_test" WHERE x > 1',
+                "name": "base_test",
+                "overwrite": True,
+            },
+        )["ok"]
+        is True
+    )
 
     src = _setup_source(call_tool)
     # Both derived CREATEs carry the provenance wrap.
@@ -675,9 +687,7 @@ def test_double_split_side_overwrite_raises_explained_at_replay(
     assert isinstance(excinfo.value.__cause__, duckdb.CatalogException)
 
 
-def test_both_sides_replayable_overwrite_replays_transparently(
-    call_tool, tmp_path: Any
-) -> None:
+def test_both_sides_replayable_overwrite_replays_transparently(call_tool, tmp_path: Any) -> None:
     """S14 pin (success case): both sides overwritten with SQL that reads
     only from the source table. The wraps must be transparent — replay
     succeeds and both tables hold the overwrite results."""
@@ -688,14 +698,20 @@ def test_both_sides_replayable_overwrite_replays_transparently(
 
     assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
     assert call_tool("split_dataset", {"name": "base"})["ok"] is True
-    assert call_tool(
-        "materialize_query",
-        {"sql": 'SELECT * FROM "base" WHERE x > 10', "name": "base_train", "overwrite": True},
-    )["ok"] is True
-    assert call_tool(
-        "materialize_query",
-        {"sql": 'SELECT * FROM "base" WHERE x <= 3', "name": "base_test", "overwrite": True},
-    )["ok"] is True
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": 'SELECT * FROM "base" WHERE x > 10', "name": "base_train", "overwrite": True},
+        )["ok"]
+        is True
+    )
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": 'SELECT * FROM "base" WHERE x <= 3', "name": "base_test", "overwrite": True},
+        )["ok"]
+        is True
+    )
 
     src = _setup_source(call_tool)
     ns: dict[str, Any] = {}
@@ -753,7 +769,7 @@ def test_split_replay_source_emits_per_side_checksum_asserts() -> None:
     assert "'aa'" in snippet
     assert "'bb'" in snippet
     assert snippet.count("drifted at replay") == 2
-    assert "SELECT * FROM \"base_train\"" in snippet
+    assert 'SELECT * FROM "base_train"' in snippet
 
 
 def test_split_replay_source_train_only_block() -> None:
@@ -820,9 +836,7 @@ def test_split_replay_snippet_train_only_drift_fails_train_checksum(
         stratify_by=None,
         rid_column=str(test_opts["rid_column"]),
         membership_checksum=str(test_opts["membership_checksum"]),
-        train_membership_checksum=str(
-            datasets["base_train"].read_options["membership_checksum"]
-        ),
+        train_membership_checksum=str(datasets["base_train"].read_options["membership_checksum"]),
     )
 
     # Membership is positional: find a position the seed sends to TRAIN and
@@ -919,37 +933,39 @@ def test_split_setup_cell_stratified_replays_in_both_asymmetric_directions(
     import pandas as pd
 
     csv = tmp_path / "strat.csv"
-    pd.DataFrame(
-        {"g": ["a", "b"] * 10, "x": list(range(20))}
-    ).to_csv(csv, index=False)
+    pd.DataFrame({"g": ["a", "b"] * 10, "x": list(range(20))}).to_csv(csv, index=False)
 
     # Direction 1: overwrite the TRAIN side.
     assert call_tool("load_dataset", {"path": str(csv), "name": "s1"})["ok"] is True
     assert call_tool("split_dataset", {"name": "s1", "stratify_by": "g"})["ok"] is True
-    assert call_tool(
-        "materialize_query",
-        {"sql": 'SELECT * FROM "s1" WHERE x > 15', "name": "s1_train", "overwrite": True},
-    )["ok"] is True
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": 'SELECT * FROM "s1" WHERE x > 15', "name": "s1_train", "overwrite": True},
+        )["ok"]
+        is True
+    )
     # Direction 2: overwrite the TEST side.
     assert call_tool("load_dataset", {"path": str(csv), "name": "s2"})["ok"] is True
     assert call_tool("split_dataset", {"name": "s2", "stratify_by": "g"})["ok"] is True
-    assert call_tool(
-        "materialize_query",
-        {"sql": 'SELECT * FROM "s2" WHERE x <= 3', "name": "s2_test", "overwrite": True},
-    )["ok"] is True
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": 'SELECT * FROM "s2" WHERE x <= 3', "name": "s2_test", "overwrite": True},
+        )["ok"]
+        is True
+    )
 
     src = _setup_source(call_tool)
     ns: dict[str, Any] = {}
     exec(src, ns)  # both asymmetric stratified blocks under test
     con = ns["con"]
     assert con.execute('SELECT COUNT(*) FROM "s1_test"').fetchone()[0] > 0
-    assert sorted(
-        r[0] for r in con.execute('SELECT x FROM "s1_train"').fetchall()
-    ) == list(range(16, 20))
+    assert sorted(r[0] for r in con.execute('SELECT x FROM "s1_train"').fetchall()) == list(
+        range(16, 20)
+    )
     assert con.execute('SELECT COUNT(*) FROM "s2_train"').fetchone()[0] > 0
-    assert sorted(
-        r[0] for r in con.execute('SELECT x FROM "s2_test"').fetchall()
-    ) == [0, 1, 2, 3]
+    assert sorted(r[0] for r in con.execute('SELECT x FROM "s2_test"').fetchall()) == [0, 1, 2, 3]
 
 
 def test_split_block_not_claimed_by_unrelated_split_reusing_a_name(
@@ -966,10 +982,13 @@ def test_split_block_not_claimed_by_unrelated_split_reusing_a_name(
     # Re-split ANOTHER source, reusing the original test name for its test
     # side. base_train's recorded sibling name now belongs to a different
     # pair (train_name='o_tr', not 'base_train').
-    assert call_tool(
-        "split_dataset",
-        {"name": "other", "train_name": "o_tr", "test_name": "base_test", "overwrite": True},
-    )["ok"] is True
+    assert (
+        call_tool(
+            "split_dataset",
+            {"name": "other", "train_name": "o_tr", "test_name": "base_test", "overwrite": True},
+        )["ok"]
+        is True
+    )
 
     src = _setup_source(call_tool)
     # The original train side still gets recreated (train-only block).
@@ -993,18 +1012,25 @@ def test_setup_cell_second_pass_orders_by_revision_for_reused_names(
 
     assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
     # Pre-register the future test name at an EARLY dict position.
-    assert call_tool(
-        "materialize_query", {"sql": 'SELECT * FROM "base"', "name": "t_test"}
-    )["ok"] is True
-    assert call_tool(
-        "split_dataset",
-        {"name": "base", "train_name": "t_train", "test_name": "t_test", "overwrite": True},
-    )["ok"] is True
+    assert (
+        call_tool("materialize_query", {"sql": 'SELECT * FROM "base"', "name": "t_test"})["ok"]
+        is True
+    )
+    assert (
+        call_tool(
+            "split_dataset",
+            {"name": "base", "train_name": "t_train", "test_name": "t_test", "overwrite": True},
+        )["ok"]
+        is True
+    )
     # Overwrite the test side with SQL that reads the surviving train side.
-    assert call_tool(
-        "materialize_query",
-        {"sql": 'SELECT * FROM "t_train" WHERE x > 10', "name": "t_test", "overwrite": True},
-    )["ok"] is True
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": 'SELECT * FROM "t_train" WHERE x > 10', "name": "t_test", "overwrite": True},
+        )["ok"]
+        is True
+    )
 
     src = _setup_source(call_tool)
     # The train-only block must precede the derived CREATE that reads it.

@@ -278,7 +278,9 @@ def split_dataset(payload: SplitDatasetInput) -> dict[str, Any]:
             columns=out_columns,
         )
 
-    _record_split(payload, train_name, test_name, n - n_test, n_test, test_checksum, train_checksum, rid)
+    _record_split(
+        payload, train_name, test_name, n - n_test, n_test, test_checksum, train_checksum, rid
+    )
 
     return {
         "ok": True,
