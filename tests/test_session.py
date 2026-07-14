@@ -192,3 +192,22 @@ def test_reset_restarts_the_revision_counter() -> None:
         name="z", path="(dataframe)", read_options={}, format="dataframe", rows=1, columns=[]
     )
     assert session.get_datasets()["z"].revision == 0
+
+
+def test_register_copies_split_overwrite_defensively() -> None:
+    from data_analyst_mcp import session
+
+    session.reset()
+    provenance = {"side": "train", "source": "base"}
+    session.register(
+        name="d",
+        path="(query)",
+        read_options={"sql": "SELECT 1"},
+        format="derived",
+        rows=1,
+        columns=[],
+        split_overwrite=provenance,
+    )
+    provenance["side"] = "mutated"
+
+    assert session.get_datasets()["d"].split_overwrite == {"side": "train", "source": "base"}

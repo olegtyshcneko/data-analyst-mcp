@@ -588,3 +588,79 @@ def test_overwrite_base_loader_records_original_file_revision(call_tool, tmp_pat
     base = _session.get_datasets()["data"].base_loader
     assert base is not None
     assert base["revision"] == r0
+
+
+def test_overwrite_of_split_entry_records_split_provenance(
+    call_tool, load_df_into_session
+) -> None:
+    """Overwriting a split side must record {side, source} on the derived
+    entry itself — the recorder's wrap must not depend on a surviving
+    sibling (the double-overwrite case has none)."""
+    import pandas as pd
+
+    from data_analyst_mcp import session as _session
+
+    load_df_into_session("base", pd.DataFrame({"x": list(range(10))}))
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+
+    assert call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base" WHERE x > 5', "name": "base_train", "overwrite": True},
+    )["ok"] is True
+    assert _session.get_datasets()["base_train"].split_overwrite == {
+        "side": "train",
+        "source": "base",
+    }
+
+    assert call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base" WHERE x <= 2', "name": "base_test", "overwrite": True},
+    )["ok"] is True
+    assert _session.get_datasets()["base_test"].split_overwrite == {
+        "side": "test",
+        "source": "base",
+    }
+
+
+def test_chained_overwrite_carries_split_provenance_forward(
+    call_tool, load_df_into_session
+) -> None:
+    import pandas as pd
+
+    from data_analyst_mcp import session as _session
+
+    load_df_into_session("base", pd.DataFrame({"x": list(range(10))}))
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base" WHERE x > 5', "name": "base_train", "overwrite": True},
+    )["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base" WHERE x > 6', "name": "base_train", "overwrite": True},
+    )["ok"] is True
+
+    assert _session.get_datasets()["base_train"].split_overwrite == {
+        "side": "train",
+        "source": "base",
+    }
+
+
+def test_plain_overwrites_leave_split_provenance_none(call_tool, tmp_path) -> None:
+    import pandas as pd
+
+    from data_analyst_mcp import session as _session
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame({"a": [1, 2, 3]}).to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "data"})["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": "SELECT a * 10 AS a FROM data", "name": "data", "overwrite": True},
+    )["ok"] is True
+    assert _session.get_datasets()["data"].split_overwrite is None
+    assert call_tool(
+        "materialize_query",
+        {"sql": "SELECT a + 1 AS a FROM data", "name": "data", "overwrite": True},
+    )["ok"] is True
+    assert _session.get_datasets()["data"].split_overwrite is None
