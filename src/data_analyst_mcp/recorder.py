@@ -147,25 +147,31 @@ def split_replay_source(
     test_fraction: float,
     stratify_by: str | None,
     rid_column: str,
-    membership_checksum: str,
+    membership_checksum: str | None,
+    train_membership_checksum: str | None = None,
     include_train: bool = True,
+    include_test: bool = True,
 ) -> str:
     """Self-contained notebook snippet that recreates a train/test split.
 
     Rebuilds membership with the same ``RandomState`` algorithm the live
-    tool used, recreates both tables, then asserts the order-independent
-    membership checksum of the recreated test table. For file-backed
-    sources the source hash assert upstream makes this deterministic; for
-    derived sources whose SQL is not order-preserving, row-order drift
-    fails loudly here instead of silently changing the split (spec §5.6b
-    row-order tiers).
+    tool used, recreates each included side, then asserts every recreated
+    table against its OWN order-independent membership checksum
+    (``membership_checksum`` is the test-side value,
+    ``train_membership_checksum`` the train-side one). Per-side asserts are
+    the point: a source drift that only changes train rows passes the test
+    checksum, so the test-side digest alone cannot guard the train table.
+    For file-backed sources the upstream source-hash assert makes replay
+    deterministic; for derived sources whose SQL is not order-preserving,
+    row-order drift fails loudly here instead of silently changing the
+    split (spec §5.6b row-order tiers).
 
-    ``include_train`` (setup-cell only): when the train side was later
-    overwritten by ``materialize_query`` its split recipe is gone, so the
-    train ``CREATE`` is skipped — re-creating it here would clobber the
-    derived table the second pass already built. The per-call cell keeps
-    the default (both sides are fresh at call time); the test ``CREATE`` and
-    the membership checksum assert are always emitted.
+    ``include_train`` / ``include_test`` (setup-cell only): a side that was
+    later overwritten by ``materialize_query`` lost its split recipe, so its
+    ``CREATE`` (and assert) is skipped — re-creating it here would clobber
+    the derived table the second pass builds. The per-call cell keeps both
+    defaults (both sides are fresh at call time). Callers never pass both
+    flags false.
     """
     src_q = '"' + source.replace('"', '""') + '"'
     train_q = '"' + train_name.replace('"', '""') + '"'
@@ -183,7 +189,6 @@ def split_replay_source(
     )
     train_stmt = f"CREATE OR REPLACE TABLE {train_q} AS {base} WHERE NOT a.is_test"
     test_stmt = f"CREATE OR REPLACE TABLE {test_q} AS {base} WHERE a.is_test"
-    message = f"Split membership for {test_name!r} drifted at replay (source row order changed)."
     exec_lines = [
         "_split_assign = pd.DataFrame({'rid': np.arange(len(_split_is_test), "
         "dtype=np.int64), 'is_test': _split_is_test})",
@@ -191,15 +196,26 @@ def split_replay_source(
     ]
     if include_train:
         exec_lines.append(f"con.execute({train_stmt!r})")
-    exec_lines.extend(
-        [
-            f"con.execute({test_stmt!r})",
-            "con.unregister('__data_analyst_split_assign')",
-            _SPLIT_CHECKSUM_DEF,
+    if include_test:
+        exec_lines.append(f"con.execute({test_stmt!r})")
+    exec_lines.append("con.unregister('__data_analyst_split_assign')")
+    exec_lines.append(_SPLIT_CHECKSUM_DEF)
+    if include_test:
+        message = (
+            f"Split membership for {test_name!r} drifted at replay (source row order changed)."
+        )
+        exec_lines.append(
             f"assert _split_checksum(con.sql('SELECT * FROM {test_q}').df()) == "
-            f"{membership_checksum!r}, {message!r}",
-        ]
-    )
+            f"{membership_checksum!r}, {message!r}"
+        )
+    if include_train and train_membership_checksum is not None:
+        train_message = (
+            f"Split membership for {train_name!r} drifted at replay (source row order changed)."
+        )
+        exec_lines.append(
+            f"assert _split_checksum(con.sql('SELECT * FROM {train_q}').df()) == "
+            f"{train_membership_checksum!r}, {train_message!r}"
+        )
     lines.extend(exec_lines)
     return "\n".join(lines)
 

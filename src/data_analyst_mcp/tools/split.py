@@ -278,7 +278,7 @@ def split_dataset(payload: SplitDatasetInput) -> dict[str, Any]:
             columns=out_columns,
         )
 
-    _record_split(payload, train_name, test_name, n - n_test, n_test, test_checksum, rid)
+    _record_split(payload, train_name, test_name, n - n_test, n_test, test_checksum, train_checksum, rid)
 
     return {
         "ok": True,
@@ -325,6 +325,7 @@ def _record_split(
     n_train: int,
     n_test: int,
     checksum: str,
+    train_checksum: str,
     rid: str,
 ) -> None:
     """Append the markdown + code cell pair for a successful split.
@@ -347,5 +348,6 @@ def _record_split(
         stratify_by=payload.stratify_by,
         rid_column=rid,
         membership_checksum=checksum,
+        train_membership_checksum=train_checksum,
     )
     get_recorder().record(markdown=md, code=code, tool_name="split_dataset")

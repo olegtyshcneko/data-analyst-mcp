@@ -381,6 +381,9 @@ def test_split_replay_snippet_executes_and_reproduces_membership(
         stratify_by=None,
         rid_column=entry.read_options["rid_column"],
         membership_checksum=entry.read_options["membership_checksum"],
+        train_membership_checksum=_session.get_datasets()["base_train"].read_options[
+            "membership_checksum"
+        ],
     )
     con = duckdb.connect()
     con.register("__base_src", pd.DataFrame({"x": list(range(10))}))
