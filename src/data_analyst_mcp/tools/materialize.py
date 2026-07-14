@@ -125,6 +125,20 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
         elif existing.format == "derived":
             base_loader = existing.base_loader
 
+    # Record split-overwrite provenance on the entry itself: the recorder's
+    # replay wrap must work even when the sibling split entry is gone too
+    # (double overwrite), so sibling inference is not enough. Chained derived
+    # overwrites carry the original provenance forward.
+    split_overwrite: dict[str, Any] | None = None
+    if existing is not None:
+        if existing.format == "split":
+            split_overwrite = {
+                "side": str(existing.read_options["role"]),
+                "source": str(existing.read_options["source"]),
+            }
+        elif existing.format == "derived":
+            split_overwrite = existing.split_overwrite
+
     session.register(
         name=payload.name,
         path="(query)",
@@ -133,6 +147,7 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
         rows=rows,
         columns=columns,
         base_loader=base_loader,
+        split_overwrite=split_overwrite,
     )
 
     md = f"### Materialize query as dataset `{payload.name}`\n\n```sql\n{payload.sql}\n```"

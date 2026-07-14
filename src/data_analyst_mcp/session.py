@@ -31,6 +31,14 @@ class DatasetEntry:
     # base table before the derived SQL — which often self-references the same
     # name (transform-in-place) — runs at notebook-replay time.
     base_loader: dict[str, Any] | None = None
+    # When a derived (materialize_query) entry overwrote one side of a split,
+    # {"side": "train"|"test", "source": <split source name>} recorded at
+    # overwrite time and carried across chained derived overwrites. The
+    # recorder wraps this entry's CREATE so an unreplayable self-referential
+    # recipe fails with an explanation instead of a raw CatalogException —
+    # detection must not depend on a surviving sibling (a double overwrite
+    # has none).
+    split_overwrite: dict[str, Any] | None = None
     # Content hash of the source file at registration time (the recorder's
     # drift-guard anchor). ``sentinel:``-prefixed when there is no
     # verifiable file. Default covers direct constructions in tests.
@@ -144,6 +152,7 @@ def register(
     rows: int,
     columns: list[dict[str, str]],
     base_loader: dict[str, Any] | None = None,
+    split_overwrite: dict[str, Any] | None = None,
 ) -> None:
     """Insert (or replace) a dataset entry under ``name``."""
     global _revision_counter
@@ -154,6 +163,7 @@ def register(
         rows=rows,
         columns=list(columns),
         base_loader=dict(base_loader) if base_loader is not None else None,
+        split_overwrite=dict(split_overwrite) if split_overwrite is not None else None,
         source_hash=compute_source_hash(path),
         revision=_revision_counter,
     )
