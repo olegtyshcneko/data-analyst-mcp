@@ -2,7 +2,7 @@
 
 The v1.x tool surface is **24 tools** — this is the v2 boundary. v1 closed at 11 (spec §5); `adjust_pvalues` (Phase 1), `analyze_missingness` (Phase 3, descriptive + Phase 4 Little's MCAR), and the model registry trio (Phase 5: `list_models`, `predict`, `evaluate_model`, plus the additive `fit_model(model_name=...)` storage path) shipped as waivered additions. The tier-1 bundle (`materialize_query`, `find_outliers`, `power_analysis`, `regression_line`, `residual_diagnostic`) brought the count from 16 → 21. `pairwise_comparisons` then shipped 21 → 22 as the first tool to run the full proposal flow end to end — issue → `docs/proposals/` draft → design conversation → fold into SPEC §5.9a. The model-workflow bundle (`split_dataset`, `cross_validate`) shipped 22 → 24 via `docs/proposals/2026-07-08-model-workflow-bundle.md`. Everything below is parked. New tools go through an issue and a design conversation first — see `README.md` "Contributing".
 
-**Reproducibility caveat (Phase 5).** Statsmodels Results objects are not reliably picklable across kernel boundaries, so the model registry holds them in-process only. The emitted notebook works around this by re-fitting every registered model in its setup cell, guarded by a hard SHA-256 assert on the training file (captured at `load_dataset` time — every file-backed dataset reload now carries its own assert too; above the 100 MB ceiling we fall back to `(path, mtime, size)` and accept the weaker guarantee). If the training CSV is edited between session and notebook replay, the setup cell raises `AssertionError` rather than silently producing different numbers.
+**Reproducibility caveat (Phase 5).** Statsmodels Results objects are not reliably picklable across kernel boundaries, so the model registry holds them in-process only. The emitted notebook works around this by re-fitting every registered model in its setup cell, guarded by a hard SHA-256 assert on the training file (captured at `load_dataset` time — every file-backed dataset reload now carries its own assert too; above the 100 MB ceiling we fall back to `(path, mtime, size)` and accept the weaker guarantee). If the training CSV is edited between session and notebook replay, the setup cell raises `AssertionError` rather than silently producing different numbers. Since 1.4.0 the guard also carries the training dataset's registration revision and fit-time loader identity, so *any* replacement of the training dataset (re-materialize, re-load, re-split — even with an identical content hash) fails replay loudly instead of silently re-fitting.
 
 No active proposals (the tier-1 bundle closed the current cohort; see `docs/proposals/README.md`).
 
@@ -24,8 +24,21 @@ No active proposals (the tier-1 bundle closed the current cohort; see `docs/prop
 
 - **`load_session_from_notebook`.** The inverse of `emit_notebook` — read a previously-emitted `.ipynb` and rehydrate the dataset registry from the setup cell. Useful for "pick up where I left off."
 - **Notebook diff.** `compare_notebooks(a, b)` — compares two emitted sessions, highlights numeric drift.
-- **Pure-query fit-then-overwrite guard gap.** A model fit on a pure-query derived dataset (no carryable file loader) that is *later* overwritten by another `materialize_query` keeps the identical `sentinel:no-file:(query)` source hash across both states, so the setup cell's fit-then-overwrite guards cannot tell them apart and the model silently re-fits on the recreated post-transform table. Split-format `(split)` and dataframe `(dataframe)` sentinels are distinct, so those cases correctly raise (shipped in 1.3.0); closing the pure-query case needs a per-materialization discriminator in the sentinel, not just the format tag.
-- **Double split-side overwrite replay message.** The 1.3.1 friendly replay failure (chained `AssertionError` naming dataset, side, and split source when a self-referential `materialize_query` overwrote one side of a split) keys its detection off the *surviving* sibling split entry. If **both** sides are self-referentially overwritten, no split entry survives in the registry, detection returns nothing, and replay fails with the raw `duckdb.CatalogException` instead — still loud, never silent, just unexplained. Closing it needs overwrite provenance recorded on the derived entry itself at `materialize_query` time rather than inferred from the sibling.
+- **Plain-derived self-referential overwrite replay message (S4b).** A
+  `materialize_query` overwrite of a *plain* derived dataset whose final
+  recipe self-/cross-references tables nothing recreates still fails replay
+  with a raw `duckdb.CatalogException` — loud, never silent, just
+  unexplained. Split-side overwrites got recorded provenance + a wrapped
+  explanation in 1.4.0; wrapping *every* derived CREATE would churn emitted
+  notebook shape and pinned tests for marginal benefit, so the plain case is
+  parked.
+- **Ephemeral-fit replay provenance.** `cross_validate` and
+  `fit_model(model_name=None)` re-fit inside their *per-call* cells with no
+  fit-time revision/hash guard (the setup-cell guards only cover registered
+  models). A training source mutated *and reloaded* between the call and
+  replay re-runs those cells on the new data and silently reports different
+  CV/fit numbers. Separate failure class from the 1.4.0 setup-cell work:
+  closing it means stamping fit-time provenance into per-call cells.
 
 ## Polish / DX
 

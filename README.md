@@ -381,8 +381,8 @@ It recomputes the omnibus inline and caveats the interpretation when the family 
 optionally stratified partition registered as two first-class datasets.
 The same seed always produces the same split — membership comes from
 `np.random.RandomState`, not DuckDB sampling — and the emitted notebook
-recreates it behind an order-independent membership checksum, so silent
-drift is impossible.
+recreates each side behind its own order-independent membership checksum, so
+silent drift is impossible on either side.
 
 ```python
 split_dataset(name="titanic", seed=7)          # → titanic_train / titanic_test
@@ -451,14 +451,14 @@ Single process, single DuckDB connection, single recorder. No network calls. No 
 - **Logistic regression with (quasi-)perfectly-separating predictors** returns a structured `error.type = "perfect_separation"` instead of a fit: the maximum-likelihood estimates diverge, so no coefficients/diagnostics are produced and the model is not registered even if `model_name` was supplied. Perfect collinearity in the design is reported as `formula_error`; a non-converged logit without the divergence signature returns `convergence_failed`.
 - **Boolean response columns in `fit_model`.** Pandas' nullable `BooleanDtype` is coerced to `{0, 1}` numeric before being handed to statsmodels' `Logit`; plain Python booleans work too. Mixed `True` / `"yes"` strings are not.
 - **Datasets are in-process state.** Restarting Claude Desktop drops the registry. Re-`load_dataset` after a restart, or run the emitted notebook to rehydrate.
-- **Emitted notebooks are drift-guarded.** The setup cell asserts a SHA-256 provenance hash for every file-backed dataset (and for base files behind `materialize_query` overwrites) before reloading it. If a source file changed since the session, replay fails with a loud `AssertionError` instead of silently recomputing different numbers. Files over 100 MB use a weaker `(path, mtime, size)` check; s3/http sources reload unguarded (a comment in the cell says so). Models registered before a `materialize_query` overwrite of their training dataset re-fit from the original file (guarded by the fit-time hash), not the post-transform table.
+- **Emitted notebooks are drift-guarded.** The setup cell asserts a SHA-256 provenance hash for every file-backed dataset (and for base files behind `materialize_query` overwrites) before reloading it. If a source file changed since the session, replay fails with a loud `AssertionError` instead of silently recomputing different numbers. Files over 100 MB use a weaker `(path, mtime, size)` check; s3/http sources reload unguarded (a comment in the cell says so). Models re-fit from the original file only when they were fit *on* the file-backed state (identified by registration revision); a model fit on any table state that no longer exists at replay — re-materialized, re-loaded, or re-split, even with identical bytes — fails the setup cell with a loud `AssertionError` instead of silently re-fitting.
 - **Stdio only in v1.** No SSE, no HTTP. If you want to share one server across multiple clients, that's on the roadmap.
 
 ## Development
 
 ```bash
 uv sync --dev                    # install runtime + dev deps
-uv run pytest tests/             # 528 unit tests
+uv run pytest tests/             # 570 unit tests
 uv run pytest evals/             # 54 integration evals via mcp.client.stdio (~30s)
 uv run ruff format --check .     # formatter gate
 uv run ruff check .              # linter gate

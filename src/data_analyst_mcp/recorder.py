@@ -306,14 +306,19 @@ def _build_setup_source() -> str:
 
       1. Materialize a ``<name>_df`` DataFrame for every reloadable dataset
          (predict / evaluate recorder cells reference this name).
-      2. For each model, emit a SHA-256 assert against the training file
-         and a ``smf.<kind>(...).fit(disp=False)`` rehydration line. The
-         hash assert is *hard*: silent drift between training data and
-         replay is worse than a loud AssertionError.
-         If the model's training dataset was later overwritten by
-         ``materialize_query``, the guard and the re-fit both target the
-         carried base loader (original file) instead of the post-transform
-         table.
+      2. For each model, dispatch on the current training entry's
+         registration ``revision``. A ``smf.<kind>(...).fit(disp=False)``
+         rehydration line (behind a SHA-256 assert against the training
+         file) is emitted only when the entry is provably the same table
+         state the model was fit on: the fit-time revision matches (normal
+         path), or the carried base loader's revision matches (guarded
+         re-fit from the original file after a ``materialize_query``
+         overwrite), or the entry is a provably-identical file reload (equal
+         content hash *and* identical loader identity). Every other
+         replacement — re-materialize, re-load, or re-split, even with
+         identical bytes — emits a loud ``raise AssertionError`` line
+         instead: silent drift between training data and replay is worse
+         than a hard failure.
 
     Datasets with a sentinel hash (in-memory / unstattable path) skip the
     hash assert and emit a comment instead — there's no file to verify.

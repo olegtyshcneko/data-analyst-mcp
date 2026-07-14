@@ -5,6 +5,58 @@ All notable changes to **data-analyst-mcp** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-07-14
+
+Replay-guard hardening: registration revisions + fit-time loader identity +
+recorded split-overwrite provenance + symmetric per-side split replay. Every
+known way to make an emitted notebook silently re-fit a model on the wrong
+table now fails loudly, and the known loud-but-unexplained split failure now
+explains itself. Tool surface unchanged (24).
+
+### Fixed
+- A model fit on a pure-query derived dataset later overwritten by
+  `materialize_query` silently re-fit on the post-transform table at replay
+  (constant `(query)` sentinel hashes were indistinguishable). Replay now
+  raises a purpose-written `AssertionError`. Same fix covers: fit on the
+  middle materialization of an overwrite chain, fit on a base-carrying
+  derived state then overwritten again, split-over-split under the same
+  names, `load_dataset` over a derived/split/dataframe name after a fit,
+  and same-name reloads with changed content or changed `read_options`
+  (identical bytes re-parsed differently are now caught by fit-time loader
+  identity — a content hash alone cannot see loading semantics).
+- Overwriting **both** sides of a split with recipes that read the missing
+  pre-overwrite split tables failed replay with a raw
+  `duckdb.CatalogException`. Split-overwrite provenance is now recorded on
+  the derived entry at `materialize_query` time (no sibling inference), so
+  both CREATEs carry the 1.3.1-style explained `AssertionError`.
+- Overwriting the **test** side of a split left the surviving train table
+  without any recreation at replay (raw `CatalogException` downstream). The
+  surviving train entry now emits a train-only split block guarded by its
+  own membership checksum.
+- A split-source drift that changed only train-side rows passed the
+  test-side membership checksum and replayed silently drifted numbers. Both
+  sides now store and assert their own checksum.
+- The setup cell's second pass emitted in dict insertion order, which is
+  wrong for overwrites (a re-assigned name keeps its old position): with
+  pre-registered output names + `split_dataset(overwrite=True)` a derived
+  CREATE could emit before the split block it reads from. The second pass
+  now emits in registration-revision order.
+
+### Changed
+- `DatasetEntry` gains `revision` (monotonic per-session registration
+  counter) and `split_overwrite` (recorded overwrite provenance);
+  `ModelEntry` gains `training_dataset_revision` and `training_loader`
+  (fit-time `{path, format, read_options}`); `base_loader` records the
+  replaced file entry's revision. Registry metadata only — no tool-response
+  changes.
+- Emitted notebooks: split blocks now assert a per-side membership checksum
+  (train and test), and one-sided blocks exist for a surviving train side.
+- Deliberate conservatism: re-running a byte-identical recipe (or
+  re-splitting with the same seed) over an unchanged source still *replaces*
+  the dataset, so a model fit before the replacement now fails replay loudly
+  even though a faithful re-fit might have been possible. Determinism of the
+  recipe is not verifiable; loud beats silently-maybe-right.
+
 ## [1.3.1] - 2026-07-08
 
 ### Fixed
@@ -240,6 +292,7 @@ with **16 tools** over a DuckDB session.
   violin/heatmap), `emit_notebook` — every tool call records a markdown+code
   cell pair so a session replays as an executable Jupyter notebook.
 
+[1.4.0]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.4.0
 [1.3.1]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.3.1
 [1.3.0]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.3.0
 [1.2.1]: https://github.com/olegtyshcneko/data-analyst-mcp/releases/tag/v1.2.1

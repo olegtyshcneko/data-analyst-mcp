@@ -38,8 +38,9 @@ them as a separate step.
 | `eval_diagnostic_plots.py` | 2 | `regression_line` + `residual_diagnostic` return valid PNGs for an OLS model and reject non-OLS with `regression_diagnostics_ols_only` |
 | `eval_pairwise.py` | 4 | `pairwise_comparisons` auto-picks Dunn on skewed CRM amounts, explicit Tukey recovers a planted mean shift, `method='tukey'`+`p_adjust` returns the `p_adjust_not_applicable` error envelope, and the recorded Dunn notebook round-trips through `nbconvert` |
 | `eval_full_workflow.py` | 4 | six-step recorded session → emit → `jupyter nbconvert --execute` exit 0; emitted setup-cell contents; session-reset isolation; determinism across two runs |
+| `eval_split_cv.py` | 3 | split → fit → evaluate → cross_validate emitted-notebook round-trip via nbconvert: clean session exits 0, mutated source CSV fails loudly |
 
-Total: 51 evals.
+Total: 54 evals.
 
 ## Conventions
 
