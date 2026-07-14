@@ -280,3 +280,54 @@ def test_fit_model_records_load_time_hash_not_fit_time(call_tool, tmp_path) -> N
     assert r["ok"], r
 
     assert session.get_models()["m"].training_dataset_hash == load_time_hash
+
+
+def test_fit_model_stamps_training_revision_and_loader(call_tool, tmp_path) -> None:
+    """fit_model must capture the training dataset's registration revision
+    and its fit-time loader identity {path, format, read_options} — the
+    recorder's replacement and same-semantics-reload guards read both."""
+    from data_analyst_mcp import session
+
+    csv = tmp_path / "train.csv"
+    csv.write_text("y,x\n1.0,0.0\n2.0,1.0\n3.0,2.0\n4.0,3.0\n5.0,4.0\n")
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "train"})
+    assert r["ok"], r
+    r = call_tool(
+        "fit_model",
+        {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
+    )
+    assert r["ok"], r
+
+    entry = session.get_datasets()["train"]
+    model = session.get_model("m")
+    assert model is not None
+    assert model.training_dataset_revision == entry.revision
+    assert model.training_loader == {
+        "path": str(csv),
+        "format": "csv",
+        "read_options": {},
+    }
+
+
+def test_register_model_defaults_for_direct_constructions() -> None:
+    """Direct register_model calls (tests, hypothetical bypass paths) get
+    sentinel defaults: revision -1 (matches no real registration) and no
+    loader."""
+    from data_analyst_mcp import session
+
+    session.reset()
+    session.register_model(
+        name="m1",
+        kind="ols",
+        formula="y ~ x",
+        fitted_on_dataset="ds",
+        n_obs=10,
+        training_dataset_hash="h",
+        result=object(),
+    )
+
+    entry = session.get_model("m1")
+    assert entry is not None
+    assert entry.training_dataset_revision == -1
+    assert entry.training_loader is None
