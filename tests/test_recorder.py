@@ -928,6 +928,7 @@ def test_setup_cell_sentinel_base_after_overwrite_refits_unguarded(tmp_path) -> 
             "format": entry.format,
             "read_options": dict(entry.read_options),
             "source_hash": entry.source_hash,
+            "revision": entry.revision,
         },
     )
     con.execute("CREATE OR REPLACE TABLE train AS SELECT y * 10 AS y, x FROM train")
@@ -1111,4 +1112,190 @@ def test_setup_cell_train_frame_never_clobbers_dataset_scoring_frame(call_tool, 
     assert "data=_m_train_df" in setup_src
     # The scoring frame is assigned exactly once — never reassigned.
     assert setup_src.count('m_train_df = con.sql("SELECT * FROM m_train").df()') == 1
+    compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_raises_for_model_fit_on_pure_query_overwritten_dataset(
+    call_tool, tmp_path
+) -> None:
+    """S4 (ROADMAP gap): a model fit on a pure-query derived dataset that is
+    later overwritten shares the constant '(query)' sentinel hash with the
+    replacement, so hash comparison cannot see the overwrite. The revision
+    can: the setup cell must emit a loud raise, never a silent re-fit on the
+    post-transform table."""
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame(
+        {"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}
+    ).to_csv(csv, index=False)
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
+    assert call_tool(
+        "materialize_query", {"sql": "SELECT y, x FROM base", "name": "d"}
+    )["ok"] is True
+    assert call_tool(
+        "fit_model", {"name": "d", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
+    )["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": "SELECT y * 10 AS y, x FROM base", "name": "d", "overwrite": True},
+    )["ok"] is True
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert "raise AssertionError" in setup_src
+    assert "'m'" in setup_src
+    assert "'d'" in setup_src
+    assert "was later replaced" in setup_src
+    compile(setup_src, "<setup>", "exec")
+
+
+def test_emitted_notebook_pure_query_fit_overwrite_fails_loudly_end_to_end(
+    tmp_path, call_tool
+) -> None:
+    """S4 end-to-end: emit the fit-then-overwrite pure-query session and run
+    it via nbconvert — replay must fail with the explanatory AssertionError
+    (today it silently succeeds on the wrong table)."""
+    import os
+    import subprocess
+
+    import pandas as pd
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame(
+        {"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}
+    ).to_csv(csv, index=False)
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
+    assert call_tool(
+        "materialize_query", {"sql": "SELECT y, x FROM base", "name": "d"}
+    )["ok"] is True
+    assert call_tool(
+        "fit_model", {"name": "d", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
+    )["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": "SELECT y * 10 AS y, x FROM base", "name": "d", "overwrite": True},
+    )["ok"] is True
+
+    nb_path = tmp_path / "s4.ipynb"
+    assert call_tool("emit_notebook", {"path": str(nb_path)})["ok"] is True
+
+    result = subprocess.run(
+        [
+            "uv", "run", "jupyter", "nbconvert", "--to", "notebook",
+            "--execute", "--inplace", str(nb_path),
+            "--ExecutePreprocessor.timeout=120",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    assert result.returncode != 0, "replay must not silently re-fit on the replaced table"
+    combined = result.stderr + result.stdout
+    assert "cannot be replayed faithfully" in combined
+
+
+def test_setup_cell_raises_for_model_fit_on_base_carrying_derived_then_overwritten(
+    call_tool, tmp_path
+) -> None:
+    """S5: model fit on the middle base-carrying derived state, then another
+    overwrite. Neither the current revision nor the carried base revision
+    matches the fit — silently re-fitting from the base FILE would be as
+    wrong as the post-transform table. Loud raise, no m_train_df frame."""
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame(
+        {"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}
+    ).to_csv(csv, index=False)
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "data"})["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": "SELECT y * 2 AS y, x FROM data", "name": "data", "overwrite": True},
+    )["ok"] is True
+    assert call_tool(
+        "fit_model", {"name": "data", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
+    )["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": "SELECT y + 1 AS y, x FROM data", "name": "data", "overwrite": True},
+    )["ok"] is True
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert "raise AssertionError" in setup_src
+    assert "was later replaced" in setup_src
+    assert "m_train_df" not in setup_src
+    compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_raises_for_model_fit_on_middle_materialization(
+    call_tool, tmp_path
+) -> None:
+    """S10: fresh derived name (base_loader stays None throughout),
+    materialized twice with a fit in between — the middle state is gone;
+    replay must raise instead of silently re-fitting on the latest table."""
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame(
+        {"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}
+    ).to_csv(csv, index=False)
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
+    assert call_tool(
+        "materialize_query", {"sql": "SELECT y, x FROM base WHERE x < 5", "name": "d"}
+    )["ok"] is True
+    assert call_tool(
+        "fit_model", {"name": "d", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
+    )["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": "SELECT y, x FROM base WHERE x < 4", "name": "d", "overwrite": True},
+    )["ok"] is True
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert "raise AssertionError" in setup_src
+    assert "was later replaced" in setup_src
+
+
+def test_setup_cell_still_refits_from_base_file_after_chained_overwrites(
+    call_tool, tmp_path
+) -> None:
+    """S2 regression pin: a model fit ON the file-backed state, followed by
+    two chained overwrites, still re-fits from the carried base file behind
+    the fit-time hash guard — identified by base_loader['revision'] == R0."""
+    import hashlib
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv = tmp_path / "train.csv"
+    csv.write_text("y,x\n1.0,0.0\n2.0,1.0\n3.0,2.0\n4.0,3.0\n5.0,4.0\n")
+    expected = hashlib.sha256(csv.read_bytes()).hexdigest()
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "train"})["ok"] is True
+    assert call_tool(
+        "fit_model", {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
+    )["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": "SELECT y * 10 AS y, x FROM train", "name": "train", "overwrite": True},
+    )["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": "SELECT y + 1 AS y, x FROM train", "name": "train", "overwrite": True},
+    )["ok"] is True
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert f"expected_hash_m = '{expected}'" in setup_src
+    assert "m_train_df = con.sql(" in setup_src
+    assert "data=m_train_df" in setup_src
+    assert "raise AssertionError" not in setup_src
     compile(setup_src, "<setup>", "exec")
