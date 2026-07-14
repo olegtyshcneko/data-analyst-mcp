@@ -1379,3 +1379,208 @@ def test_setup_cell_raises_for_model_fit_on_dataframe_then_materialize_overwrite
 
     setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
     assert "raise AssertionError" in setup_src
+
+
+def test_setup_cell_raises_for_model_fit_on_derived_replaced_by_load_dataset(
+    call_tool, tmp_path
+) -> None:
+    """S12 (review r1): load_dataset over a derived name after a fit. The
+    current entry is file-backed, no overwrite branch applies today, and the
+    recorder silently re-fits on the new file behind a 'no hash assert
+    possible' comment. Must raise instead."""
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame(
+        {"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}
+    ).to_csv(csv, index=False)
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
+    assert call_tool(
+        "materialize_query", {"sql": "SELECT y, x FROM base", "name": "d"}
+    )["ok"] is True
+    assert call_tool(
+        "fit_model", {"name": "d", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
+    )["ok"] is True
+    assert call_tool("load_dataset", {"path": str(csv), "name": "d"})["ok"] is True
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert "raise AssertionError" in setup_src
+    assert "Training data for 'm' changed since the session was recorded." in setup_src
+
+
+def test_setup_cell_raises_for_model_fit_on_split_replaced_by_load_dataset(
+    call_tool, tmp_path
+) -> None:
+    """S12, split flavor: load_dataset over a split output name after a fit."""
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame(
+        {"x": list(range(10)), "y": [float(i % 3 + i) for i in range(10)]}
+    ).to_csv(csv, index=False)
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+    assert call_tool(
+        "fit_model",
+        {"name": "base_train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
+    )["ok"] is True
+    assert call_tool("load_dataset", {"path": str(csv), "name": "base_train"})["ok"] is True
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert "raise AssertionError" in setup_src
+    assert "Training data for 'm' changed since the session was recorded." in setup_src
+
+
+def test_setup_cell_raises_for_model_fit_on_dataframe_replaced_by_load_dataset(
+    call_tool, load_df_into_session, tmp_path
+) -> None:
+    """S7b (review r1): dataframe dataset replaced by load_dataset after a
+    fit — today a silent re-fit on the new file. Must raise."""
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    df = pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0]})
+    load_df_into_session("t", df)
+    assert call_tool(
+        "fit_model", {"name": "t", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
+    )["ok"] is True
+
+    csv = tmp_path / "t.csv"
+    df.to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "t"})["ok"] is True
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert "raise AssertionError" in setup_src
+    assert "Training data for 'm' changed since the session was recorded." in setup_src
+
+
+def test_setup_cell_same_loader_reload_after_fit_stays_guarded_pass(
+    call_tool, tmp_path
+) -> None:
+    """S15: reloading the same file, same read_options, same content under
+    the same name is the innocent case — the normal hash-guarded re-fit
+    path must survive the revision mismatch (hash AND loader identity both
+    match)."""
+    import hashlib
+
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv = tmp_path / "train.csv"
+    pd.DataFrame(
+        {"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}
+    ).to_csv(csv, index=False)
+    expected = hashlib.sha256(csv.read_bytes()).hexdigest()
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "train"})["ok"] is True
+    assert call_tool(
+        "fit_model", {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
+    )["ok"] is True
+    assert call_tool("load_dataset", {"path": str(csv), "name": "train"})["ok"] is True
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert "raise AssertionError" not in setup_src
+    assert f"expected_hash_m = '{expected}'" in setup_src
+    assert "data=train_df" in setup_src
+    compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_raises_for_same_bytes_reload_with_changed_read_options(
+    call_tool, tmp_path
+) -> None:
+    """S15b (review r2, reproduced): identical bytes reloaded with different
+    read_options parse a DIFFERENT table while the SHA-256 stays equal. A
+    content hash proves identical bytes, not identical loading semantics —
+    the fit-time loader identity must catch this."""
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv = tmp_path / "train.csv"
+    pd.DataFrame(
+        {"y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]}
+    ).to_csv(csv, index=False)
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "train"})["ok"] is True
+    assert call_tool(
+        "fit_model", {"name": "train", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
+    )["ok"] is True
+    # Same bytes, same name — but explicit read_options change the loader
+    # identity (and would change parsing for options like nullstr/header).
+    assert call_tool(
+        "load_dataset",
+        {"path": str(csv), "name": "train", "read_options": {"header": True}},
+    )["ok"] is True
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert "raise AssertionError" in setup_src
+    assert "Training data for 'm' changed since the session was recorded." in setup_src
+
+
+def test_setup_cell_remote_reload_same_url_keeps_unguarded_refit(call_tool) -> None:
+    """S17: a remote (s3) dataset re-registered under the same URL and
+    options after a fit. Path-keyed sentinels and loader identity compare
+    equal, so the unguarded-comment re-fit path is unchanged — the
+    conservative rule must NOT turn remote reloads into false failures."""
+    import pandas as pd
+
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import get_recorder
+    from data_analyst_mcp.tools import models as _models
+
+    df = pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0]})
+    con = session.get_connection()
+    con.register("__t_df", df)
+    con.execute("CREATE OR REPLACE TABLE train AS SELECT * FROM __t_df")
+    con.unregister("__t_df")
+    cols = [{"name": "y", "dtype": "DOUBLE"}, {"name": "x", "dtype": "DOUBLE"}]
+    session.register(
+        name="train", path="s3://bucket/train.csv", read_options={}, format="csv",
+        rows=5, columns=cols,
+    )
+    _models.fit_model(
+        _models.FitModelInput(
+            name="train", formula="y ~ x", kind="ols", robust=False, model_name="m"
+        )
+    )
+    # Simulated re-load of the same URL (a real s3 read needs network; the
+    # registry state is what the recorder consumes).
+    session.register(
+        name="train", path="s3://bucket/train.csv", read_options={}, format="csv",
+        rows=5, columns=cols,
+    )
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert "raise AssertionError" not in setup_src
+    assert "non-file dataset" in setup_src
+    assert "data=train_df" in setup_src
+
+
+def test_setup_cell_raises_when_training_dataset_no_longer_registered() -> None:
+    """entry=None (reachable only by direct registry mutation): emit an
+    unconditional raise instead of a NameError-at-replay comment path."""
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import NotebookRecorder
+
+    session.reset()
+    session.register_model(
+        name="m",
+        kind="ols",
+        formula="y ~ x",
+        fitted_on_dataset="ghost",
+        n_obs=5,
+        training_dataset_hash="sentinel:unset",
+        result=object(),
+    )
+
+    setup_src = NotebookRecorder().to_notebook(include_setup=True).cells[0].source
+    assert "raise AssertionError" in setup_src
+    assert "no longer registered" in setup_src
