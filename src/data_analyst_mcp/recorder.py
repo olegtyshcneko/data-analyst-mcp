@@ -465,11 +465,11 @@ def _build_setup_source() -> str:
             overwritten_base: dict[str, Any] | None = None
             if (
                 ds_entry is not None
-                and ds_entry.format == "derived"
+                and ds_entry.format in ("derived", "split", "dataframe")
                 and rev != ds_entry.revision
             ):
                 base = ds_entry.base_loader
-                if base is not None and rev == base.get("revision"):
+                if ds_entry.format == "derived" and base is not None and rev == base.get("revision"):
                     overwritten_base = base
                 else:
                     msg = (
