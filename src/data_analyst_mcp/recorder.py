@@ -451,40 +451,36 @@ def _build_setup_source() -> str:
             lines.append(f"# --- Re-fit model {model_name!r} (kind={model_entry.kind}) ---")
             ds_entry = _session.get_datasets().get(model_entry.fitted_on_dataset)
             hash_val = model_entry.training_dataset_hash
-            # A model whose training dataset was later overwritten by
-            # materialize_query must not guard or re-fit against the current
-            # entry: its path is the "(query)" placeholder (the hash recompute
-            # would crash at replay) and its table is post-transform (the
-            # re-fit would train on the wrong data). The carried base_loader
-            # is the truthful source. A model fit *after* the overwrite copied
-            # the derived entry's own sentinel hash at fit time, so the hash
-            # inequality keeps it on the normal path.
+            rev = model_entry.training_dataset_revision
+            # The fit-time registration REVISION — not the content hash —
+            # decides whether the current entry is the same table state the
+            # model was fit on: derived/split/dataframe states share constant
+            # per-format sentinel hashes, so hash comparison cannot see a
+            # replacement. A fit on the pre-overwrite file-backed state is
+            # recognized by the carried base_loader's pinned revision (always
+            # the original file entry's, unchanged across chained overwrites)
+            # and re-fits from the original file behind the fit-time hash
+            # guard. Any other revision mismatch on a derived entry means the
+            # fit-time table state no longer exists anywhere reachable.
             overwritten_base: dict[str, Any] | None = None
             if (
                 ds_entry is not None
                 and ds_entry.format == "derived"
-                and ds_entry.base_loader is not None
-                and hash_val != ds_entry.source_hash
+                and rev != ds_entry.revision
             ):
-                overwritten_base = ds_entry.base_loader
-            elif (
-                ds_entry is not None
-                and ds_entry.format == "derived"
-                and ds_entry.base_loader is None
-                and hash_val != ds_entry.source_hash
-            ):
-                # Fit-then-overwrite with nothing to re-fit from (e.g. the
-                # training dataset was a split output): silently re-fitting
-                # on the post-transform table would betray the drift
-                # guarantee — fail the replay loudly instead.
-                msg = (
-                    f"Model {model_name!r} was fit on dataset "
-                    f"{model_entry.fitted_on_dataset!r}, which was later "
-                    f"overwritten by materialize_query and has no re-loadable "
-                    f"source; the re-fit cannot be replayed faithfully."
-                )
-                lines.append(f"raise AssertionError({msg!r})")
-                continue
+                base = ds_entry.base_loader
+                if base is not None and rev == base.get("revision"):
+                    overwritten_base = base
+                else:
+                    msg = (
+                        f"Model {model_name!r} was fit on dataset "
+                        f"{model_entry.fitted_on_dataset!r}, which was later "
+                        f"replaced; the table state it was fit on no longer "
+                        f"exists anywhere reachable, so the re-fit cannot be "
+                        f"replayed faithfully."
+                    )
+                    lines.append(f"raise AssertionError({msg!r})")
+                    continue
             if overwritten_base is not None:
                 ds_path = overwritten_base["path"]
                 # A dataset named <model>_train would make the train frame
