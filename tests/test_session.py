@@ -141,3 +141,54 @@ def test_reset_drops_quote_containing_table_names_without_error() -> None:
     # confirm the table itself is actually gone from the connection.
     remaining = {row[0] for row in session.get_connection().execute("SHOW TABLES").fetchall()}
     assert 'he said "hi"' not in remaining
+
+
+def test_register_stamps_monotonic_revisions() -> None:
+    from data_analyst_mcp import session
+
+    session.reset()
+    session.register(
+        name="a", path="(dataframe)", read_options={}, format="dataframe", rows=1, columns=[]
+    )
+    session.register(
+        name="b", path="(dataframe)", read_options={}, format="dataframe", rows=1, columns=[]
+    )
+
+    assert session.get_datasets()["a"].revision == 0
+    assert session.get_datasets()["b"].revision == 1
+
+
+def test_reregistering_same_name_gets_a_fresh_revision() -> None:
+    """Replacement identity: overwriting a name must be distinguishable from
+    the original registration even when every other field matches."""
+    from data_analyst_mcp import session
+
+    session.reset()
+    session.register(
+        name="a", path="(query)", read_options={"sql": "SELECT 1"}, format="derived", rows=1, columns=[]
+    )
+    session.register(
+        name="b", path="(query)", read_options={"sql": "SELECT 2"}, format="derived", rows=1, columns=[]
+    )
+    session.register(
+        name="a", path="(query)", read_options={"sql": "SELECT 1"}, format="derived", rows=1, columns=[]
+    )
+
+    assert session.get_datasets()["a"].revision == 2
+    assert session.get_datasets()["b"].revision == 1
+
+
+def test_reset_restarts_the_revision_counter() -> None:
+    from data_analyst_mcp import session
+
+    session.reset()
+    session.register(
+        name="a", path="(dataframe)", read_options={}, format="dataframe", rows=1, columns=[]
+    )
+    assert session.get_datasets()["a"].revision == 0
+
+    session.reset()
+    session.register(
+        name="z", path="(dataframe)", read_options={}, format="dataframe", rows=1, columns=[]
+    )
+    assert session.get_datasets()["z"].revision == 0
