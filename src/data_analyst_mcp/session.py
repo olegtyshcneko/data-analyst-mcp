@@ -64,6 +64,17 @@ class ModelEntry:
     fitted_at: datetime
     training_dataset_hash: str
     _result: Any  # statsmodels Results object, in-process only
+    # Fit-time registration revision of the training dataset — the model
+    # guard's identity anchor: the recorder trusts the current entry only
+    # when this matches entry.revision (or base_loader["revision"] for a
+    # fit on the pre-overwrite file-backed state). -1 for direct
+    # constructions in tests.
+    training_dataset_revision: int = -1
+    # Fit-time loader identity {"path", "format", "read_options"} — proves a
+    # later same-name reload has the same loading semantics, which a content
+    # hash alone cannot (identical bytes re-parse differently under changed
+    # read_options).
+    training_loader: dict[str, Any] | None = None
 
 
 _datasets: dict[str, DatasetEntry] = {}
@@ -163,6 +174,8 @@ def register_model(
     n_obs: int,
     training_dataset_hash: str,
     result: Any,
+    training_dataset_revision: int = -1,
+    training_loader: dict[str, Any] | None = None,
 ) -> None:
     """Insert a fitted model under ``name``. Raises ``KeyError`` on collision.
 
@@ -181,6 +194,8 @@ def register_model(
         fitted_at=datetime.now(UTC),
         training_dataset_hash=training_dataset_hash,
         _result=result,
+        training_dataset_revision=training_dataset_revision,
+        training_loader=dict(training_loader) if training_loader is not None else None,
     )
 
 

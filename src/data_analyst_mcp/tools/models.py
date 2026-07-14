@@ -156,6 +156,12 @@ def fit_model(payload: FitModelInput) -> dict[str, Any]:
             fitted_on_dataset=payload.name,
             n_obs=n_obs_val,
             training_dataset_hash=ds_entry.source_hash,
+            training_dataset_revision=ds_entry.revision,
+            training_loader={
+                "path": ds_entry.path,
+                "format": ds_entry.format,
+                "read_options": dict(ds_entry.read_options),
+            },
             result=live_result,
         )
         result["model_name"] = payload.model_name
