@@ -553,3 +553,38 @@ def test_overwrite_carries_source_hash_into_base_loader(call_tool, tmp_path) -> 
     entry = session.get_datasets()["data"]
     assert entry.base_loader is not None
     assert entry.base_loader["source_hash"] == original_hash
+
+
+def test_overwrite_base_loader_records_original_file_revision(call_tool, tmp_path) -> None:
+    """base_loader must pin the replaced FILE entry's revision (R0) and keep
+    it unchanged across chained derived overwrites — the model guard uses it
+    to recognize a fit on the pre-overwrite file-backed state."""
+    import pandas as pd
+
+    from data_analyst_mcp import session as _session
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame({"a": [1, 2, 3]}).to_csv(csv, index=False)
+
+    r = call_tool("load_dataset", {"path": str(csv), "name": "data"})
+    assert r["ok"], r
+    r0 = _session.get_datasets()["data"].revision
+
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT a * 10 AS a FROM data", "name": "data", "overwrite": True},
+    )
+    assert r["ok"], r
+    base = _session.get_datasets()["data"].base_loader
+    assert base is not None
+    assert base["revision"] == r0
+
+    # Second chained overwrite: the carried dict still says R0, never R1.
+    r = call_tool(
+        "materialize_query",
+        {"sql": "SELECT a + 1 AS a FROM data", "name": "data", "overwrite": True},
+    )
+    assert r["ok"], r
+    base = _session.get_datasets()["data"].base_loader
+    assert base is not None
+    assert base["revision"] == r0
