@@ -570,8 +570,9 @@ def test_split_setup_cell_test_overwrite_self_ref_raises_at_replay(
     call_tool: Any, tmp_path: Any
 ) -> None:
     """Symmetric to the train-side case: a self-referential test-side overwrite
-    drops that side's split recipe (the split block, keyed off the test entry,
-    is then not emitted at all), leaving a derived CREATE for ``base_test`` that
+    drops that side's split recipe, so the surviving train side still emits a
+    train-only split block for ``base_train`` while the overwritten test side
+    leaves a wrapped, self-referential derived CREATE for ``base_test`` that
     reads from a table nothing recreates. Replay must fail with the same
     purpose-written ``AssertionError``, this time naming the ``test`` side, with
     the DuckDB catalog error chained as ``__cause__``."""
