@@ -838,3 +838,139 @@ def test_split_replay_snippet_train_only_drift_fails_train_checksum(
     con.execute('CREATE TABLE "base" AS SELECT * FROM __base_src')
     with pytest.raises(AssertionError, match="base_train"):
         exec(snippet, {"con": con, "np": np, "pd": pd})  # train drift must be loud
+
+
+def test_split_setup_cell_asserts_both_side_checksums(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """S16 at setup-cell level: with both sides alive, the split block must
+    assert train AND test digests."""
+    from data_analyst_mcp import session as _session
+
+    _load_ten_rows(load_df_into_session)
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+
+    src = _setup_source(call_tool)
+    datasets = _session.get_datasets()
+    assert datasets["base_test"].read_options["membership_checksum"] in src
+    assert datasets["base_train"].read_options["membership_checksum"] in src
+
+
+def test_split_setup_cell_test_overwrite_emits_train_only_block(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """S13 (review r1): the test side is overwritten with replayable SQL and
+    the train side survives. Today no split block is emitted at all (it was
+    keyed solely off the test entry) and the train table is never recreated.
+    The surviving train entry must own a train-only block."""
+    from data_analyst_mcp import session as _session
+
+    _load_ten_rows(load_df_into_session)
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+    result = call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base" WHERE x > 5', "name": "base_test", "overwrite": True},
+    )
+    assert result["ok"] is True
+
+    src = _setup_source(call_tool)
+    # Train side recreated via the split JOIN, test side NOT (the derived
+    # CREATE owns that name now).
+    assert '"base_train" AS SELECT s.* EXCLUDE' in src
+    assert '"base_test" AS SELECT s.* EXCLUDE' not in src
+    assert 'CREATE OR REPLACE TABLE "base_test" AS SELECT * FROM "base" WHERE x > 5' in src
+    # The train table is guarded by its own digest; the test digest is gone
+    # with its recipe.
+    assert _session.get_datasets()["base_train"].read_options["membership_checksum"] in src
+
+
+def test_split_setup_cell_test_overwrite_replays(call_tool: Any, tmp_path: Any) -> None:
+    """S13 end-to-end: exec the self-contained setup cell — the train table
+    holds the original split rows, the test table holds the overwrite."""
+    import pandas as pd
+
+    csv = tmp_path / "base.csv"
+    pd.DataFrame({"x": list(range(20))}).to_csv(csv, index=False)
+
+    assert call_tool("load_dataset", {"path": str(csv), "name": "base"})["ok"] is True
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+    result = call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "base" WHERE x > 10', "name": "base_test", "overwrite": True},
+    )
+    assert result["ok"] is True
+
+    src = _setup_source(call_tool)
+    ns: dict[str, Any] = {}
+    exec(src, ns)  # train-only split block + derived test CREATE under test
+    con = ns["con"]
+    train_n = con.execute('SELECT COUNT(*) FROM "base_train"').fetchone()[0]
+    test_x = sorted(r[0] for r in con.execute('SELECT x FROM "base_test"').fetchall())
+    assert train_n == 15  # original split train (20 rows, 5 test)
+    assert test_x == list(range(11, 20))  # the overwrite result
+
+
+def test_split_setup_cell_stratified_replays_in_both_asymmetric_directions(
+    call_tool: Any, tmp_path: Any
+) -> None:
+    """Stratified splits through both one-sided shapes: a train-side
+    overwrite (test-owned block, include_train=False) and a test-side
+    overwrite (train-owned block, include_test=False) must both replay."""
+    import pandas as pd
+
+    csv = tmp_path / "strat.csv"
+    pd.DataFrame(
+        {"g": ["a", "b"] * 10, "x": list(range(20))}
+    ).to_csv(csv, index=False)
+
+    # Direction 1: overwrite the TRAIN side.
+    assert call_tool("load_dataset", {"path": str(csv), "name": "s1"})["ok"] is True
+    assert call_tool("split_dataset", {"name": "s1", "stratify_by": "g"})["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "s1" WHERE x > 15', "name": "s1_train", "overwrite": True},
+    )["ok"] is True
+    # Direction 2: overwrite the TEST side.
+    assert call_tool("load_dataset", {"path": str(csv), "name": "s2"})["ok"] is True
+    assert call_tool("split_dataset", {"name": "s2", "stratify_by": "g"})["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": 'SELECT * FROM "s2" WHERE x <= 3', "name": "s2_test", "overwrite": True},
+    )["ok"] is True
+
+    src = _setup_source(call_tool)
+    ns: dict[str, Any] = {}
+    exec(src, ns)  # both asymmetric stratified blocks under test
+    con = ns["con"]
+    assert con.execute('SELECT COUNT(*) FROM "s1_test"').fetchone()[0] > 0
+    assert sorted(
+        r[0] for r in con.execute('SELECT x FROM "s1_train"').fetchall()
+    ) == list(range(16, 20))
+    assert con.execute('SELECT COUNT(*) FROM "s2_train"').fetchone()[0] > 0
+    assert sorted(
+        r[0] for r in con.execute('SELECT x FROM "s2_test"').fetchall()
+    ) == [0, 1, 2, 3]
+
+
+def test_split_block_not_claimed_by_unrelated_split_reusing_a_name(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """'Matching' means reciprocal pair metadata: after the test side is
+    re-split under names that reuse the old test name, the ORIGINAL train
+    entry has no matching sibling and must own a train-only block."""
+    import pandas as pd
+
+    load_df_into_session("base", pd.DataFrame({"x": list(range(10))}))
+    load_df_into_session("other", pd.DataFrame({"x": list(range(10, 30))}))
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+    # Re-split ANOTHER source, reusing the original test name for its test
+    # side. base_train's recorded sibling name now belongs to a different
+    # pair (train_name='o_tr', not 'base_train').
+    assert call_tool(
+        "split_dataset",
+        {"name": "other", "train_name": "o_tr", "test_name": "base_test", "overwrite": True},
+    )["ok"] is True
+
+    src = _setup_source(call_tool)
+    # The original train side still gets recreated (train-only block).
+    assert '"base_train" AS SELECT s.* EXCLUDE' in src
