@@ -35,6 +35,13 @@ class DatasetEntry:
     # drift-guard anchor). ``sentinel:``-prefixed when there is no
     # verifiable file. Default covers direct constructions in tests.
     source_hash: str = "sentinel:unset"
+    # Monotonic per-session registration revision stamped by register().
+    # Identity of the *registration*, not the content: replacement through
+    # any tool (materialize_query, load_dataset, split_dataset) gets a fresh
+    # value even when source_hash stays constant (per-format sentinels,
+    # byte-identical reloads). Default covers direct constructions in tests;
+    # register() always stamps >= 0.
+    revision: int = -1
     registered_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -62,6 +69,7 @@ class ModelEntry:
 _datasets: dict[str, DatasetEntry] = {}
 _models: dict[str, ModelEntry] = {}
 _connection: duckdb.DuckDBPyConnection | None = None
+_revision_counter = 0
 
 
 def get_connection() -> duckdb.DuckDBPyConnection:
@@ -127,6 +135,7 @@ def register(
     base_loader: dict[str, Any] | None = None,
 ) -> None:
     """Insert (or replace) a dataset entry under ``name``."""
+    global _revision_counter
     _datasets[name] = DatasetEntry(
         path=path,
         read_options=dict(read_options),
@@ -135,7 +144,9 @@ def register(
         columns=list(columns),
         base_loader=dict(base_loader) if base_loader is not None else None,
         source_hash=compute_source_hash(path),
+        revision=_revision_counter,
     )
+    _revision_counter += 1
 
 
 def get_datasets() -> dict[str, DatasetEntry]:
@@ -198,6 +209,7 @@ def reset() -> None:
     so a derived table created by ``materialize_query`` is dropped and its
     registry entry cleared just like any file-backed dataset.
     """
+    global _revision_counter
     if _connection is not None:
         for name in list(_datasets.keys()):
             # Escape double quotes in the table name by doubling them for SQL.
@@ -205,3 +217,4 @@ def reset() -> None:
             _connection.execute(f'DROP TABLE IF EXISTS "{escaped_name}"')
     _datasets.clear()
     _models.clear()
+    _revision_counter = 0
