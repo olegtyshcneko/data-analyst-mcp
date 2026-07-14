@@ -1299,3 +1299,83 @@ def test_setup_cell_still_refits_from_base_file_after_chained_overwrites(
     assert "data=m_train_df" in setup_src
     assert "raise AssertionError" not in setup_src
     compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_raises_for_model_fit_on_split_then_resplit(
+    call_tool, load_df_into_session
+) -> None:
+    """S11 (review r1): split-over-split under the same names. Old and new
+    split entries share the constant '(split)' sentinel hash; only the
+    revision distinguishes the seed-1 membership the model was fit on from
+    the seed-2 membership at replay. Loud raise required."""
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session(
+        "base",
+        pd.DataFrame({"x": list(range(10)), "y": [float(i % 3 + i) for i in range(10)]}),
+    )
+    assert call_tool("split_dataset", {"name": "base", "seed": 1})["ok"] is True
+    assert call_tool(
+        "fit_model",
+        {"name": "base_train", "formula": "y ~ x", "kind": "ols", "model_name": "m"},
+    )["ok"] is True
+    assert call_tool(
+        "split_dataset", {"name": "base", "seed": 2, "overwrite": True}
+    )["ok"] is True
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert "raise AssertionError" in setup_src
+    assert "was later replaced" in setup_src
+    compile(setup_src, "<setup>", "exec")
+
+
+def test_setup_cell_raises_for_model_fit_on_replaced_dataframe_dataset(
+    call_tool, load_df_into_session
+) -> None:
+    """Dataframe branch: re-registering an in-memory dataset under the same
+    name after a fit leaves the model's fit-time state unreachable — the
+    '(dataframe)' sentinel hash is constant, only the revision can tell."""
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session(
+        "t", pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0]})
+    )
+    assert call_tool(
+        "fit_model", {"name": "t", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
+    )["ok"] is True
+    load_df_into_session(
+        "t", pd.DataFrame({"y": [5.0, 4.0, 3.0, 2.0, 1.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0]})
+    )
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert "raise AssertionError" in setup_src
+    assert "was later replaced" in setup_src
+
+
+def test_setup_cell_raises_for_model_fit_on_dataframe_then_materialize_overwrite(
+    call_tool, load_df_into_session
+) -> None:
+    """S7a pin (already loud today): dataframe dataset overwritten by
+    materialize_query after a fit — stays a loud raise under the revision
+    dispatch (derived entry, no base_loader, revision mismatch)."""
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    load_df_into_session(
+        "t", pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0]})
+    )
+    assert call_tool(
+        "fit_model", {"name": "t", "formula": "y ~ x", "kind": "ols", "model_name": "m"}
+    )["ok"] is True
+    assert call_tool(
+        "materialize_query",
+        {"sql": "SELECT y * 10 AS y, x FROM t", "name": "t", "overwrite": True},
+    )["ok"] is True
+
+    setup_src = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert "raise AssertionError" in setup_src
