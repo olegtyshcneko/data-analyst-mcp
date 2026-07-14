@@ -452,6 +452,16 @@ def _build_setup_source() -> str:
             ds_entry = _session.get_datasets().get(model_entry.fitted_on_dataset)
             hash_val = model_entry.training_dataset_hash
             rev = model_entry.training_dataset_revision
+            if ds_entry is None:
+                # Reachable only by direct registry mutation — no tool
+                # deregisters a dataset while models still reference it.
+                msg = (
+                    f"Model {model_name!r} was fit on dataset "
+                    f"{model_entry.fitted_on_dataset!r}, which is no longer "
+                    f"registered; the re-fit cannot be replayed faithfully."
+                )
+                lines.append(f"raise AssertionError({msg!r})")
+                continue
             # The fit-time registration REVISION — not the content hash —
             # decides whether the current entry is the same table state the
             # model was fit on: derived/split/dataframe states share constant
@@ -463,21 +473,41 @@ def _build_setup_source() -> str:
             # guard. Any other revision mismatch on a derived entry means the
             # fit-time table state no longer exists anywhere reachable.
             overwritten_base: dict[str, Any] | None = None
-            if (
-                ds_entry is not None
-                and ds_entry.format in ("derived", "split", "dataframe")
-                and rev != ds_entry.revision
-            ):
+            if rev != ds_entry.revision:
                 base = ds_entry.base_loader
                 if ds_entry.format == "derived" and base is not None and rev == base.get("revision"):
                     overwritten_base = base
-                else:
+                elif ds_entry.format in ("derived", "split", "dataframe"):
                     msg = (
                         f"Model {model_name!r} was fit on dataset "
                         f"{model_entry.fitted_on_dataset!r}, which was later "
                         f"replaced; the table state it was fit on no longer "
                         f"exists anywhere reachable, so the re-fit cannot be "
                         f"replayed faithfully."
+                    )
+                    lines.append(f"raise AssertionError({msg!r})")
+                    continue
+                elif not (
+                    hash_val == ds_entry.source_hash
+                    and model_entry.training_loader
+                    == {
+                        "path": ds_entry.path,
+                        "format": ds_entry.format,
+                        "read_options": ds_entry.read_options,
+                    }
+                ):
+                    # File-backed replacement that is not provably the same
+                    # loading semantics: the innocent same-file reload needs
+                    # content equality (hash) AND loader identity (path,
+                    # format, read_options) — a hash alone cannot see
+                    # re-parsing under changed read options. Remote URLs pass
+                    # via equal path-keyed sentinels + equal loaders.
+                    msg = (
+                        f"Training data for {model_name!r} changed since the "
+                        f"session was recorded. Dataset "
+                        f"{model_entry.fitted_on_dataset!r} was reloaded after "
+                        f"the fit with different content or loading options, "
+                        f"so the re-fit cannot be replayed faithfully."
                     )
                     lines.append(f"raise AssertionError({msg!r})")
                     continue
@@ -500,7 +530,7 @@ def _build_setup_source() -> str:
                     f"the original source file, not the current derived table."
                 )
             else:
-                ds_path = ds_entry.path if ds_entry is not None else None
+                ds_path = ds_entry.path
                 data_ref = f"{model_entry.fitted_on_dataset}_df"
             if (
                 ds_path is not None
