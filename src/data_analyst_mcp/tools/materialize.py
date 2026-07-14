@@ -120,6 +120,7 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
                 "format": existing.format,
                 "read_options": dict(existing.read_options),
                 "source_hash": existing.source_hash,
+                "revision": existing.revision,
             }
         elif existing.format == "derived":
             base_loader = existing.base_loader
