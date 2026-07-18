@@ -12,12 +12,14 @@ import hashlib
 import logging
 import math
 import re
+import uuid
 from typing import Any
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from data_analyst_mcp import session
+from data_analyst_mcp.digest import digest_table
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.recorder import get_recorder, split_replay_source
 
@@ -230,57 +232,108 @@ def split_dataset(payload: SplitDatasetInput) -> dict[str, Any]:
     pd_mod = _pd()
     assign_df = pd_mod.DataFrame({"rid": np.arange(n, dtype=np.int64), "is_test": is_test})
     view = "__data_analyst_split_assign"
-    con.register(view, assign_df)
-    try:
-        base = (
-            f"SELECT s.* EXCLUDE ({_quote(rid)}) FROM "
-            f"(SELECT *, row_number() OVER () - 1 AS {_quote(rid)} FROM {src_q}) s "
-            f"JOIN {view} a ON s.{_quote(rid)} = a.rid"
+    op_id = str(uuid.uuid4())
+    with session.state_lock():
+        con.execute("BEGIN TRANSACTION")
+        try:
+            con.register(view, assign_df)
+            try:
+                base = (
+                    f"SELECT s.* EXCLUDE ({_quote(rid)}) FROM "
+                    f"(SELECT *, row_number() OVER () - 1 AS {_quote(rid)} FROM {src_q}) s "
+                    f"JOIN {view} a ON s.{_quote(rid)} = a.rid"
+                )
+                con.execute(
+                    f"CREATE OR REPLACE TABLE {_quote(train_name)} AS {base} WHERE NOT a.is_test"
+                )
+                con.execute(
+                    f"CREATE OR REPLACE TABLE {_quote(test_name)} AS {base} WHERE a.is_test"
+                )
+            finally:
+                con.unregister(view)
+
+            # One checksum per side (one extra hashing pass over the train
+            # frame): test-side drift and train-side drift are independent
+            # failure modes — a split-source change that only moves train rows
+            # passes the test checksum (spec S16), so replay asserts each side
+            # against its own.
+            test_df = con.execute(f"SELECT * FROM {_quote(test_name)}").df()
+            test_checksum = membership_checksum(test_df)
+            train_df = con.execute(f"SELECT * FROM {_quote(train_name)}").df()
+            train_checksum = membership_checksum(train_df)
+            output_digests = {
+                "train": digest_table(con, train_name),
+                "test": digest_table(con, test_name),
+            }
+            con.execute("COMMIT")
+        except Exception as exc:
+            con.execute("ROLLBACK")
+            return build_error(
+                type="query_error",
+                message=str(exc),
+                hint="The split was rolled back; no tables, journal entry, or cell were created.",
+            )
+
+        common_opts: dict[str, Any] = {
+            "source": payload.name,
+            "seed": payload.seed,
+            "test_fraction": payload.test_fraction,
+            "stratify_by": payload.stratify_by,
+            "train_name": train_name,
+            "test_name": test_name,
+            "rid_column": rid,
+        }
+        strata_out = _strata_counts(strata, is_test) if strata is not None else None
+        for out_name, role, rows in (
+            (train_name, "train", n - n_test),
+            (test_name, "test", n_test),
+        ):
+            out_describe = con.execute(f"DESCRIBE {_quote(out_name)}").fetchall()
+            out_columns = [{"name": str(r[0]), "dtype": str(r[1])} for r in out_describe]
+            opts = {**common_opts, "role": role}
+            opts["membership_checksum"] = test_checksum if role == "test" else train_checksum
+            session.register(
+                name=out_name,
+                path="(split)",
+                read_options=opts,
+                format="split",
+                rows=rows,
+                columns=out_columns,
+            )
+
+        session.append_journal_entry(
+            {
+                "op": "split",
+                "op_id": op_id,
+                "source": payload.name,
+                "names": {"train": train_name, "test": test_name},
+                "params": {
+                    "test_fraction": payload.test_fraction,
+                    "stratify_by": payload.stratify_by,
+                    "rid_column": rid,
+                },
+                "seed": payload.seed,
+                "membership_checksums": {"train": train_checksum, "test": test_checksum},
+                "rows": {"train": n - n_test, "test": n_test},
+                "revisions": {
+                    "train": session.get_datasets()[train_name].revision,
+                    "test": session.get_datasets()[test_name].revision,
+                },
+                "output_digests": output_digests,
+            }
         )
-        con.execute(f"CREATE OR REPLACE TABLE {_quote(train_name)} AS {base} WHERE NOT a.is_test")
-        con.execute(f"CREATE OR REPLACE TABLE {_quote(test_name)} AS {base} WHERE a.is_test")
-    finally:
-        con.unregister(view)
 
-    # One digest per side (one extra hashing pass over the train frame):
-    # test-side drift and train-side drift are independent failure modes —
-    # a split-source change that only moves train rows passes the test
-    # checksum (spec S16), so replay asserts each side against its own.
-    test_df = con.execute(f"SELECT * FROM {_quote(test_name)}").df()
-    test_checksum = membership_checksum(test_df)
-    train_df = con.execute(f"SELECT * FROM {_quote(train_name)}").df()
-    train_checksum = membership_checksum(train_df)
-
-    common_opts: dict[str, Any] = {
-        "source": payload.name,
-        "seed": payload.seed,
-        "test_fraction": payload.test_fraction,
-        "stratify_by": payload.stratify_by,
-        "train_name": train_name,
-        "test_name": test_name,
-        "rid_column": rid,
-    }
-    strata_out = _strata_counts(strata, is_test) if strata is not None else None
-    for out_name, role, rows in (
-        (train_name, "train", n - n_test),
-        (test_name, "test", n_test),
-    ):
-        out_describe = con.execute(f"DESCRIBE {_quote(out_name)}").fetchall()
-        out_columns = [{"name": str(r[0]), "dtype": str(r[1])} for r in out_describe]
-        opts = {**common_opts, "role": role}
-        opts["membership_checksum"] = test_checksum if role == "test" else train_checksum
-        session.register(
-            name=out_name,
-            path="(split)",
-            read_options=opts,
-            format="split",
-            rows=rows,
-            columns=out_columns,
+        _record_split(
+            payload,
+            train_name,
+            test_name,
+            n - n_test,
+            n_test,
+            test_checksum,
+            train_checksum,
+            rid,
+            op_id,
         )
-
-    _record_split(
-        payload, train_name, test_name, n - n_test, n_test, test_checksum, train_checksum, rid
-    )
 
     return {
         "ok": True,
@@ -329,6 +382,7 @@ def _record_split(
     checksum: str,
     train_checksum: str,
     rid: str,
+    op_id: str,
 ) -> None:
     """Append the markdown + code cell pair for a successful split.
 
@@ -352,4 +406,4 @@ def _record_split(
         membership_checksum=checksum,
         train_membership_checksum=train_checksum,
     )
-    get_recorder().record(markdown=md, code=code, tool_name="split_dataset")
+    get_recorder().record(markdown=md, code=code, tool_name="split_dataset", op_id=op_id)
