@@ -331,3 +331,37 @@ def test_register_model_defaults_for_direct_constructions() -> None:
     assert entry is not None
     assert entry.training_dataset_revision == -1
     assert entry.training_loader is None
+
+
+def test_registered_model_carries_fit_options(call_tool, load_df_into_session):
+    import numpy as np
+
+    from data_analyst_mcp import session as _session
+
+    rng = np.random.RandomState(0)
+    df = pd.DataFrame({"y": rng.normal(size=40), "x": rng.normal(size=40)})
+    load_df_into_session("d", df)
+
+    result = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x", "kind": "ols", "robust": True, "model_name": "m_rob"},
+    )
+    assert result["ok"] is True
+    entry = _session.get_models()["m_rob"]
+    assert entry.fit_options == {"robust": True}
+
+
+def test_fit_options_defaults_to_robust_false(call_tool, load_df_into_session):
+    import numpy as np
+
+    from data_analyst_mcp import session as _session
+
+    rng = np.random.RandomState(0)
+    df = pd.DataFrame({"y": rng.normal(size=40), "x": rng.normal(size=40)})
+    load_df_into_session("d", df)
+
+    result = call_tool(
+        "fit_model", {"name": "d", "formula": "y ~ x", "kind": "ols", "model_name": "m_plain"}
+    )
+    assert result["ok"] is True
+    assert _session.get_models()["m_plain"].fit_options == {"robust": False}
