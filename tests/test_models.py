@@ -1138,3 +1138,47 @@ def test_registered_fit_cell_on_dataframe_dataset_unchanged(
     )
     assert result["ok"] is True
     assert not get_recorder().cells[-1]["source"].startswith("raise AssertionError(")
+
+
+def test_registered_fit_journals_named_evidence(call_tool: Any, load_df_into_session: Any) -> None:
+    import numpy as np
+    import pandas as pd
+
+    from data_analyst_mcp import session
+
+    rng = np.random.RandomState(1)
+    x = rng.normal(size=60)
+    df = pd.DataFrame({"x": x, "y": 2.0 * x + rng.normal(size=60)})
+    load_df_into_session("d", df)
+
+    result = call_tool(
+        "fit_model",
+        {"name": "d", "formula": "y ~ x", "kind": "ols", "robust": True, "model_name": "m"},
+    )
+    assert result["ok"] is True
+
+    ops = [e for e in session.get_journal() if e["op"] == "fit"]
+    assert len(ops) == 1
+    op = ops[0]
+    assert op["model_name"] == "m"
+    assert op["kind"] == "ols"
+    assert op["fit_options"] == {"robust": True}
+    assert op["design_columns"] == ["Intercept", "x"]
+    assert set(op["params"]) == {"Intercept", "x"}
+    assert set(op["bse"]) == {"Intercept", "x"}
+    assert op["n_obs"] == 60
+    assert op["dispersion"] is None
+    assert op["training_dataset_revision"] == session.get_datasets()["d"].revision
+
+
+def test_unregistered_fit_does_not_journal(call_tool: Any, load_df_into_session: Any) -> None:
+    import numpy as np
+    import pandas as pd
+
+    from data_analyst_mcp import session
+
+    rng = np.random.RandomState(1)
+    df = pd.DataFrame({"x": rng.normal(size=30), "y": rng.normal(size=30)})
+    load_df_into_session("d", df)
+    assert call_tool("fit_model", {"name": "d", "formula": "y ~ x", "kind": "ols"})["ok"] is True
+    assert [e for e in session.get_journal() if e["op"] == "fit"] == []
