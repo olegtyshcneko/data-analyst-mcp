@@ -421,6 +421,10 @@ def _apply_load(
                 op_index=op_index,
                 op_id=op.op_id,
             )
+        if op.source_hash.startswith("fallback:"):
+            warnings.append(
+                f"{op.path}: fallback (path, mtime, size) evidence only — continuity is degraded"
+            )
     read_call = _build_read_call(op.path, op.format, dict(op.read_options))
     df = session.read_file_as_df(read_call)
     if not remote:
