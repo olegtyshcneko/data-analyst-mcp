@@ -1,6 +1,6 @@
 # data-analyst-mcp
 
-A reproducible data-analyst MCP server. Point Claude (or any MCP-capable agent) at a CSV, Parquet, Excel, or JSON file and it gets a proper analytical reasoning layer: exploratory profiling, hypothesis tests with assumption checks, regression with diagnostics, and matplotlib plots — all via DuckDB so the same code path handles 100 MB or 5 GB. The differentiator is the **recorder**: every tool call appends a markdown + code cell to a session log, and `emit_notebook` writes the whole conversation out as a runnable `.ipynb` that `jupyter nbconvert --execute` will replay end-to-end. It composes naturally with [`mcp-server-motherduck`](https://github.com/motherduckdb/mcp-server-motherduck) — that one gives the agent raw SQL, this one gives it the statistical thinking on top.
+A reproducible data-analyst MCP server. Point Claude (or any MCP-capable agent) at a CSV, Parquet, Excel, or JSON file and it gets a proper analytical reasoning layer: exploratory profiling, hypothesis tests with assumption checks, regression with diagnostics, and matplotlib plots — all via DuckDB so the same code path handles 100 MB or 5 GB. The differentiator is the **recorder**: every state-changing or analytic tool call appends a markdown + code cell to a session log (only the read-only listings, `emit_notebook` itself, and `load_session_from_notebook` don't), and `emit_notebook` writes the whole conversation out as a runnable `.ipynb` that `jupyter nbconvert --execute` will replay end-to-end — and that `load_session_from_notebook` can resume after a restart. It composes naturally with [`mcp-server-motherduck`](https://github.com/motherduckdb/mcp-server-motherduck) — that one gives the agent raw SQL, this one gives it the statistical thinking on top.
 
 ## Not for
 
@@ -216,7 +216,7 @@ For OpenCode (single command array):
 
 </details>
 
-After restarting (or reloading MCP servers in) your client, all 24 tools become available in any new conversation: the original 11 (`load_dataset`, `list_datasets`, `profile_dataset`, `describe_column`, `query`, `correlate`, `compare_groups`, `test_hypothesis`, `fit_model`, `plot`, `emit_notebook`), the v1.x additions (`adjust_pvalues`, `analyze_missingness`, `list_models`, `predict`, `evaluate_model`), the tier-1 bundle (`materialize_query`, `find_outliers`, `power_analysis`, `regression_line`, `residual_diagnostic`), the post-tier-1 addition `pairwise_comparisons` (post-hoc pairs after `compare_groups`), and the model-workflow bundle (`split_dataset`, `cross_validate`).
+After restarting (or reloading MCP servers in) your client, all 25 tools become available in any new conversation: the original 11 (`load_dataset`, `list_datasets`, `profile_dataset`, `describe_column`, `query`, `correlate`, `compare_groups`, `test_hypothesis`, `fit_model`, `plot`, `emit_notebook`), the v1.x additions (`adjust_pvalues`, `analyze_missingness`, `list_models`, `predict`, `evaluate_model`), the tier-1 bundle (`materialize_query`, `find_outliers`, `power_analysis`, `regression_line`, `residual_diagnostic`), the post-tier-1 addition `pairwise_comparisons` (post-hoc pairs after `compare_groups`), the model-workflow bundle (`split_dataset`, `cross_validate`), and the session-resume tool `load_session_from_notebook` (1.6.0).
 
 ## Worked example
 
@@ -311,6 +311,12 @@ jupyter nbconvert --execute session_2026-05-11_*.ipynb
 ```
 
 Exit code 0. Every number from steps 1 – 5 is recomputed from the source files. The notebook is the audit trail.
+
+### 7. Resume the session later
+
+> **You** (after restarting Claude Desktop): Pick up where we left off — load `/abs/path/session_2026-05-11_*.ipynb`.
+
+Claude calls `load_session_from_notebook(path="/abs/path/session_2026-05-11_*.ipynb")`. The server verifies the notebook's embedded journal manifest (cell hashes, source-file hashes), replays every recorded operation inside one transaction — comparing table digests, split membership, and model coefficients/standard errors against the recorded evidence — and restores the full session: datasets, registered models, and the recorder history. The next `emit_notebook` produces one unified notebook covering both sittings. If anything drifted (a source CSV edited, a non-deterministic query), the tool aborts atomically with a structured error naming the diverging operation, and the session stays empty.
 
 ## Tier-1 bundle: cohorts, outliers, power, diagnostics
 
@@ -433,7 +439,7 @@ The agent will reach for MotherDuck when the task is "query the warehouse" and f
             │
    ┌────────┴────────────────────────────────┐
    ▼                                         ▼
- 24 tools (datasets / query / stats /     NotebookRecorder
+ 25 tools (datasets / query / stats /     NotebookRecorder
  models / registry / plots / notebook)    (markdown + code cells)
             │                                         │
             ▼                                         ▼
@@ -450,7 +456,7 @@ Single process, single DuckDB connection, single recorder. No network calls. No 
 - **`query` is read-only.** It accepts `SELECT` / `WITH` / `DESCRIBE` / `SHOW` / `EXPLAIN` / `PRAGMA show_tables` and rejects writes with `error.type = "write_not_allowed"`. To persist a join-derived table, use `materialize_query(sql=..., name=...)` — it registers the result as a first-class derived dataset that every other tool can target by name.
 - **Logistic regression with (quasi-)perfectly-separating predictors** returns a structured `error.type = "perfect_separation"` instead of a fit: the maximum-likelihood estimates diverge, so no coefficients/diagnostics are produced and the model is not registered even if `model_name` was supplied. Perfect collinearity in the design is reported as `formula_error`; a non-converged logit without the divergence signature returns `convergence_failed`.
 - **Boolean response columns in `fit_model`.** Pandas' nullable `BooleanDtype` is coerced to `{0, 1}` numeric before being handed to statsmodels' `Logit`; plain Python booleans work too. Mixed `True` / `"yes"` strings are not.
-- **Datasets are in-process state.** Restarting Claude Desktop drops the registry. Re-`load_dataset` after a restart, or run the emitted notebook to rehydrate.
+- **Datasets are in-process state.** Restarting Claude Desktop drops the registry. Emit a notebook before you stop, then `load_session_from_notebook(path=...)` in the fresh session — it verifies the notebook's embedded journal manifest, replays every recorded operation with drift guards, and restores datasets, models, and the recorder history atomically (any divergence from the recorded evidence aborts with the session untouched). Requires an empty fresh session; sessions holding in-memory dataframes are not resumable (`resume_supported: false` in the manifest).
 - **Emitted notebooks are drift-guarded.** The setup cell asserts a SHA-256 provenance hash for every file-backed dataset (and for base files behind `materialize_query` overwrites) before reloading it, and since 1.5.0 every `load_dataset` cell in the notebook body re-asserts its own load-time hash — so a file mutated mid-session fails replay at the load that saw the old bytes, even when a later reload keeps the setup cell happy. `cross_validate` / unregistered `fit_model` cells recorded against in-memory datasets now open with an explanatory `raise AssertionError` instead of a bare `CatalogException`. If a source file changed since the session, replay fails with a loud `AssertionError` instead of silently recomputing different numbers. Files over 100 MB use a weaker `(path, mtime, size)` check; s3/http sources reload unguarded (a comment in the cell says so). Models re-fit from the original file only when they were fit *on* the file-backed state (identified by registration revision); a model fit on any table state that no longer exists at replay — re-materialized, re-loaded, or re-split, even with identical bytes — fails the setup cell with a loud `AssertionError` instead of silently re-fitting.
 - **Stdio only in v1.** No SSE, no HTTP. If you want to share one server across multiple clients, that's on the roadmap.
 
@@ -458,8 +464,8 @@ Single process, single DuckDB connection, single recorder. No network calls. No 
 
 ```bash
 uv sync --dev                    # install runtime + dev deps
-uv run pytest tests/             # 570 unit tests
-uv run pytest evals/             # 54 integration evals via mcp.client.stdio (~30s)
+uv run pytest tests/             # 644 unit tests
+uv run pytest evals/             # 62 integration evals via mcp.client.stdio (~40s)
 uv run ruff format --check .     # formatter gate
 uv run ruff check .              # linter gate
 uv run pyright src/              # strict type-check on src/

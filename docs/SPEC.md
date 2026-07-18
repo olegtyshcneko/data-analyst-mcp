@@ -198,7 +198,7 @@ Every tool follows this contract:
 - Decorated with `@mcp.tool()` from FastMCP.
 - Input is a pydantic v2 model with `Field(description=...)` on every field. **The descriptions are prompts to the LLM** — write them like product copy.
 - Returns a `dict` with at least: `ok: bool`, plus tool-specific fields. On failure: `{"ok": false, "error": {...}}`.
-- After successful execution, appends a markdown + code cell pair to the session notebook recorder (see §6).
+- After successful execution, appends a markdown + code cell pair to the session notebook recorder (see §6) — with five exceptions that never record a cell: `list_datasets`, `list_models`, `describe_column`, `emit_notebook`, and `load_session_from_notebook` (read-only listings, the emitter itself, and the resume tool, which installs the imported history instead).
 - Logs to stderr only, never stdout.
 
 ### 5.1 `load_dataset`
@@ -680,10 +680,30 @@ Outcome dtype validation: logistic requires binary 0/1 or boolean; OLS requires 
 - Take accumulated cells from recorder.
 - Prepend a setup cell: imports, DuckDB connection, then per-dataset drift guards (hash asserts) followed by dataset reloads that render the live load's `read_options`. Split-derived entries are rehydrated in a second pass emitted in registration-revision order (so an overwrite or split-of-split lands after the tables it reads), each side guarded by its own per-side membership checksum.
 - Serialize via `nbformat.v4`.
+- Embed the resume manifest in `nb.metadata["data_analyst_mcp"]`: the operation journal, per-cell SHA-256 descriptors, final-state digests, a final-registry descriptor, and the independent `resume_supported` / `notebook_replayable` flags (see §5.14 and §6).
 - Write to disk.
 - Return `{"ok": true, "path": "/abs/path/session_2026....ipynb", "n_cells": 42}`.
 
-**Acceptance criterion**: a user can `jupyter nbconvert --execute` the emitted notebook and it runs to completion against the same input files.
+**Acceptance criterion**: when the emitted manifest carries `notebook_replayable: true`, a user can `jupyter nbconvert --execute` the emitted notebook and it runs to completion against the same input files. Sessions whose setup cell deliberately raises (e.g. a model fit on a table state that was later overwritten) emit `notebook_replayable: false` — they fail nbconvert loudly by design but remain resumable via §5.14 whenever `resume_supported` is true.
+
+### 5.14 `load_session_from_notebook`
+
+Resume a previously-emitted notebook into a fresh server process — the "pick up where I left off" inverse of `emit_notebook`. Shipped in 1.6.0 via the design spec `docs/superpowers/specs/2026-07-18-load-session-from-notebook-design.md` (journal replay, not code parsing).
+
+**Input**:
+- `path: str` — the `.ipynb` emitted by `emit_notebook`.
+
+**Behavior** (three phases, all under the session state lock):
+
+1. **Validate.** The live session AND the live DuckDB catalog must be empty (`session_not_empty` / `catalog_not_empty` — resume never adopts or drops ambient tables). The notebook must exist, parse, and carry a `manifest_version: 1` manifest that passes strict validation (pydantic `extra="forbid"` plus semantic cross-checks) and its caps (§6). Every cell must match its recorded SHA-256 descriptor (`notebook_modified`); every journal-referenced local source file must still hash to its recorded value (one `source_drift` error accumulating *all* drifted files).
+2. **Replay.** Inside one DuckDB transaction, apply journal ops in order — reload files (with a pre/post hash agreement guard against mid-read mutation), re-run derived SQL, recompute split membership, re-fit registered models — comparing recorded evidence at every step: table digests (`state_digest_mismatch`), membership checksums (`split_drift`), named model params **and** bse (`model_drift`; bse is what catches a stripped/injected HC3, since robust and plain OLS share coefficients exactly). First divergence → `ROLLBACK`; the error names the op index and `op_id`. A cooperative 300 s budget bounds replay (`resume_budget_exceeded`).
+3. **Commit.** `COMMIT`, then publish the staged dataset/model registries, journal, revision counter, and imported recorder cells in one atomic swap. The next `emit_notebook` produces one unified replayable notebook.
+
+**Response**: `{"ok": true, "path", "datasets": [{"name", "rows", "format"}...], "models": [...], "n_cells_imported", "n_journal_ops", "warnings": [...]}` — warnings flag degraded evidence (remote sources reloaded unguarded; `fallback:` hashes above the 100 MB ceiling).
+
+**Errors** (spec taxonomy): `session_not_empty`, `catalog_not_empty`, `notebook_not_found`, `notebook_invalid`, `manifest_missing`, `manifest_version_unsupported`, `manifest_invalid`, `notebook_modified`, `unreplayable_dataset`, `source_drift`, `split_drift`, `model_drift`, `state_digest_mismatch`, `registry_mismatch`, `resume_budget_exceeded`, `resume_failed`. Failure is atomic — the live session is left untouched.
+
+**Not resumable** (`resume_supported: false` at emit time, `unreplayable_dataset` at resume time): sessions holding in-memory (dataframe-registered) datasets, and sessions whose journal produced undigestable tables (UNION/VARIANT columns).
 
 ---
 
@@ -694,10 +714,13 @@ Outcome dtype validation: logistic requires binary 0/1 or boolean; OLS requires 
 ```python
 class NotebookRecorder:
     def __init__(self) -> None: ...
-    def record(self, *, markdown: str, code: str, tool_name: str) -> None: ...
+    def record(self, *, markdown: str, code: str, tool_name: str, op_id: str | None = None) -> None: ...
     def reset(self) -> None: ...
+    def install_cells(self, cells: list[dict[str, Any]]) -> None: ...  # resume phase-3 publish
     def to_notebook(self, include_setup: bool = True) -> "nbformat.NotebookNode": ...
 ```
+
+`op_id` binds a cell pair to its operation-journal entry (state-changing tools only; `None` for analytic/read-only cells).
 
 ### Each tool contributes one markdown + one code cell
 
@@ -766,6 +789,18 @@ The setup cell is rebuilt from the session's dataset registry at emit-time.
 ### Replay order and per-call load guards
 
 `to_notebook` emits the setup cell first, then every recorded cell in call order. A per-call cell therefore reads the table state recreated by its *historical prefix* (the last state-recreating cell for that name before it), not the final session state — `load_dataset`, `materialize_query`, and `split_dataset` all record cells that re-execute their state change. Content fidelity along that prefix comes from each `load_dataset` cell asserting its own load-time hash (see §5.1); derived recipes re-execute over those guarded roots and split recreation asserts per-side membership checksums. Known residual gaps (parked in ROADMAP): row-order drift through order-independent checksums vs positional CV folds, and remote / above-ceiling sources whose hashes cannot prove content.
+
+### Resume manifest and operation journal (since 1.6.0)
+
+The four state-changing tools (`load_dataset`, `materialize_query`, `split_dataset`, registered `fit_model`) append a structured **journal entry** at call time inside an *op-transaction*: `BEGIN` → table mutation + `DESCRIBE`/`COUNT` + output digest → `COMMIT` → infallible publications (registry, journal, recorder cell). A failure anywhere fallible rolls back the table and publishes nothing — the journal never records an op whose table state didn't land.
+
+Every journal entry carries an `op_id` (UUID4, also stamped on the op's cell pair), the operation's inputs verbatim, and its **evidence**: source content hash for loads (`provenance.py` formats verbatim: bare hex / `fallback:` / `sentinel:`), per-side membership checksums for splits, named `params` **and** `bse` (nonfinite values tagged `"NaN"` / `"Infinity"` / `"-Infinity"`) for fits, and a `damcp-digest-v1` output digest for every minted table.
+
+**`damcp-digest-v1`** (`digest.py`) is an order-sensitive SHA-256 over schema + values with a byte layout frozen under that algorithm id — domain separators, u64-LE length prefixes, per-type tags, raw IEEE bit patterns for floats. Temporal columns are projected to integer epochs **in SQL** (`epoch_ns`/`epoch_us`/`epoch_ms`/`epoch`) because DuckDB's Python fetch truncates `TIMESTAMP_NS` through `datetime`; scans pin `threads=1` and always restore (PRAGMAs survive `ROLLBACK`). `UNION`/`VARIANT` and unrecognized types are undigestable → the digest is `None` and the emitted manifest flips `resume_supported: false`.
+
+`emit_notebook` serializes the journal plus per-cell SHA-256 descriptors, final-state digests, and a final-registry descriptor into `nb.metadata["data_analyst_mcp"]` (`manifest_version: 1`, comparison tolerances `rtol=1e-7, atol=1e-12`, producer versions). `resume_supported` and `notebook_replayable` are **independent flags**: a session with a pre-overwrite model emits a deliberately-raising setup cell (`notebook_replayable: false`) yet resumes fine from the journal.
+
+**Trust model and caps.** A resumable notebook is trusted executable provenance: resume re-runs its recorded SQL and re-fits its Patsy formulas, and Patsy formulas are process-level arbitrary code execution — only resume notebooks you emitted or trust as if they were code. The SHA-256 descriptors prove structural consistency, not authorship — they are not authentication. Caps (strictly enforced at resume): notebook ≤ 32 MB, manifest ≤ 8 MB, ≤ 2000 cells, ≤ 500 journal ops, ≤ 100 KB per SQL/formula/path string; replay budget 300 s (cooperative, checked between ops).
 
 ---
 
@@ -886,7 +921,7 @@ README with worked example, `DEPS.md`, LICENSE, ROADMAP, tag `v0.1.0`, `uv build
 - Loading entire datasets into pandas at tool-call time.
 - Adding `plotly`, `seaborn`, `altair`, `bokeh`, `dash`, `streamlit`, `polars`, `dask`, `ray`.
 - Adding `Anthropic`/`OpenAI` clients to call an LLM from inside the server.
-- Adding tools beyond the 24 in §5 (park in `ROADMAP.md`).
+- Adding tools beyond the 25 in §5 (park in `ROADMAP.md`). `load_session_from_notebook` (§5.14) is the latest waivered expansion, following the same ROADMAP-¶1 flow as every prior one: parked entry → design conversation/spec → fold into §5.
 - Silently coercing data types in `load_dataset`.
 - Making the recorder optional/feature-flagged.
 - `emit_notebook` depending on internet, API key, or anything non-local.
@@ -903,4 +938,5 @@ Fresh machine, under 5 minutes:
 3. *"Profile the dataset at `~/Downloads/messy.csv` and tell me what's broken."* → structured profile naming the BOM, the 78%-null email, the mixed date formats, the case-inconsistent country values, and the 20 outliers in `score`.
 4. *"Compare revenue between organic and paid channels and tell me if it's significant."* → Welch's t-test result + Cohen's d + plain-English explanation + **why Welch's and not Student's**.
 5. *"Save this whole session as a notebook."* → `.ipynb` on disk.
-6. `jupyter nbconvert --execute session_*.ipynb` reproduces every number from steps 3–5 exactly.
+6. `jupyter nbconvert --execute session_*.ipynb` reproduces every number from steps 3–5 exactly — guaranteed when the emitted manifest says `notebook_replayable: true`; deliberately-raising sessions fail loudly instead of recomputing silently.
+7. After a restart, `load_session_from_notebook` on the same file rehydrates datasets, models, and the recorder history, and the session continues where it left off.

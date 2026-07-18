@@ -5,6 +5,50 @@ All notable changes to **data-analyst-mcp** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - Unreleased
+
+Session resume: `emit_notebook` now embeds a journal manifest
+(`nb.metadata["data_analyst_mcp"]`) and the new tool 25,
+`load_session_from_notebook`, replays it transactionally in a fresh
+process — datasets, derived tables, splits, registered models, and the
+recorder history all come back, and the next emit produces one unified
+replayable notebook. Any divergence from the recorded evidence (source
+hashes, table digests, split membership, model params/SEs) aborts
+atomically with the live session untouched. Design spec:
+`docs/superpowers/specs/2026-07-18-load-session-from-notebook-design.md`
+(spec v4, three adversarial review passes).
+
+### Added
+- `load_session_from_notebook(path)` — three-phase resume: strict manifest
+  validation (pydantic `extra="forbid"`, caps, per-cell SHA-256, source
+  preflight), transactional journal replay with per-op evidence comparison
+  (`source_drift`, `split_drift`, `model_drift`, `state_digest_mismatch`,
+  `registry_mismatch`, …), atomic publish. 16-type error taxonomy; 300 s
+  cooperative replay budget; degraded-evidence warnings for remote and
+  `fallback:`-hashed sources.
+- Operation journal: `load_dataset`, `materialize_query`, `split_dataset`,
+  and registered `fit_model` now append structured journal entries at call
+  time inside an op-transaction (BEGIN → mutate/digest → COMMIT → publish),
+  each bound to its recorder cell pair via `op_id`.
+- `damcp-digest-v1` (`digest.py`): order-sensitive SHA-256 table digest
+  with a frozen byte layout; temporal columns projected to integer epochs
+  in SQL so `TIMESTAMP_NS` survives at full resolution; `UNION`/`VARIANT`
+  are undigestable and mark the session `resume_supported: false`.
+- Emit-time manifest (`manifest.py`): journal + per-cell SHA-256
+  descriptors + final-state digests + final-registry descriptor +
+  independent `resume_supported` / `notebook_replayable` flags.
+
+### Fixed
+- Robust (`robust=True`) OLS models re-fit as *plain* OLS in the emitted
+  setup cell, silently shrinking standard errors at replay. `ModelEntry`
+  now records `fit_options` and the setup cell emits
+  `.fit(cov_type="HC3")` for robust fits.
+
+### Changed
+- DuckDB minimum raised from 1.1.0 to **1.5.2** (transactional-DDL and
+  type-surface envelope verified there; spec §5.14 version envelope).
+- Tool surface 24 → 25 (waivered expansion — SPEC §11, ROADMAP ¶1).
+
 ## [1.5.0] - 2026-07-18
 
 Prefix replay guards: emitted notebooks replay setup **then** the full
