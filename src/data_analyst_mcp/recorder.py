@@ -635,7 +635,12 @@ def _build_setup_source() -> str:
                 lines.append(f"{data_ref} = con.sql({select!r}).df()")
 
             smf_fn = _KIND_TO_SMF.get(model_entry.kind, "ols")
-            fit_args = "disp=False" if model_entry.kind in ("logistic", "poisson", "negbin") else ""
+            if model_entry.kind in ("logistic", "poisson", "negbin"):
+                fit_args = "disp=False"
+            elif model_entry.fit_options.get("robust"):
+                fit_args = 'cov_type="HC3"'
+            else:
+                fit_args = ""
             lines.append(
                 f'{model_name} = smf.{smf_fn}("{model_entry.formula}", '
                 f"data={data_ref}).fit({fit_args})"
