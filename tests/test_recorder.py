@@ -1662,3 +1662,49 @@ def test_setup_cell_raises_when_training_dataset_no_longer_registered() -> None:
     setup_src = NotebookRecorder().to_notebook(include_setup=True).cells[0].source
     assert "raise AssertionError" in setup_src
     assert "no longer registered" in setup_src
+
+
+def test_setup_refit_emits_hc3_for_robust_ols(call_tool, tmp_path) -> None:
+    """Pre-existing replay drift (spec v4 phase 0): robust=True models
+    re-fit as plain OLS in the setup cell, silently changing SEs."""
+    import numpy as np
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    rng = np.random.RandomState(0)
+    csv = tmp_path / "rob.csv"
+    pd.DataFrame({"y": rng.normal(size=40), "x": rng.normal(size=40)}).to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "rob"})["ok"] is True
+    assert (
+        call_tool(
+            "fit_model",
+            {"name": "rob", "formula": "y ~ x", "kind": "ols", "robust": True, "model_name": "mr"},
+        )["ok"]
+        is True
+    )
+
+    nb = get_recorder().to_notebook(include_setup=True)
+    setup = nb.cells[0].source
+    assert 'mr = smf.ols("y ~ x", data=rob_df).fit(cov_type="HC3")' in setup
+
+
+def test_setup_refit_plain_ols_keeps_bare_fit(call_tool, tmp_path) -> None:
+    import numpy as np
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    rng = np.random.RandomState(0)
+    csv = tmp_path / "pl.csv"
+    pd.DataFrame({"y": rng.normal(size=40), "x": rng.normal(size=40)}).to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "pl"})["ok"] is True
+    assert (
+        call_tool(
+            "fit_model", {"name": "pl", "formula": "y ~ x", "kind": "ols", "model_name": "mp"}
+        )["ok"]
+        is True
+    )
+
+    setup = get_recorder().to_notebook(include_setup=True).cells[0].source
+    assert 'mp = smf.ols("y ~ x", data=pl_df).fit()' in setup
