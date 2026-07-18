@@ -493,3 +493,71 @@ def test_load_dataset_cell_emits_comment_for_sentinel_sources(
     assert "no verifiable source hash; reload is unguarded" in src
     assert "expected_hash_ds_remote_0" not in src
     assert "assert actual_hash" not in src
+
+
+def test_reloaded_name_keeps_each_loads_own_hash(call_tool: Any, tmp_path: Any) -> None:
+    """Each load cell asserts the bytes THAT load saw. After a mutate-and-
+    reload, the first cell must still carry the pre-mutation hash — this is
+    the mechanism that fails the ROADMAP scenario at the first load cell."""
+    import hashlib
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv_path = tmp_path / "data.csv"
+    csv_path.write_text("x,y\n1,2\n3,4\n")
+    hash_v1 = hashlib.sha256(csv_path.read_bytes()).hexdigest()
+
+    call_tool("load_dataset", {"path": str(csv_path), "name": "data"})
+    csv_path.write_text("x,y\n9,9\n3,4\n")
+    hash_v2 = hashlib.sha256(csv_path.read_bytes()).hexdigest()
+    call_tool("load_dataset", {"path": str(csv_path), "name": "data"})
+
+    cells = get_recorder().cells
+    assert f"expected_hash_ds_data_0 = '{hash_v1}'" in cells[1]["source"]
+    assert f"expected_hash_ds_data_2 = '{hash_v2}'" in cells[3]["source"]
+    assert hash_v1 != hash_v2
+
+
+def test_guard_stems_unique_across_loads_of_same_name(call_tool: Any, tmp_path: Any) -> None:
+    """Two loads of one name must not share a guard-variable stem — the
+    ordinal (recorder cell index at record time) disambiguates."""
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv_path = tmp_path / "d.csv"
+    csv_path.write_text("a\n1\n")
+    call_tool("load_dataset", {"path": str(csv_path), "name": "d"})
+    call_tool("load_dataset", {"path": str(csv_path), "name": "d"})
+
+    first = get_recorder().cells[1]["source"]
+    second = get_recorder().cells[3]["source"]
+    assert "expected_hash_ds_d_0" in first
+    assert "expected_hash_ds_d_2" in second
+    assert "expected_hash_ds_d_0" not in second
+
+
+def test_fallback_guard_lines_abort_on_drift_when_executed(
+    call_tool: Any, tmp_path: Any, monkeypatch: Any
+) -> None:
+    """Execute the emitted fallback guard block against a since-drifted
+    file: the assert must raise. Pins that the fallback shape is a working
+    guard, not just right-looking text (spec slice 6)."""
+    import hashlib
+
+    import pytest as _pytest
+
+    from data_analyst_mcp import provenance
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv_path = tmp_path / "big.csv"
+    csv_path.write_text("x,y\n1,2\n3,4\n")
+    monkeypatch.setattr(provenance, "HASH_CONTENT_CEILING_BYTES", 1)
+    call_tool("load_dataset", {"path": str(csv_path), "name": "big"})
+
+    src = get_recorder().cells[1]["source"]
+    guard_block = src.split('con.execute("""')[0]
+    assert "assert actual_hash_ds_big_0" in guard_block
+    # Drift: append a row — size changes, so the fallback digest changes.
+    csv_path.write_text("x,y\n1,2\n3,4\n5,6\n")
+
+    with _pytest.raises(AssertionError):
+        exec(guard_block, {"hashlib": hashlib})  # executing our own emitted guard
