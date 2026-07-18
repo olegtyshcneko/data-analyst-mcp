@@ -226,3 +226,70 @@ def test_register_copies_split_overwrite_defensively() -> None:
     provenance["side"] = "mutated"
 
     assert session.get_datasets()["d"].split_overwrite == {"side": "train", "source": "base"}
+
+
+def test_journal_append_and_reset() -> None:
+    from data_analyst_mcp import session
+
+    session.append_journal_entry({"op": "load", "op_id": "x"})
+    assert session.get_journal() == [{"op": "load", "op_id": "x"}]
+    session.reset()
+    assert session.get_journal() == []
+
+
+def test_journal_append_stores_a_copy() -> None:
+    from data_analyst_mcp import session
+
+    entry = {"op": "load", "op_id": "x"}
+    session.append_journal_entry(entry)
+    entry["op"] = "mutated"
+    assert session.get_journal()[0]["op"] == "load"
+
+
+def test_register_accepts_explicit_source_hash(tmp_path) -> None:
+    from data_analyst_mcp import session
+
+    p = tmp_path / "f.csv"
+    p.write_text("a\n1\n")
+    session.register(
+        name="t",
+        path=str(p),
+        read_options={},
+        format="csv",
+        rows=1,
+        columns=[{"name": "a", "dtype": "BIGINT"}],
+        source_hash="deadbeef",
+    )
+    assert session.get_datasets()["t"].source_hash == "deadbeef"
+
+
+def test_state_lock_is_reentrant() -> None:
+    from data_analyst_mcp import session
+
+    with session.state_lock():
+        with session.state_lock():
+            pass  # RLock: nested acquisition must not deadlock
+
+
+def test_install_state_replaces_everything() -> None:
+    from data_analyst_mcp import session
+    from data_analyst_mcp.session import DatasetEntry
+
+    entry = DatasetEntry(
+        path="(query)",
+        read_options={"sql": "SELECT 1"},
+        format="derived",
+        rows=1,
+        columns=[{"name": "a", "dtype": "BIGINT"}],
+        revision=3,
+    )
+    session.install_state(
+        datasets={"d": entry}, models={}, journal=[{"op": "materialize"}], next_revision=4
+    )
+    assert session.get_datasets() == {"d": entry}
+    assert session.get_journal() == [{"op": "materialize"}]
+    # Next registration must mint revision 4, not 0.
+    session.register(
+        name="e", path="(query)", read_options={}, format="derived", rows=0, columns=[]
+    )
+    assert session.get_datasets()["e"].revision == 4
