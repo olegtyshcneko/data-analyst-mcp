@@ -83,6 +83,11 @@ class ModelEntry:
     # hash alone cannot (identical bytes re-parse differently under changed
     # read_options).
     training_loader: dict[str, Any] | None = None
+    # Fit-time options that change the fitted result's inference state —
+    # currently only {"robust": bool} for OLS HC3. Recorded so setup-cell
+    # re-fit and journal replay reproduce the same covariance, not just the
+    # same coefficients (robust and plain OLS share coefficients exactly).
+    fit_options: dict[str, Any] = field(default_factory=dict[str, Any])
 
 
 _datasets: dict[str, DatasetEntry] = {}
@@ -186,6 +191,7 @@ def register_model(
     result: Any,
     training_dataset_revision: int = -1,
     training_loader: dict[str, Any] | None = None,
+    fit_options: dict[str, Any] | None = None,
 ) -> None:
     """Insert a fitted model under ``name``. Raises ``KeyError`` on collision.
 
@@ -206,6 +212,7 @@ def register_model(
         _result=result,
         training_dataset_revision=training_dataset_revision,
         training_loader=dict(training_loader) if training_loader is not None else None,
+        fit_options=dict(fit_options) if fit_options is not None else {},
     )
 
 

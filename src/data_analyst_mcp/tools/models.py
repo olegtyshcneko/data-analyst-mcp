@@ -162,6 +162,7 @@ def fit_model(payload: FitModelInput) -> dict[str, Any]:
                 "format": ds_entry.format,
                 "read_options": dict(ds_entry.read_options),
             },
+            fit_options={"robust": payload.robust} if payload.kind == "ols" else {},
             result=live_result,
         )
         result["model_name"] = payload.model_name
