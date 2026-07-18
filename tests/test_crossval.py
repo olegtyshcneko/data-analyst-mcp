@@ -345,3 +345,42 @@ def test_cross_validate_logistic_cell_is_stratified(
     assert "for _cls in (0, 1):" in src
     assert "sm.Logit" in src
     assert "roc_auc_score" in src
+
+
+def test_cv_cell_on_dataframe_dataset_gets_raise_prefix(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Spec: prefix replay guards, mechanism 2. In-memory datasets are never
+    recreated at replay (setup emits only a comment), so the CV cell must
+    open with an explanatory raise; the computation stays below as the
+    audit trail."""
+    import pandas as pd
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    df = pd.DataFrame({"y": [float(i % 7) for i in range(30)], "x": [float(i) for i in range(30)]})
+    load_df_into_session("mem", df)
+
+    result = call_tool("cross_validate", {"name": "mem", "formula": "y ~ x", "kind": "ols", "k": 3})
+    assert result["ok"] is True
+
+    src = get_recorder().cells[-1]["source"]
+    first_line = src.splitlines()[0]
+    assert first_line.startswith("raise AssertionError(")
+    assert "cross_validate" in first_line
+    assert "'mem'" in first_line or '"mem"' in first_line
+    assert "in-memory" in first_line
+    # Original computation retained below the raise.
+    assert "_cv_df = con.sql(" in src
+
+
+def test_cv_cell_on_file_dataset_has_no_raise_prefix(call_tool: Any, tmp_path: Any) -> None:
+    """File-backed sources replay via guarded load cells — no prefix."""
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv_path = tmp_path / "file_backed.csv"
+    csv_path.write_text("y,x\n" + "\n".join(f"{(i * 7) % 13}.0,{i}.0" for i in range(30)) + "\n")
+    call_tool("load_dataset", {"path": str(csv_path), "name": "fb"})
+    result = call_tool("cross_validate", {"name": "fb", "formula": "y ~ x", "kind": "ols", "k": 3})
+    assert result["ok"] is True
+    assert not get_recorder().cells[-1]["source"].startswith("raise AssertionError(")
