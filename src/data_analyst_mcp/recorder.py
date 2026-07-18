@@ -669,18 +669,22 @@ class NotebookRecorder:
 
         nb: Any = _nbformat.v4.new_notebook()  # type: ignore[reportUnknownMemberType]
         if include_setup:
-            nb.cells.append(
-                _nbformat.v4.new_code_cell(_build_setup_source())  # type: ignore[reportUnknownMemberType]
-            )
+            setup: Any = _nbformat.v4.new_code_cell(_build_setup_source())  # type: ignore[reportUnknownMemberType]
+            setup.metadata["role"] = "setup"
+            nb.cells.append(setup)
         for cell in self.cells:
             if cell["cell_type"] == "markdown":
-                nb.cells.append(
-                    _nbformat.v4.new_markdown_cell(cell["source"])  # type: ignore[reportUnknownMemberType]
-                )
+                new_cell: Any = _nbformat.v4.new_markdown_cell(cell["source"])  # type: ignore[reportUnknownMemberType]
             else:
-                nb.cells.append(
-                    _nbformat.v4.new_code_cell(cell["source"])  # type: ignore[reportUnknownMemberType]
-                )
+                new_cell = _nbformat.v4.new_code_cell(cell["source"])  # type: ignore[reportUnknownMemberType]
+            new_cell.metadata["tool_name"] = cell["metadata"]["tool_name"]
+            if cell.get("op_id") is not None:
+                new_cell.metadata["op_id"] = cell["op_id"]
+            nb.cells.append(new_cell)
+        if include_setup:
+            from data_analyst_mcp.manifest import build_manifest
+
+            nb.metadata["data_analyst_mcp"] = build_manifest(nb)
         return nb
 
     def record(self, *, markdown: str, code: str, tool_name: str, op_id: str | None = None) -> None:
