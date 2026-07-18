@@ -284,3 +284,142 @@ def test_oversized_journal_rejected(call_tool: Any, tmp_path: Any, monkeypatch: 
     monkeypatch.setattr(resume_mod, "MAX_JOURNAL_OPS_EFFECTIVE", 0)
     result = call_tool("load_session_from_notebook", {"path": path})
     assert result["error"]["type"] == "manifest_invalid"
+
+
+def test_toctou_mutation_between_preflight_and_load(
+    call_tool: Any, tmp_path: Any, monkeypatch: Any
+) -> None:
+    """File changes after phase-1 preflight, before the load op: the pre/post
+    agreement check inside _apply_load must catch it."""
+    import pandas as pd
+
+    from data_analyst_mcp.tools import resume as resume_mod
+
+    csv = tmp_path / "tc.csv"
+    pd.DataFrame({"a": [1]}).to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "tc"})["ok"] is True
+    path = _emit(call_tool, tmp_path)
+    _fresh(call_tool)
+
+    original_read = resume_mod.session.read_file_as_df
+    state = {"mutated": False}
+
+    def _mutating_read(read_call: str) -> Any:
+        if not state["mutated"]:
+            state["mutated"] = True
+            csv.write_text("a\n42\n")  # mutate AFTER preflight, DURING the op
+        return original_read(read_call)
+
+    monkeypatch.setattr(resume_mod.session, "read_file_as_df", _mutating_read)
+    result = call_tool("load_session_from_notebook", {"path": path})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "source_drift"
+
+
+def test_nondeterministic_recipe_fails_at_its_op(call_tool: Any, tmp_path: Any) -> None:
+    import pandas as pd
+
+    from data_analyst_mcp import session
+
+    csv = tmp_path / "nd.csv"
+    pd.DataFrame({"a": list(range(100))}).to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "nd"})["ok"] is True
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": "SELECT a, random() AS r FROM nd", "name": "randomized"},
+        )["ok"]
+        is True
+    )
+    path = _emit(call_tool, tmp_path)
+    _fresh(call_tool)
+    result = call_tool("load_session_from_notebook", {"path": path})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "state_digest_mismatch"
+    assert "op_id" in result["error"]["message"]
+    # Rollback left nothing behind.
+    con = session.get_connection()
+    assert (
+        con.execute("SELECT COUNT(*) FROM duckdb_tables() WHERE schema_name = 'main'").fetchone()[0]
+        == 0
+    )
+    assert session.get_datasets() == {}
+
+
+def test_split_drift_when_derived_source_order_changes(call_tool: Any, tmp_path: Any) -> None:
+    """Emit a split of a derived table; tamper the journal's recorded
+    membership checksum to simulate order drift → split_drift."""
+    import nbformat
+    import pandas as pd
+
+    csv = tmp_path / "sd.csv"
+    pd.DataFrame({"a": list(range(10))}).to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "sd"})["ok"] is True
+    assert call_tool("split_dataset", {"name": "sd"})["ok"] is True
+    path = _emit(call_tool, tmp_path)
+    _fresh(call_tool)
+
+    nb = nbformat.read(path, as_version=4)
+    meta = nb.metadata["data_analyst_mcp"]
+    split_op = next(e for e in meta["journal"] if e["op"] == "split")
+    split_op["membership_checksums"]["test"] = "0:" + "0" * 32 + ":" + "0" * 32
+    # Keep cell descriptors valid: cells untouched. Re-write the notebook.
+    nbformat.write(nb, path)
+    result = call_tool("load_session_from_notebook", {"path": path})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "split_drift"
+
+
+def test_registry_mismatch_on_tampered_rows(call_tool: Any, tmp_path: Any) -> None:
+    import nbformat
+    import pandas as pd
+
+    csv = tmp_path / "rm.csv"
+    pd.DataFrame({"a": [1, 2]}).to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "rm"})["ok"] is True
+    path = _emit(call_tool, tmp_path)
+    _fresh(call_tool)
+    nb = nbformat.read(path, as_version=4)
+    nb.metadata["data_analyst_mcp"]["final_registry"]["datasets"][0]["rows"] = 999
+    nbformat.write(nb, path)
+    result = call_tool("load_session_from_notebook", {"path": path})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "registry_mismatch"
+
+
+def test_threads_setting_restored_after_failed_resume(call_tool: Any, tmp_path: Any) -> None:
+    import pandas as pd
+
+    from data_analyst_mcp import session
+
+    csv = tmp_path / "th.csv"
+    pd.DataFrame({"a": [1]}).to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "th"})["ok"] is True
+    path = _emit(call_tool, tmp_path)
+    _fresh(call_tool)
+    con = session.get_connection()
+    con.execute("SET threads=4")
+    csv.write_text("a\n5\n")  # preflight catches the drift; threads must stay untouched
+    result = call_tool("load_session_from_notebook", {"path": path})
+    assert result["ok"] is False
+    assert int(con.execute("SELECT current_setting('threads')").fetchone()[0]) == 4
+
+
+def test_budget_exceeded_is_cooperative(call_tool: Any, tmp_path: Any, monkeypatch: Any) -> None:
+    import pandas as pd
+
+    from data_analyst_mcp.tools import resume as resume_mod
+
+    csv = tmp_path / "bu.csv"
+    pd.DataFrame({"a": [1]}).to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "bu"})["ok"] is True
+    path = _emit(call_tool, tmp_path)
+    _fresh(call_tool)
+    monkeypatch.setattr(resume_mod, "RESUME_BUDGET_SECONDS", -1.0)
+    result = call_tool("load_session_from_notebook", {"path": path})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "resume_budget_exceeded"
+
+    from data_analyst_mcp import session
+
+    assert session.get_datasets() == {}
