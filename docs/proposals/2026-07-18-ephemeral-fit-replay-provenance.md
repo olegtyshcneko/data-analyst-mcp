@@ -27,10 +27,11 @@ Consequences that shape this design:
 
 - The recorded prefix always *structurally* reproduces the fit-time
   state — it is, by construction, the history that produced it. What
-  can drift is the **content** flowing through re-executed loads: a
-  historical `load_dataset` cell re-reads its file with no guard, and
-  the setup cell's hash asserts anchor only to each dataset's **latest**
-  registration.
+  can drift is the **content** flowing through the re-executed history:
+  a historical `load_dataset` cell re-reads its file with no guard (the
+  setup cell's hash asserts anchor only to each dataset's **latest**
+  registration), and a derived recipe containing nondeterministic SQL
+  re-evaluates it (parked; see § out of scope).
 - Hence the ROADMAP failure class: load `sales.csv` → `cross_validate`
   → edit the file → reload → emit. Setup asserts the *new* hash
   (passes); the first load cell re-reads the edited bytes; the CV cell
@@ -64,28 +65,34 @@ reused, not duplicated:
   reload stays unguarded, as in the setup cell today.
 
 Each load cell asserts **its own** load-time hash. A reloaded name emits
-one guard per load cell, so the ROADMAP scenario dies at the *first*
-load cell (fit-time bytes gone) even though the setup cell's
-latest-registration assert passes. Guard-variable stems come from the
-existing sanitized-name convention plus a per-record ordinal, so
-repeated loads of one name cannot collide (assignment-then-assert within
-a single cell makes collisions harmless, but the stems keep cells
-self-describing).
+one guard per load cell, so the canonical ROADMAP scenario dies at the
+*first* load cell (fit-time bytes gone) even though the setup cell's
+latest-registration assert passes. (When drifted content also breaks a
+*surviving* final entry — e.g. two names loaded from one path at
+different content states — replay fails in the setup cell instead;
+either way it is loud.) Guard-variable stems come from the existing
+sanitized-name convention plus a per-record ordinal — the recorder
+cell-list index at record time (0 for the first tool call, 2 for the
+second, …) — so repeated loads of one name cannot collide. A stem may
+coincide with a setup-cell `guard_idx` stem for the same dataset; this
+is harmless because every emitted guard shape assigns its variables
+immediately before asserting them.
 
 Because every file enters the session through `load_dataset`, the
 recorded prefix of **any** per-call cell — not just fits — now reads
-provably load-time-faithful content for every file-backed root,
-covering the whole session→replay window. Derived recipes re-execute
-over those guarded roots; split recreation already asserts per-side
-membership checksums.
+load-time-faithful content for every file-backed root, closing the
+session→replay window for file-backed root content (under the
+single-writer assumption; see § out of scope). Deterministic derived
+recipes re-execute over those guarded roots; split recreation already
+asserts per-side membership checksums.
 
 ### 2. Explained failure for in-memory-backed guarded tools
 
 `_record_cross_validate`, and `_record_fit_model` when
 `payload.model_name is None`, check the source entry's format **at
-record time**. If it is `"dataframe"` (in-memory registration — the
-setup cell emits only a comment and the table never exists at replay),
-the recorded code cell is prefixed with a single
+record time**. If it is **directly** `"dataframe"` (in-memory
+registration — the setup cell emits only a comment and the table never
+exists at replay), the recorded code cell is prefixed with a single
 `raise AssertionError(...)` line naming the tool and dataset,
 explaining that the in-memory source is not recreated at replay. The
 original computation stays below the raise (unreachable — the markdown
@@ -95,7 +102,10 @@ fail replay with a bare `CatalogException`; loud already, now explained.
 This is stamped at record time from state that cannot change
 retroactively; there is **no emit-time resolution step, no cell
 metadata contract, and no recorder API change** anywhere in this
-design.
+design. Only the *direct* dataframe format is detected: a derived or
+split **descendant** of an in-memory root fails replay earlier, in the
+setup cell's second pass (raw `CatalogException` when the root table is
+missing) — a pre-existing behavior, parked below.
 
 ### 3. Considered and dropped: emit-time re-hash of fit-time lineage
 
@@ -109,6 +119,15 @@ into a notebook whose replay is faithful. It also needs lineage tracing
 for derived sources that mechanism 1 gets for free at the roots.
 Dropped; flagged here for reviewer veto since it changes the approved
 shape.
+
+The dominance argument rests on a **lifecycle invariant**: recorder
+history covers every live registration since the recorder last started.
+This holds through the tool surface — `emit_notebook` does not reset the
+recorder, and no tool resets the recorder without the session (the test
+harness resets both together). A recorder-only reset via direct Python
+mutation would orphan pre-reset registrations from their load cells and
+void the dominance claim; that divergence is parked with the reset
+oddity below.
 
 ## Explicitly out of scope (parked, not silently ignored)
 
@@ -127,9 +146,27 @@ shape.
   `NameError` (the `<name>_df` frame is never materialized) — a
   pre-existing rough edge of the setup cell, out of this proposal's
   scope.
-- **Recorder cells surviving `session.reset()`.** Revisions restart at
-  zero while the recorder is cleared separately; mixed-epoch notebooks
-  are a pre-existing oddity, unaffected by this design.
+- **Nondeterministic derived recipes.** `materialize_query` records its
+  SQL verbatim and replay re-executes it; a recipe containing
+  `random()`, `current_timestamp`, sampling, or similar re-evaluates to
+  different content while every load-cell assert passes. Pre-existing;
+  parked as its own ROADMAP item alongside row-order drift.
+- **Transitive in-memory lineage.** A derived/split descendant of a
+  dataframe-registered root fails replay in the setup cell's second
+  pass with a raw `CatalogException` (the root table is never created).
+  Pre-existing; mechanism 2 deliberately covers only direct
+  dataframe-format sources.
+- **Concurrent writers (TOCTOU).** The load path reads the file, then
+  hashes it at registration; a writer racing between the two (or
+  between a replay-time assert and DuckDB's read) can defeat the guard.
+  The server is a single-user local process; single-writer is a stated
+  assumption, not a checked one.
+- **Recorder/session lifecycle divergence.** Revisions restart at zero
+  on `session.reset()` while the recorder is cleared separately;
+  mixed-epoch notebooks — and the recorder-only-reset divergence that
+  would void § Mechanism 3's dominance argument — are a pre-existing
+  oddity, unaffected by this design and reachable only by direct Python
+  mutation.
 
 ## TDD slices
 
@@ -142,18 +179,26 @@ Each slice red → green per the repo convention.
 3. Remote/sentinel load emits the explanatory comment, no assert.
 4. Reloading a name records a second load cell asserting the *new*
    hash; the first cell's assert is unchanged.
-5. Guard-variable stems are unique across repeated loads of one name.
-6. `cross_validate` on a dataframe-backed dataset records a raise-prefix
+5. Guard-variable stems are unique across repeated loads of one name
+   (ordinal = recorder cell index at record time: `_0`, `_2`, …).
+6. Executing an emitted fallback guard block against a since-drifted
+   file raises `AssertionError` (exec-based unit test — pins that the
+   fallback shape is a working guard, not just right-looking text).
+7. `cross_validate` on a dataframe-backed dataset records a raise-prefix
    cell with the original computation retained below.
-7. Ephemeral `fit_model` on a dataframe-backed dataset: same;
+8. Ephemeral `fit_model` on a dataframe-backed dataset: same;
    registered `fit_model` on the same dataset: cell unchanged.
-8. Eval (`evals/`): the ROADMAP scenario — load, `cross_validate`, edit
+9. Eval (`evals/`): the ROADMAP scenario — load, `cross_validate`, edit
    file, reload, emit, execute — fails at the first load cell with the
-   drift message. Sibling case: ephemeral `fit_model`.
-9. Eval: faithful replacement histories replay cleanly end-to-end with
-   matching numbers — `materialize S1 → CV → materialize S2
-   (overwrite)`, and re-split-under-same-names after CV (the design
-   review's false-positive counterexamples, pinned as regressions).
+   drift message. Sibling cases: ephemeral `fit_model` drift failure,
+   and an ephemeral-fit *stable-source success* (exit 0).
+10. Eval: faithful replacement histories replay cleanly end-to-end —
+    `materialize S1 → CV → materialize S2 (overwrite)` and
+    re-split-under-same-names after CV (the design review's
+    false-positive counterexamples, pinned as regressions). Both
+    recipes must read a stable, surviving file-backed base (a
+    self-referential overwrite hits the parked S4b setup failure
+    instead), and fits use `kind="ols"` for deterministic replay.
 
 ## Acceptance criteria
 
@@ -161,15 +206,19 @@ Each slice red → green per the repo convention.
 (nbformat-generated cell ids excluded); no cell metadata is added or
 relied on.
 
-- Setup-cell source is identical before/after this change.
+- Setup-cell source is identical before/after this change (pinned by
+  the untouched `tests/test_recorder.py` suite — no dedicated
+  characterization test, since none can compare across versions).
 - The only per-call cells whose source changes are `load_dataset` cells
   (guard lines added) and `cross_validate` / ephemeral `fit_model`
   cells recorded against in-memory datasets (raise prefix). All other
   recorded cells are unchanged.
 - A file whose content at replay differs from what *any* session load
-  of it saw fails replay at that load cell with a message naming the
-  dataset — including the mutate-and-reload scenario, where the final
-  registration's setup assert passes.
+  of it saw fails replay loudly — in the setup cell or at the
+  corresponding load cell, with a message naming the dataset. In the
+  canonical same-name mutate-and-reload scenario the failure lands at
+  the *first* load cell, the setup assert for the final registration
+  having passed.
 - Faithful replacement histories (slice 9) replay cleanly and reproduce
   the live numbers.
 - Above-ceiling loads assert the fallback digest; remote loads emit the
@@ -185,6 +234,10 @@ relied on.
 - Add parked item: **Row-order drift under order-independent
   checksums** (split sides + non-order-preserving derived recipes vs
   positional CV folds; closing it needs an order-sensitive digest).
+- Add parked item: **Nondeterministic derived recipes** (`random()`,
+  `current_timestamp`, sampling in `materialize_query` SQL re-evaluate
+  at replay behind passing load guards; closing it needs a content
+  digest at materialize time).
 - Fold the "emit-time re-hash" rationale (§ Mechanism 3) into the
   ROADMAP note so the idea is not re-proposed without the
   false-positive analysis.
