@@ -561,3 +561,78 @@ def test_fallback_guard_lines_abort_on_drift_when_executed(
 
     with _pytest.raises(AssertionError):
         exec(guard_block, {"hashlib": hashlib})  # executing our own emitted guard
+
+
+def test_load_dataset_appends_journal_entry(call_tool: Any, tmp_path: Any) -> None:
+    import pandas as pd
+
+    from data_analyst_mcp import session
+
+    csv = tmp_path / "j.csv"
+    pd.DataFrame({"a": [1, 2]}).to_csv(csv, index=False)
+    result = call_tool("load_dataset", {"path": str(csv), "name": "j"})
+    assert result["ok"] is True
+
+    journal = session.get_journal()
+    assert len(journal) == 1
+    op = journal[0]
+    assert op["op"] == "load"
+    assert op["name"] == "j"
+    assert op["path"] == str(csv)
+    assert op["format"] == "csv"
+    assert op["rows"] == 2
+    assert op["revision"] == session.get_datasets()["j"].revision
+    assert op["source_hash"] == session.get_datasets()["j"].source_hash
+    assert isinstance(op["output_digest"], str) and len(op["output_digest"]) == 64
+    import uuid
+
+    uuid.UUID(op["op_id"])  # raises if not a valid UUID
+
+
+def test_load_dataset_op_id_binds_journal_to_cells(call_tool: Any, tmp_path: Any) -> None:
+    import pandas as pd
+
+    from data_analyst_mcp import session
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv = tmp_path / "b.csv"
+    pd.DataFrame({"a": [1]}).to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "b"})["ok"] is True
+
+    op_id = session.get_journal()[0]["op_id"]
+    cells = get_recorder().cells
+    assert cells[-2]["op_id"] == op_id  # markdown cell
+    assert cells[-1]["op_id"] == op_id  # code cell
+
+
+def test_failed_load_leaves_no_journal_and_no_table(call_tool: Any, tmp_path: Any) -> None:
+    from data_analyst_mcp import session
+
+    result = call_tool("load_dataset", {"path": str(tmp_path / "missing.csv"), "name": "x"})
+    assert result["ok"] is False
+    assert session.get_journal() == []
+
+
+def test_mid_transaction_failure_rolls_back_table(
+    call_tool: Any, tmp_path: Any, monkeypatch: Any
+) -> None:
+    """Fault-injection at the digest boundary: the CREATE must roll back."""
+    import pandas as pd
+
+    from data_analyst_mcp import session
+    from data_analyst_mcp.tools import datasets as datasets_mod
+
+    csv = tmp_path / "r.csv"
+    pd.DataFrame({"a": [1]}).to_csv(csv, index=False)
+
+    def _boom(con: Any, table: str) -> str:
+        raise RuntimeError("injected digest failure")
+
+    monkeypatch.setattr(datasets_mod, "digest_table", _boom)
+    result = call_tool("load_dataset", {"path": str(csv), "name": "r"})
+    assert result["ok"] is False
+    con = session.get_connection()
+    names = {r[0] for r in con.execute("SELECT table_name FROM duckdb_tables()").fetchall()}
+    assert "r" not in names
+    assert session.get_journal() == []
+    assert "r" not in session.get_datasets()
