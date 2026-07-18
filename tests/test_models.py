@@ -600,13 +600,17 @@ def test_fit_model_emitted_code_cell_matches_runtime_template(call_tool, load_df
         },
     )
     code = get_recorder().cells[1]["source"]
+    # In-memory ephemeral fits open with the replay-guard raise; the fit
+    # template itself must follow unchanged below it.
+    prefix, _, template = code.partition("\n")
+    assert prefix.startswith("raise AssertionError(")
     expected = (
         "import statsmodels.formula.api as smf\n"
         'df = con.sql("SELECT * FROM duncan").df()\n'
         'model = smf.ols("prestige ~ income + education", data=df).fit(cov_type="HC3")\n'
         "model.summary()"
     )
-    assert code == expected
+    assert template == expected
 
 
 # === Negative binomial (kind="negbin") — 15 TDD slices per
@@ -897,6 +901,12 @@ def test_fit_model_negbin_recorder_code_reproduces_alpha_and_beta(call_tool, loa
     load_df_into_session("nb", df)
     result = call_tool("fit_model", {"name": "nb", "formula": "y ~ x", "kind": "negbin"})
     code = get_recorder().cells[1]["source"]
+    # In-memory ephemeral fits open with the replay-guard raise; drop it —
+    # this test executes the fit template against the LIVE session, where
+    # the table does exist.
+    first_line, _, rest = code.partition("\n")
+    assert first_line.startswith("raise AssertionError(")
+    code = rest
     # Execute the recorder cell against the live session connection.
     con = _session.get_connection()
     ns: dict[str, Any] = {"con": con}  # type: ignore[name-defined]

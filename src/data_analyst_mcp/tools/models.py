@@ -297,6 +297,15 @@ def _record_fit_model(payload: FitModelInput, result: dict[str, Any]) -> None:
         md_lines.append(f"- Warnings: {', '.join(result['warnings'])}")
     md = "\n".join(md_lines)
     code = _code_for_fit(payload)
+    if payload.model_name is None:
+        entry = session.get_datasets().get(payload.name)
+        if entry is not None and entry.format == "dataframe":
+            msg = (
+                f"The fit_model call in this cell ran on in-memory dataset "
+                f"{payload.name!r}; in-memory datasets are not recreated at "
+                f"replay, so this cell cannot replay faithfully."
+            )
+            code = f"raise AssertionError({msg!r})\n{code}"
     get_recorder().record(markdown=md, code=code, tool_name="fit_model")
 
 
