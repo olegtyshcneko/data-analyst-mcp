@@ -2,9 +2,9 @@
 
 The v1.x tool surface is **24 tools** — this is the v2 boundary. v1 closed at 11 (spec §5); `adjust_pvalues` (Phase 1), `analyze_missingness` (Phase 3, descriptive + Phase 4 Little's MCAR), and the model registry trio (Phase 5: `list_models`, `predict`, `evaluate_model`, plus the additive `fit_model(model_name=...)` storage path) shipped as waivered additions. The tier-1 bundle (`materialize_query`, `find_outliers`, `power_analysis`, `regression_line`, `residual_diagnostic`) brought the count from 16 → 21. `pairwise_comparisons` then shipped 21 → 22 as the first tool to run the full proposal flow end to end — issue → `docs/proposals/` draft → design conversation → fold into SPEC §5.9a. The model-workflow bundle (`split_dataset`, `cross_validate`) shipped 22 → 24 via `docs/proposals/2026-07-08-model-workflow-bundle.md`. Everything below is parked. New tools go through an issue and a design conversation first — see `README.md` "Contributing".
 
-**Reproducibility caveat (Phase 5).** Statsmodels Results objects are not reliably picklable across kernel boundaries, so the model registry holds them in-process only. The emitted notebook works around this by re-fitting every registered model in its setup cell, guarded by a hard SHA-256 assert on the training file (captured at `load_dataset` time — every file-backed dataset reload now carries its own assert too; above the 100 MB ceiling we fall back to `(path, mtime, size)` and accept the weaker guarantee). If the training CSV is edited between session and notebook replay, the setup cell raises `AssertionError` rather than silently producing different numbers. Since 1.4.0 the guard also carries the training dataset's registration revision and fit-time loader identity, so *any* replacement of the training dataset (re-materialize, re-load, re-split — even with an identical content hash) fails replay loudly instead of silently re-fitting.
+**Reproducibility caveat (Phase 5).** Statsmodels Results objects are not reliably picklable across kernel boundaries, so the model registry holds them in-process only. The emitted notebook works around this by re-fitting every registered model in its setup cell, guarded by a hard SHA-256 assert on the training file (captured at `load_dataset` time — every file-backed dataset reload carries its own assert too, in the setup cell; above the 100 MB ceiling we fall back to `(path, mtime, size)` and accept the weaker guarantee). If the training CSV is edited between session and notebook replay, the setup cell raises `AssertionError` rather than silently producing different numbers. Since 1.4.0 the guard also carries the training dataset's registration revision and fit-time loader identity, so *any* replacement of the training dataset (re-materialize, re-load, re-split — even with an identical content hash) fails replay loudly instead of silently re-fitting. Since 1.5.0 each `load_dataset` cell in the notebook body additionally asserts its own load-time hash.
 
-One active proposal: `docs/proposals/2026-07-18-ephemeral-fit-replay-provenance.md` (the § Reproducibility "Ephemeral-fit replay provenance" item, promoted to a design draft and reworked after review into prefix replay guards — not a tool-surface change).
+No active proposals (the prefix-replay-guards proposal shipped in 1.5.0 and was folded into SPEC §5.1 / §5.11 / §5.11d / §6; see `docs/proposals/README.md`).
 
 ## Tooling
 
@@ -32,13 +32,19 @@ One active proposal: `docs/proposals/2026-07-18-ephemeral-fit-replay-provenance.
   explanation in 1.4.0; wrapping *every* derived CREATE would churn emitted
   notebook shape and pinned tests for marginal benefit, so the plain case is
   parked.
-- **Ephemeral-fit replay provenance.** `cross_validate` and
-  `fit_model(model_name=None)` re-fit inside their *per-call* cells with no
-  fit-time revision/hash guard (the setup-cell guards only cover registered
-  models). A training source mutated *and reloaded* between the call and
-  replay re-runs those cells on the new data and silently reports different
-  CV/fit numbers. Separate failure class from the 1.4.0 setup-cell work:
-  closing it means stamping fit-time provenance into per-call cells.
+- **Row-order drift under order-independent checksums.** Split membership
+  checksums and derived recipes tolerate row-order changes that preserve
+  multisets, but CV fold assignment is positional: an order-permuting
+  drift in a *derived* source (file roots are hash-guarded since 1.5.0)
+  can change CV numbers while every existing assert passes. Closing it
+  needs an order-sensitive digest. An emit-time re-hash of fit-time
+  lineage was considered and dropped during the 1.5.0 design: strictly
+  dominated by the per-load-cell asserts, and a file edited then reverted
+  before replay would bake in a false-positive raise.
+- **Nondeterministic derived recipes.** `materialize_query` SQL containing
+  `random()`, `current_timestamp`, or sampling re-evaluates at replay
+  behind passing load guards and silently changes downstream numbers.
+  Closing it needs a content digest captured at materialize time.
 
 ## Polish / DX
 

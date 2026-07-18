@@ -215,6 +215,7 @@ Every tool follows this contract:
 - Auto-detects format from extension; falls back to `read_csv_auto` for ambiguous text.
 - Stores file path and read_options in session for the recorder (the recorder still emits a direct `read_csv_auto(...)` line, since the exported notebook runs standalone with normal file access).
 - Records a provenance hash on the dataset entry at registration (`DatasetEntry.source_hash`): SHA-256 of the file bytes up to a 100 MB ceiling, a `(path, mtime, size)` fallback digest above it, and a `sentinel:` marker for non-file sources (s3/http, in-memory, derived). The emitted notebook's setup cell asserts on it at replay.
+- The recorder cell for each load asserts **that load's own** `source_hash` before its `CREATE` (content assert ≤ 100 MB; `(path, mtime, size)` fallback recompute above the ceiling; explanatory comment for `sentinel:` sources). The setup cell keeps asserting the *latest* registration only — the per-cell guards are what make an earlier load of a since-mutated file fail at replay instead of silently recomputing downstream cells.
 
 **Output**:
 ```json
@@ -545,6 +546,8 @@ Every comparison row carries the **same keys** regardless of engine — `statist
 - `interpretation`: 2–3 sentences; the `negbin` branch reports the IRR (incidence rate ratio).
 - `model_name`: present only when stored in the registry.
 
+**Recorder cell**: when the source dataset is in-memory (`format == "dataframe"`), the recorded cell is prefixed with a `raise AssertionError(...)` explaining that the table is not recreated at replay; the computation is retained below the raise as the audit trail. This applies only when `model_name` is omitted — registered fits are guarded by the setup cell's model block.
+
 ### 5.11a `list_models`
 
 **Input**: none.
@@ -611,6 +614,8 @@ Outcome dtype validation: logistic requires binary 0/1 or boolean; OLS requires 
 **Output**: `{ok, name, formula, kind, k, seed, stratified, metrics: {<metric>: {mean, std, per_fold}}, fold_sizes, n_obs, dropped_rows, fold_failures, warnings, interpretation}` — `std` is ddof=1.
 
 **Errors**: `dataset_not_found`, `invalid_kind`, `formula_error`, `perfect_separation`, `convergence_failed`, `outcome_dtype_mismatch`, `outcome_class_too_small`, `k_out_of_range`, `fold_too_small`, `cv_fit_failed`, `robust_not_supported`, `threshold_out_of_range`, `internal`. (`perfect_separation` / `convergence_failed` refer to the full-data preflight fit; the fold-local variants land in `fold_failures`. `invalid_kind` is the wrapper-level mapping of the pydantic `Literal` violation on `kind`.)
+
+**Recorder cell**: when the source dataset is in-memory (`format == "dataframe"`), the recorded cell is prefixed with a `raise AssertionError(...)` explaining that the table is not recreated at replay; the computation is retained below the raise as the audit trail.
 
 ### 5.12 `plot`
 
@@ -757,6 +762,10 @@ con.execute("""CREATE OR REPLACE TABLE raw AS SELECT * FROM read_csv_auto('fixtu
 ```
 
 The setup cell is rebuilt from the session's dataset registry at emit-time.
+
+### Replay order and per-call load guards
+
+`to_notebook` emits the setup cell first, then every recorded cell in call order. A per-call cell therefore reads the table state recreated by its *historical prefix* (the last state-recreating cell for that name before it), not the final session state — `load_dataset`, `materialize_query`, and `split_dataset` all record cells that re-execute their state change. Content fidelity along that prefix comes from each `load_dataset` cell asserting its own load-time hash (see §5.1); derived recipes re-execute over those guarded roots and split recreation asserts per-side membership checksums. Known residual gaps (parked in ROADMAP): row-order drift through order-independent checksums vs positional CV folds, and remote / above-ceiling sources whose hashes cannot prove content.
 
 ---
 
