@@ -683,13 +683,18 @@ class NotebookRecorder:
                 )
         return nb
 
-    def record(self, *, markdown: str, code: str, tool_name: str) -> None:
-        """Append one markdown + one code cell describing a tool invocation."""
+    def record(self, *, markdown: str, code: str, tool_name: str, op_id: str | None = None) -> None:
+        """Append one markdown + one code cell describing a tool invocation.
+
+        ``op_id`` binds the cell pair to its operation-journal entry (state-
+        changing tools only); ``None`` for read-only tools.
+        """
         self.cells.append(
             {
                 "cell_type": "markdown",
                 "source": markdown,
                 "metadata": {"tool_name": tool_name},
+                "op_id": op_id,
             }
         )
         self.cells.append(
@@ -697,6 +702,7 @@ class NotebookRecorder:
                 "cell_type": "code",
                 "source": code,
                 "metadata": {"tool_name": tool_name},
+                "op_id": op_id,
             }
         )
 

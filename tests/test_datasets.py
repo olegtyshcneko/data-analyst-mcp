@@ -479,12 +479,12 @@ def test_load_dataset_cell_emits_comment_for_sentinel_sources(
 
     # Force the sentinel shape without touching the network: the loader
     # still reads the real local file; only the registration hash is faked.
-    # session.py binds the function at import (`from ... import
-    # compute_source_hash`), so patch the session-module binding.
+    # load_dataset computes the hash via its own module binding (`from ...
+    # import compute_source_hash`), so patch the datasets-module binding.
     def _sentinel(path: str) -> str:
         return f"sentinel:no-file:{path}"
 
-    monkeypatch.setattr("data_analyst_mcp.session.compute_source_hash", _sentinel)
+    monkeypatch.setattr("data_analyst_mcp.tools.datasets.compute_source_hash", _sentinel)
     del provenance  # imported only to document where the real hasher lives
 
     call_tool("load_dataset", {"path": MESSY_CSV, "name": "remote"})

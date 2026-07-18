@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import logging
 import os
+import uuid
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
+from data_analyst_mcp.digest import digest_table
 from data_analyst_mcp.errors import build_error
+from data_analyst_mcp.provenance import compute_source_hash
 from data_analyst_mcp.read_options import render_read_options_fragment
 from data_analyst_mcp.recorder import get_recorder, load_guard_lines
 
@@ -597,47 +600,76 @@ def load_dataset(payload: LoadDatasetInput) -> dict[str, Any]:
             message=str(exc),
             hint="Check the file is readable and matches the expected format / read_options.",
         )
-    con.register("__dam_load_view", loaded_df)
-    try:
-        con.execute(f'CREATE OR REPLACE TABLE "{name}" AS SELECT * FROM __dam_load_view')
-    finally:
-        con.unregister("__dam_load_view")
-
-    describe_rows = con.execute(f'DESCRIBE "{name}"').fetchall()
-    columns = [{"name": str(row[0]), "dtype": str(row[1])} for row in describe_rows]
-    rows = int(con.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0])  # type: ignore[index]
-
-    session.register(
-        name=name,
-        path=payload.path,
-        read_options=payload.read_options or {},
-        format=fmt,
-        rows=rows,
-        columns=columns,
-    )
-
-    md = (
-        f"### Loaded dataset `{name}`\n"
-        f"- Source: `{payload.path}`\n"
-        f"- {rows} rows x {len(columns)} columns"
-    )
-    entry = session.get_datasets()[name]
-    guard_lines = load_guard_lines(
-        name=name,
-        path=entry.path,
-        source_hash=entry.source_hash,
-        ordinal=len(get_recorder().cells),
-    )
-    create_block = (
-        f'con.execute("""\n'
-        f"    CREATE OR REPLACE TABLE {name} AS\n"
-        f"    SELECT * FROM {read_call}\n"
-        f'""")\n'
-        f'{name}_df = con.sql("SELECT * FROM {name}").df()\n'
-        f"{name}_df.head()"
-    )
-    code = "\n".join([*guard_lines, create_block])
-    get_recorder().record(markdown=md, code=code, tool_name="load_dataset")
+    # The hash is computed before the transaction and passed through
+    # register(source_hash=...) so the journal, registry, and guard lines all
+    # see identical bytes-evidence for this load.
+    source_hash = compute_source_hash(payload.path)
+    op_id = str(uuid.uuid4())
+    with session.state_lock():
+        con.execute("BEGIN TRANSACTION")
+        try:
+            con.register("__dam_load_view", loaded_df)
+            try:
+                con.execute(f'CREATE OR REPLACE TABLE "{name}" AS SELECT * FROM __dam_load_view')
+            finally:
+                con.unregister("__dam_load_view")
+            describe_rows = con.execute(f'DESCRIBE "{name}"').fetchall()
+            columns = [{"name": str(row[0]), "dtype": str(row[1])} for row in describe_rows]
+            rows = int(con.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0])  # type: ignore[index]
+            output_digest = digest_table(con, name)
+            con.execute("COMMIT")
+        except Exception as exc:
+            con.execute("ROLLBACK")
+            return build_error(
+                type="query_error",
+                message=str(exc),
+                hint="The load was rolled back; no table, journal entry, or cell was created.",
+            )
+        session.register(
+            name=name,
+            path=payload.path,
+            read_options=payload.read_options or {},
+            format=fmt,
+            rows=rows,
+            columns=columns,
+            source_hash=source_hash,
+        )
+        entry = session.get_datasets()[name]
+        session.append_journal_entry(
+            {
+                "op": "load",
+                "op_id": op_id,
+                "name": name,
+                "path": payload.path,
+                "format": fmt,
+                "read_options": payload.read_options or {},
+                "source_hash": entry.source_hash,
+                "rows": rows,
+                "revision": entry.revision,
+                "output_digest": output_digest,
+            }
+        )
+        md = (
+            f"### Loaded dataset `{name}`\n"
+            f"- Source: `{payload.path}`\n"
+            f"- {rows} rows x {len(columns)} columns"
+        )
+        guard_lines = load_guard_lines(
+            name=name,
+            path=entry.path,
+            source_hash=entry.source_hash,
+            ordinal=len(get_recorder().cells),
+        )
+        create_block = (
+            f'con.execute("""\n'
+            f"    CREATE OR REPLACE TABLE {name} AS\n"
+            f"    SELECT * FROM {read_call}\n"
+            f'""")\n'
+            f'{name}_df = con.sql("SELECT * FROM {name}").df()\n'
+            f"{name}_df.head()"
+        )
+        code = "\n".join([*guard_lines, create_block])
+        get_recorder().record(markdown=md, code=code, tool_name="load_dataset", op_id=op_id)
 
     return {
         "ok": True,
