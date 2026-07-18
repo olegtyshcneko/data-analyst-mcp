@@ -27,6 +27,7 @@ from data_analyst_mcp.tools import posthoc as _posthoc
 from data_analyst_mcp.tools import power as _power
 from data_analyst_mcp.tools import predict as _predict
 from data_analyst_mcp.tools import query as _query
+from data_analyst_mcp.tools import resume as _resume
 from data_analyst_mcp.tools import split as _split
 from data_analyst_mcp.tools import stats as _stats
 
@@ -936,6 +937,25 @@ def emit_notebook(
         return _notebook.emit_notebook(payload)
     except Exception as exc:  # pragma: no cover - tools must not raise
         logger.exception("emit_notebook failed")
+        return build_error(type="internal", message=str(exc))
+
+
+@mcp.tool()
+def load_session_from_notebook(path: str) -> dict[str, Any]:
+    """Resume a previously-emitted session notebook: verify its journal
+    manifest, replay every recorded operation transactionally with drift
+    guards, and restore datasets, models, and the recorder history.
+
+    Requires an empty session and an empty DuckDB catalog. Any divergence
+    from the recorded evidence (source hashes, membership checksums, table
+    digests, model params/SEs) aborts atomically — the live session is left
+    untouched.
+    """
+    try:
+        payload = _resume.LoadSessionInput(path=path)
+        return _resume.load_session_from_notebook(payload)
+    except Exception as exc:  # pragma: no cover - tools must not raise
+        logger.exception("load_session_from_notebook failed")
         return build_error(type="internal", message=str(exc))
 
 

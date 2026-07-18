@@ -658,6 +658,11 @@ class NotebookRecorder:
         """Empty the recorded cell list."""
         self.cells.clear()
 
+    def install_cells(self, cells: list[dict[str, Any]]) -> None:
+        """Replace the recorded cells wholesale (resume phase 3 publish)."""
+        self.cells.clear()
+        self.cells.extend([dict(c) for c in cells])
+
     def to_notebook(self, include_setup: bool = True) -> nbformat.NotebookNode:
         """Render the recorded cells as a ``nbformat.v4`` notebook.
 
