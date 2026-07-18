@@ -7,12 +7,14 @@ Also hosts ``list_models`` — a read-only inspection helper that mirrors
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
+from data_analyst_mcp.journal_evidence import tag_nonfinite
 from data_analyst_mcp.recorder import get_recorder
 
 logger = logging.getLogger(__name__)
@@ -166,7 +168,36 @@ def fit_model(payload: FitModelInput) -> dict[str, Any]:
             result=live_result,
         )
         result["model_name"] = payload.model_name
-    _record_fit_model(payload, result)
+        op_id = str(uuid.uuid4())
+        params = {str(k): tag_nonfinite(float(v)) for k, v in live_result.params.items()}
+        bse = {str(k): tag_nonfinite(float(v)) for k, v in live_result.bse.items()}
+        dispersion = params.get("alpha") if payload.kind == "negbin" else None
+        session.append_journal_entry(
+            {
+                "op": "fit",
+                "op_id": op_id,
+                "model_name": payload.model_name,
+                "dataset": payload.name,
+                "formula": payload.formula,
+                "kind": payload.kind,
+                "fit_options": {"robust": payload.robust} if payload.kind == "ols" else {},
+                "n_obs": n_obs_val,
+                "design_columns": [str(k) for k in live_result.params.index],
+                "params": params,
+                "bse": bse,
+                "dispersion": dispersion,
+                "training_dataset_hash": ds_entry.source_hash,
+                "training_dataset_revision": ds_entry.revision,
+                "training_loader": {
+                    "path": ds_entry.path,
+                    "format": ds_entry.format,
+                    "read_options": dict(ds_entry.read_options),
+                },
+            }
+        )
+    else:
+        op_id = None
+    _record_fit_model(payload, result, op_id=op_id)
     return result
 
 
@@ -279,7 +310,9 @@ def _validate_negbin_endog(df: Any, formula: str) -> tuple[Any, dict[str, Any] |
     return df, None, None
 
 
-def _record_fit_model(payload: FitModelInput, result: dict[str, Any]) -> None:
+def _record_fit_model(
+    payload: FitModelInput, result: dict[str, Any], *, op_id: str | None = None
+) -> None:
     """Append a markdown + code cell pair describing the fit_model call."""
     if not result.get("ok"):
         return
@@ -307,7 +340,7 @@ def _record_fit_model(payload: FitModelInput, result: dict[str, Any]) -> None:
                 f"replay, so this cell cannot replay faithfully."
             )
             code = f"raise AssertionError({msg!r})\n{code}"
-    get_recorder().record(markdown=md, code=code, tool_name="fit_model")
+    get_recorder().record(markdown=md, code=code, tool_name="fit_model", op_id=op_id)
 
 
 def _code_for_fit(payload: FitModelInput) -> str:
