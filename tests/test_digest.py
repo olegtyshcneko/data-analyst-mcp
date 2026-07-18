@@ -84,7 +84,9 @@ def test_signed_zero_and_nan_are_distinct_and_stable(con: Any) -> None:
     from data_analyst_mcp.digest import digest_table
 
     _make(con, "f1", "SELECT CAST(0.0 AS DOUBLE) AS a")
-    _make(con, "f2", "SELECT CAST(-0.0 AS DOUBLE) AS a")
+    # NB: the literal CAST(-0.0 AS DOUBLE) constant-folds through DECIMAL,
+    # which has no signed zero — negate after the cast to get a true -0.0.
+    _make(con, "f2", "SELECT -CAST(0.0 AS DOUBLE) AS a")
     assert digest_table(con, "f1") != digest_table(con, "f2")
     _make(con, "f3", "SELECT CAST('nan' AS DOUBLE) AS a")
     assert digest_table(con, "f3") == digest_table(con, "f3")
