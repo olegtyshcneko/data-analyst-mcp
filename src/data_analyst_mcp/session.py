@@ -6,6 +6,7 @@ start of every case via the autouse fixture in ``tests/conftest.py``.
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -94,6 +95,51 @@ _datasets: dict[str, DatasetEntry] = {}
 _models: dict[str, ModelEntry] = {}
 _connection: duckdb.DuckDBPyConnection | None = None
 _revision_counter = 0
+_journal: list[dict[str, Any]] = []
+_state_lock = threading.RLock()
+
+
+def state_lock() -> threading.RLock:
+    """Session-wide mutex guarding all state mutation and resume.
+
+    The spec's readers-writer contract is implemented as a single mutex:
+    mutual exclusion is strictly stronger, and FastMCP serializes tool
+    calls anyway — the lock is the invariant, not the framework.
+    """
+    return _state_lock
+
+
+def append_journal_entry(entry: dict[str, Any]) -> None:
+    """Append one operation-journal entry (stored as a defensive copy)."""
+    _journal.append(dict(entry))
+
+
+def get_journal() -> list[dict[str, Any]]:
+    """Return the live journal list (mutating it mutates the session)."""
+    return _journal
+
+
+def install_state(
+    *,
+    datasets: dict[str, DatasetEntry],
+    models: dict[str, ModelEntry],
+    journal: list[dict[str, Any]],
+    next_revision: int,
+) -> None:
+    """Atomically publish a fully-prepared session state (resume phase 3).
+
+    Replaces the contents of every registry in place so existing handles
+    returned by get_datasets()/get_models()/get_journal() stay valid.
+    """
+    global _revision_counter
+    with _state_lock:
+        _datasets.clear()
+        _datasets.update(datasets)
+        _models.clear()
+        _models.update(models)
+        _journal.clear()
+        _journal.extend(journal)
+        _revision_counter = next_revision
 
 
 def get_connection() -> duckdb.DuckDBPyConnection:
@@ -158,8 +204,14 @@ def register(
     columns: list[dict[str, str]],
     base_loader: dict[str, Any] | None = None,
     split_overwrite: dict[str, Any] | None = None,
+    source_hash: str | None = None,
 ) -> None:
-    """Insert (or replace) a dataset entry under ``name``."""
+    """Insert (or replace) a dataset entry under ``name``.
+
+    ``source_hash``, when provided, is stored verbatim instead of hashing
+    ``path`` — resume replay and op-transaction callers pass the hash they
+    already computed so journal, registry, and guard lines agree bytewise.
+    """
     global _revision_counter
     _datasets[name] = DatasetEntry(
         path=path,
@@ -169,7 +221,7 @@ def register(
         columns=list(columns),
         base_loader=dict(base_loader) if base_loader is not None else None,
         split_overwrite=dict(split_overwrite) if split_overwrite is not None else None,
-        source_hash=compute_source_hash(path),
+        source_hash=source_hash if source_hash is not None else compute_source_hash(path),
         revision=_revision_counter,
     )
     _revision_counter += 1
@@ -249,4 +301,5 @@ def reset() -> None:
             _connection.execute(f'DROP TABLE IF EXISTS "{escaped_name}"')
     _datasets.clear()
     _models.clear()
+    _journal.clear()
     _revision_counter = 0
