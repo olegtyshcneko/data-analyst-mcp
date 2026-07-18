@@ -268,6 +268,19 @@ def _hash_guard_lines(var: str, display_name: str, path: str, hash_val: str) -> 
     ]
 
 
+def load_guard_lines(*, name: str, path: str, source_hash: str, ordinal: int) -> list[str]:
+    """Drift-guard lines for one ``load_dataset`` per-call cell.
+
+    Anchored to THIS load's ``source_hash`` — not the registry's latest —
+    so an earlier load of since-mutated bytes fails replay at its own cell
+    even when the setup cell's latest-registration assert passes. Shapes
+    (content / fallback / sentinel comment) are ``_hash_guard_lines``'s;
+    ``ordinal`` is the recorder cell index at record time, keeping stems
+    unique across repeated loads of one name.
+    """
+    return _hash_guard_lines(_sanitized_guard_var(name, ordinal), name, path, source_hash)
+
+
 def _matching_split_sibling(
     datasets: dict[str, DatasetEntry], *, opts: dict[str, Any], sibling_role: str
 ) -> DatasetEntry | None:

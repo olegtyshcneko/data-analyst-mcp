@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from data_analyst_mcp import session
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.read_options import render_read_options_fragment
-from data_analyst_mcp.recorder import get_recorder
+from data_analyst_mcp.recorder import get_recorder, load_guard_lines
 
 logger = logging.getLogger(__name__)
 
@@ -621,7 +621,14 @@ def load_dataset(payload: LoadDatasetInput) -> dict[str, Any]:
         f"- Source: `{payload.path}`\n"
         f"- {rows} rows x {len(columns)} columns"
     )
-    code = (
+    entry = session.get_datasets()[name]
+    guard_lines = load_guard_lines(
+        name=name,
+        path=entry.path,
+        source_hash=entry.source_hash,
+        ordinal=len(get_recorder().cells),
+    )
+    create_block = (
         f'con.execute("""\n'
         f"    CREATE OR REPLACE TABLE {name} AS\n"
         f"    SELECT * FROM {read_call}\n"
@@ -629,6 +636,7 @@ def load_dataset(payload: LoadDatasetInput) -> dict[str, Any]:
         f'{name}_df = con.sql("SELECT * FROM {name}").df()\n'
         f"{name}_df.head()"
     )
+    code = "\n".join([*guard_lines, create_block])
     get_recorder().record(markdown=md, code=code, tool_name="load_dataset")
 
     return {
