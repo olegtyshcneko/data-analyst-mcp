@@ -486,3 +486,23 @@ def test_tampered_coefficient_evidence_is_model_drift(call_tool: Any, tmp_path: 
     nbformat.write(nb, path)
     result = call_tool("load_session_from_notebook", {"path": path})
     assert result["error"]["type"] == "model_drift"
+
+
+def test_fallback_hash_source_resumes_with_warning(
+    call_tool: Any, tmp_path: Any, monkeypatch: Any
+) -> None:
+    """Files above the hash ceiling carry fallback: hashes — resume succeeds
+    (same (path, mtime, size) check as replay) but reports degraded continuity."""
+    import pandas as pd
+
+    from data_analyst_mcp import provenance
+
+    monkeypatch.setattr(provenance, "HASH_CONTENT_CEILING_BYTES", 0)  # force fallback
+    csv = tmp_path / "big.csv"
+    pd.DataFrame({"a": [1, 2]}).to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "big"})["ok"] is True
+    path = _emit(call_tool, tmp_path)
+    _fresh(call_tool)
+    result = call_tool("load_session_from_notebook", {"path": path})
+    assert result["ok"] is True, result
+    assert any("fallback" in w for w in result["warnings"])
