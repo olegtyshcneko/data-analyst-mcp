@@ -5,6 +5,28 @@ All notable changes to **data-analyst-mcp** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-07-18
+
+Prefix replay guards: emitted notebooks replay setup **then** the full
+recorded history, and historical `load_dataset` cells re-read files
+unguarded — the last way to make a notebook silently recompute on drifted
+data. Every load cell now asserts its own load-time hash, and
+`cross_validate` / unregistered `fit_model` cells on in-memory datasets
+open with an explanatory raise. Tool surface unchanged (24).
+
+### Fixed
+- A source file mutated and reloaded mid-session replayed the pre-mutation
+  cells (`cross_validate`, ephemeral and registered `fit_model` inputs,
+  every analytic cell) against the new bytes with exit code 0 — the setup
+  cell only asserts each dataset's *latest* registration. Each
+  `load_dataset` cell now carries its own content assert (fallback digest
+  above 100 MB; explanatory comment for remote sources), so replay fails
+  loudly at the first load that saw the old bytes.
+- `cross_validate` and unregistered `fit_model` cells recorded against
+  in-memory (dataframe-registered) datasets failed replay with a bare
+  `duckdb.CatalogException`; they now open with a purpose-written
+  `AssertionError` naming the tool and dataset.
+
 ## [1.4.0] - 2026-07-14
 
 Replay-guard hardening: registration revisions + fit-time loader identity +
