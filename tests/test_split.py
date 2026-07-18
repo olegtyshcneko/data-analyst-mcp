@@ -1045,3 +1045,32 @@ def test_setup_cell_second_pass_orders_by_revision_for_reused_names(
     train_x = {r[0] for r in con.execute('SELECT x FROM "t_train"').fetchall()}
     assert test_x == sorted(x for x in train_x if x > 10)
     assert len(test_x) > 0
+
+
+def test_split_appends_one_journal_entry_with_both_sides(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    import pandas as pd
+
+    from data_analyst_mcp import session
+
+    load_df_into_session("base", pd.DataFrame({"x": list(range(10))}))
+    assert call_tool("split_dataset", {"name": "base"})["ok"] is True
+
+    ops = [e for e in session.get_journal() if e["op"] == "split"]
+    assert len(ops) == 1
+    op = ops[0]
+    assert op["source"] == "base"
+    assert op["names"] == {"train": "base_train", "test": "base_test"}
+    assert op["seed"] == 42
+    assert op["params"]["test_fraction"] == 0.25
+    assert op["params"]["stratify_by"] is None
+    assert op["rows"] == {"train": 8, "test": 2}
+    ds = session.get_datasets()
+    assert op["revisions"] == {
+        "train": ds["base_train"].revision,
+        "test": ds["base_test"].revision,
+    }
+    assert op["membership_checksums"]["test"] == ds["base_test"].read_options["membership_checksum"]
+    assert set(op["output_digests"]) == {"train", "test"}
+    assert all(isinstance(v, str) for v in op["output_digests"].values())
