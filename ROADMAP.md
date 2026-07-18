@@ -4,7 +4,7 @@ The v1.x tool surface is **24 tools** — this is the v2 boundary. v1 closed at 
 
 **Reproducibility caveat (Phase 5).** Statsmodels Results objects are not reliably picklable across kernel boundaries, so the model registry holds them in-process only. The emitted notebook works around this by re-fitting every registered model in its setup cell, guarded by a hard SHA-256 assert on the training file (captured at `load_dataset` time — every file-backed dataset reload now carries its own assert too; above the 100 MB ceiling we fall back to `(path, mtime, size)` and accept the weaker guarantee). If the training CSV is edited between session and notebook replay, the setup cell raises `AssertionError` rather than silently producing different numbers. Since 1.4.0 the guard also carries the training dataset's registration revision and fit-time loader identity, so *any* replacement of the training dataset (re-materialize, re-load, re-split — even with an identical content hash) fails replay loudly instead of silently re-fitting.
 
-One active proposal: `docs/proposals/2026-07-18-ephemeral-fit-replay-provenance.md` (the § Reproducibility "Ephemeral-fit replay provenance" item, promoted to a design draft — not a tool-surface change).
+One active proposal: `docs/proposals/2026-07-18-ephemeral-fit-replay-provenance.md` (the § Reproducibility "Ephemeral-fit replay provenance" item, promoted to a design draft and reworked after review into prefix replay guards — not a tool-surface change).
 
 ## Tooling
 
