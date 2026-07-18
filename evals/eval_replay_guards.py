@@ -120,3 +120,77 @@ async def eval_stable_source_ephemeral_fit_replays_cleanly():
 
     proc = _nbconvert(nb_path)
     assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+@pytest.mark.eval
+async def eval_rematerialize_after_cv_replays_cleanly():
+    """materialize S1 → CV(d) → materialize S2 (overwrite) is faithful at
+    replay (the prefix recreates S1 before the CV cell) and must exit 0 —
+    the first-draft dispatch wrongly raised here; pin the fix.
+
+    Constraint (spec slice 10): BOTH recipes read the stable surviving
+    file-backed `base` — a self-referential S2 (SELECT ... FROM d) would
+    hit the parked S4b setup failure instead and invalidate the pin."""
+    ARTIFACTS.mkdir(parents=True, exist_ok=True)
+    csv_path = ARTIFACTS / "guards_base.csv"
+    nb_path = ARTIFACTS / "eval_replay_guards_remat.ipynb"
+    if nb_path.exists():
+        nb_path.unlink()
+    _write_csv(csv_path, [f"{(i * 7) % 13}.0,{i}.0" for i in range(40)])
+
+    async with mcp_session() as s:
+        r = await call(s, "load_dataset", {"path": str(csv_path), "name": "base"})
+        assert r["ok"] is True
+        r = await call(
+            s,
+            "materialize_query",
+            {"sql": "SELECT y, x FROM base WHERE x < 30", "name": "d"},
+        )
+        assert r["ok"] is True
+        r = await call(
+            s, "cross_validate", {"name": "d", "formula": "y ~ x", "kind": "ols", "k": 3}
+        )
+        assert r["ok"] is True
+        r = await call(
+            s,
+            "materialize_query",
+            {"sql": "SELECT y, x FROM base", "name": "d", "overwrite": True},
+        )
+        assert r["ok"] is True
+        r = await call(s, "emit_notebook", {"path": str(nb_path)})
+        assert r["ok"] is True
+
+    proc = _nbconvert(nb_path)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+@pytest.mark.eval
+async def eval_resplit_after_cv_replays_cleanly():
+    """split(seed=1) → CV(train) → split(seed=2, overwrite) under the same
+    names: the prefix recreates the seed-1 sides (own checksums) before the
+    CV cell, then the seed-2 sides after. Must exit 0."""
+    ARTIFACTS.mkdir(parents=True, exist_ok=True)
+    csv_path = ARTIFACTS / "guards_split.csv"
+    nb_path = ARTIFACTS / "eval_replay_guards_resplit.ipynb"
+    if nb_path.exists():
+        nb_path.unlink()
+    _write_csv(csv_path, [f"{(i * 7) % 13}.0,{i}.0" for i in range(60)])
+
+    async with mcp_session() as s:
+        r = await call(s, "load_dataset", {"path": str(csv_path), "name": "src"})
+        assert r["ok"] is True
+        r = await call(s, "split_dataset", {"name": "src", "seed": 1})
+        assert r["ok"] is True
+        r = await call(
+            s,
+            "cross_validate",
+            {"name": "src_train", "formula": "y ~ x", "kind": "ols", "k": 3},
+        )
+        assert r["ok"] is True
+        r = await call(s, "split_dataset", {"name": "src", "seed": 2, "overwrite": True})
+        assert r["ok"] is True
+        r = await call(s, "emit_notebook", {"path": str(nb_path)})
+        assert r["ok"] is True
+
+    proc = _nbconvert(nb_path)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
