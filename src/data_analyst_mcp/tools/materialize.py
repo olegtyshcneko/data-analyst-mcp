@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from data_analyst_mcp import session
+from data_analyst_mcp.digest import digest_table
 from data_analyst_mcp.errors import build_error
 from data_analyst_mcp.recorder import get_recorder
 from data_analyst_mcp.tools._sql_safety import contains_unsafe_semicolon, leading_keyword
@@ -87,21 +89,6 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
         )
 
     con = session.get_connection()
-    try:
-        con.execute(f'CREATE OR REPLACE TABLE "{payload.name}" AS {payload.sql}')
-    except Exception as exc:
-        # DuckDB raises one of several subclasses of duckdb.Error (Catalog,
-        # Parser, Binder, …). Any of them maps to query_error so callers
-        # see the structured envelope rather than an internal stack trace.
-        return build_error(
-            type="query_error",
-            message=str(exc),
-            hint="Check the SQL — verify referenced tables/columns exist and the syntax is valid.",
-        )
-
-    rows = int(con.execute(f'SELECT COUNT(*) FROM "{payload.name}"').fetchone()[0])  # type: ignore[index]
-    describe_rows = con.execute(f'DESCRIBE "{payload.name}"').fetchall()
-    columns = [{"name": str(row[0]), "dtype": str(row[1])} for row in describe_rows]
 
     # When overwriting a file-backed dataset with a derived query, retain the
     # original file loader so the recorder can re-create the base table at
@@ -139,21 +126,56 @@ def materialize_query(payload: MaterializeQueryInput) -> dict[str, Any]:
         elif existing.format == "derived":
             split_overwrite = existing.split_overwrite
 
-    session.register(
-        name=payload.name,
-        path="(query)",
-        read_options={"sql": payload.sql},
-        format="derived",
-        rows=rows,
-        columns=columns,
-        base_loader=base_loader,
-        split_overwrite=split_overwrite,
-    )
-
-    md = f"### Materialize query as dataset `{payload.name}`\n\n```sql\n{payload.sql}\n```"
-    stmt = f'CREATE OR REPLACE TABLE "{payload.name}" AS {payload.sql}'
-    code = f"con.execute({stmt!r})"
-    get_recorder().record(markdown=md, code=code, tool_name="materialize_query")
+    op_id = str(uuid.uuid4())
+    overwrote = existing is not None
+    with session.state_lock():
+        con.execute("BEGIN TRANSACTION")
+        try:
+            con.execute(f'CREATE OR REPLACE TABLE "{payload.name}" AS {payload.sql}')
+            rows = int(con.execute(f'SELECT COUNT(*) FROM "{payload.name}"').fetchone()[0])  # type: ignore[index]
+            describe_rows = con.execute(f'DESCRIBE "{payload.name}"').fetchall()
+            columns = [{"name": str(row[0]), "dtype": str(row[1])} for row in describe_rows]
+            output_digest = digest_table(con, payload.name)
+            con.execute("COMMIT")
+        except Exception as exc:
+            # DuckDB raises one of several subclasses of duckdb.Error (Catalog,
+            # Parser, Binder, …). Any of them maps to query_error so callers
+            # see the structured envelope rather than an internal stack trace.
+            con.execute("ROLLBACK")
+            return build_error(
+                type="query_error",
+                message=str(exc),
+                hint="Check the SQL — verify referenced tables/columns exist and the syntax is valid.",
+            )
+        session.register(
+            name=payload.name,
+            path="(query)",
+            read_options={"sql": payload.sql},
+            format="derived",
+            rows=rows,
+            columns=columns,
+            base_loader=base_loader,
+            split_overwrite=split_overwrite,
+        )
+        entry = session.get_datasets()[payload.name]
+        session.append_journal_entry(
+            {
+                "op": "materialize",
+                "op_id": op_id,
+                "name": payload.name,
+                "sql": payload.sql,
+                "overwrote": overwrote,
+                "base_loader": base_loader,
+                "split_overwrite": split_overwrite,
+                "rows": rows,
+                "revision": entry.revision,
+                "output_digest": output_digest,
+            }
+        )
+        md = f"### Materialize query as dataset `{payload.name}`\n\n```sql\n{payload.sql}\n```"
+        stmt = f'CREATE OR REPLACE TABLE "{payload.name}" AS {payload.sql}'
+        code = f"con.execute({stmt!r})"
+        get_recorder().record(markdown=md, code=code, tool_name="materialize_query", op_id=op_id)
 
     return {
         "ok": True,
