@@ -680,3 +680,67 @@ def test_plain_overwrites_leave_split_provenance_none(call_tool, tmp_path) -> No
         is True
     )
     assert _session.get_datasets()["data"].split_overwrite is None
+
+
+def test_materialize_appends_journal_entry(call_tool: Any, tmp_path: Any) -> None:
+    import pandas as pd
+
+    from data_analyst_mcp import session
+
+    csv = tmp_path / "m.csv"
+    pd.DataFrame({"a": [1, 2, 3]}).to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "m"})["ok"] is True
+    result = call_tool("materialize_query", {"sql": "SELECT a * 2 AS a2 FROM m", "name": "m2"})
+    assert result["ok"] is True
+
+    op = session.get_journal()[-1]
+    assert op["op"] == "materialize"
+    assert op["name"] == "m2"
+    assert op["sql"] == "SELECT a * 2 AS a2 FROM m"
+    assert op["overwrote"] is False
+    assert op["base_loader"] is None
+    assert op["rows"] == 3
+    assert op["revision"] == session.get_datasets()["m2"].revision
+    assert isinstance(op["output_digest"], str)
+
+
+def test_materialize_overwrite_chain_journals_every_step(call_tool: Any, tmp_path: Any) -> None:
+    """The 13-vs-7 spec case: y*2 then +1 as self-overwrites — two entries,
+    each with its own output digest, in order."""
+    import pandas as pd
+
+    from data_analyst_mcp import session
+
+    csv = tmp_path / "y.csv"
+    pd.DataFrame({"y": [6]}).to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "y"})["ok"] is True
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": "SELECT y * 2 AS y FROM y", "name": "y", "overwrite": True},
+        )["ok"]
+        is True
+    )
+    assert (
+        call_tool(
+            "materialize_query",
+            {"sql": "SELECT y + 1 AS y FROM y", "name": "y", "overwrite": True},
+        )["ok"]
+        is True
+    )
+
+    con = session.get_connection()
+    assert con.execute('SELECT y FROM "y"').fetchone()[0] == 13
+    ops = [e for e in session.get_journal() if e["op"] == "materialize"]
+    assert [e["sql"] for e in ops] == ["SELECT y * 2 AS y FROM y", "SELECT y + 1 AS y FROM y"]
+    assert all(e["overwrote"] for e in ops)
+    assert ops[0]["output_digest"] != ops[1]["output_digest"]
+    assert ops[1]["base_loader"]["path"] == str(csv)
+
+
+def test_failed_materialize_journals_nothing(call_tool: Any) -> None:
+    from data_analyst_mcp import session
+
+    result = call_tool("materialize_query", {"sql": "SELECT * FROM nope", "name": "n"})
+    assert result["ok"] is False
+    assert session.get_journal() == []
