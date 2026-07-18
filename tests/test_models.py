@@ -1089,3 +1089,42 @@ def test_fit_logistic_unexpected_fit_error_returns_convergence_failed():
     )
     assert isinstance(result, dict)
     assert result["error"]["type"] == "convergence_failed"
+
+
+def test_ephemeral_fit_cell_on_dataframe_dataset_gets_raise_prefix(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Spec: prefix replay guards, mechanism 2 — fit_model WITHOUT model_name
+    on an in-memory dataset opens with an explanatory raise."""
+    from data_analyst_mcp.recorder import get_recorder
+
+    df = pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0]})
+    load_df_into_session("mem", df)
+
+    result = call_tool("fit_model", {"name": "mem", "formula": "y ~ x", "kind": "ols"})
+    assert result["ok"] is True
+
+    src = get_recorder().cells[-1]["source"]
+    first_line = src.splitlines()[0]
+    assert first_line.startswith("raise AssertionError(")
+    assert "fit_model" in first_line
+    assert "in-memory" in first_line
+    assert "df = con.sql(" in src  # original computation retained
+
+
+def test_registered_fit_cell_on_dataframe_dataset_unchanged(
+    call_tool: Any, load_df_into_session: Any
+) -> None:
+    """Registered fits are guarded by the setup-cell model block; their
+    per-call cell must NOT gain the prefix (scope decision in the spec)."""
+    from data_analyst_mcp.recorder import get_recorder
+
+    df = pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 5.0], "x": [0.0, 1.0, 2.0, 3.0, 4.0]})
+    load_df_into_session("mem", df)
+
+    result = call_tool(
+        "fit_model",
+        {"name": "mem", "formula": "y ~ x", "kind": "ols", "model_name": "m1"},
+    )
+    assert result["ok"] is True
+    assert not get_recorder().cells[-1]["source"].startswith("raise AssertionError(")
