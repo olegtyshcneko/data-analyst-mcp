@@ -423,3 +423,66 @@ def test_budget_exceeded_is_cooperative(call_tool: Any, tmp_path: Any, monkeypat
     from data_analyst_mcp import session
 
     assert session.get_datasets() == {}
+
+
+def test_stripped_hc3_is_caught_by_bse_not_params(call_tool: Any, tmp_path: Any) -> None:
+    """Robust and plain OLS share coefficients exactly; only SEs differ.
+    Tampering fit_options to robust=False must fail on bse evidence."""
+    import nbformat
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.RandomState(3)
+    x = rng.normal(size=80)
+    noise = rng.normal(size=80) * (1.0 + np.abs(x))  # heteroskedastic on purpose
+    csv = tmp_path / "hc.csv"
+    pd.DataFrame({"x": x, "y": 2.0 * x + noise}).to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "hc"})["ok"] is True
+    assert (
+        call_tool(
+            "fit_model",
+            {"name": "hc", "formula": "y ~ x", "kind": "ols", "robust": True, "model_name": "hm"},
+        )["ok"]
+        is True
+    )
+    path = _emit(call_tool, tmp_path)
+    _fresh(call_tool)
+
+    nb = nbformat.read(path, as_version=4)
+    meta = nb.metadata["data_analyst_mcp"]
+    fit_op = next(e for e in meta["journal"] if e["op"] == "fit")
+    fit_op["fit_options"] = {"robust": False}
+    fr_model = next(m for m in meta["final_registry"]["models"] if m["name"] == "hm")
+    fr_model["fit_options"] = {"robust": False}
+    nbformat.write(nb, path)
+
+    result = call_tool("load_session_from_notebook", {"path": path})
+    assert result["ok"] is False
+    assert result["error"]["type"] == "model_drift"
+    assert "bse" in result["error"]["message"]
+
+
+def test_tampered_coefficient_evidence_is_model_drift(call_tool: Any, tmp_path: Any) -> None:
+    import nbformat
+    import numpy as np
+    import pandas as pd
+
+    rng = np.random.RandomState(4)
+    x = rng.normal(size=50)
+    csv = tmp_path / "tc2.csv"
+    pd.DataFrame({"x": x, "y": x + rng.normal(size=50)}).to_csv(csv, index=False)
+    assert call_tool("load_dataset", {"path": str(csv), "name": "tc2"})["ok"] is True
+    assert (
+        call_tool(
+            "fit_model", {"name": "tc2", "formula": "y ~ x", "kind": "ols", "model_name": "tm"}
+        )["ok"]
+        is True
+    )
+    path = _emit(call_tool, tmp_path)
+    _fresh(call_tool)
+    nb = nbformat.read(path, as_version=4)
+    fit_op = next(e for e in nb.metadata["data_analyst_mcp"]["journal"] if e["op"] == "fit")
+    fit_op["params"]["x"] = float(fit_op["params"]["x"]) + 0.5
+    nbformat.write(nb, path)
+    result = call_tool("load_session_from_notebook", {"path": path})
+    assert result["error"]["type"] == "model_drift"
