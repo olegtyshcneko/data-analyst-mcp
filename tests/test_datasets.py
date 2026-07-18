@@ -426,3 +426,70 @@ def test_load_dataset_supports_jsonl(call_tool: Any, tmp_path: Any) -> None:
     assert result["ok"] is True
     assert result["rows"] == 2
     assert {c["name"] for c in result["columns"]} == {"a", "b"}
+
+
+def test_load_dataset_cell_asserts_load_time_content_hash(call_tool: Any) -> None:
+    """Spec: prefix replay guards, mechanism 1. The load cell must assert the
+    file's SHA-256 as captured at THIS load, before its CREATE, so a file
+    mutated after the load fails replay at this cell."""
+    import hashlib
+
+    from data_analyst_mcp.recorder import get_recorder
+
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "messy"})
+
+    src = get_recorder().cells[1]["source"]
+    expected = hashlib.sha256(open(MESSY_CSV, "rb").read()).hexdigest()
+    assert f"expected_hash_ds_messy_0 = '{expected}'" in src
+    assert "actual_hash_ds_messy_0 = hashlib.sha256(open(" in src
+    assert "assert actual_hash_ds_messy_0 == expected_hash_ds_messy_0" in src
+    # The assert must precede the CREATE so drift fails before recreation.
+    assert src.index("assert actual_hash_ds_messy_0") < src.index("CREATE OR REPLACE TABLE")
+
+
+def test_load_dataset_cell_uses_fallback_recompute_above_ceiling(
+    call_tool: Any, tmp_path: Any, monkeypatch: Any
+) -> None:
+    """Above HASH_CONTENT_CEILING_BYTES the entry stores a fallback:(path,
+    mtime,size) digest; the load cell must recompute and assert that same
+    fallback instead of a content hash."""
+    from data_analyst_mcp import provenance
+    from data_analyst_mcp.recorder import get_recorder
+
+    csv_path = tmp_path / "big.csv"
+    csv_path.write_text("x,y\n1,2\n3,4\n")
+    monkeypatch.setattr(provenance, "HASH_CONTENT_CEILING_BYTES", 1)
+
+    call_tool("load_dataset", {"path": str(csv_path), "name": "big"})
+
+    src = get_recorder().cells[1]["source"]
+    assert "expected_hash_ds_big_0 = 'fallback:" in src
+    assert "_st = _os.stat(" in src
+    assert "'fallback:' + hashlib.sha256(" in src
+    assert "assert actual_hash_ds_big_0 == expected_hash_ds_big_0" in src
+
+
+def test_load_dataset_cell_emits_comment_for_sentinel_sources(
+    call_tool: Any, monkeypatch: Any
+) -> None:
+    """Remote (s3/http) sources hash to a sentinel; the load cell must emit
+    the unguarded-reload comment and no assert, mirroring the setup cell."""
+    from data_analyst_mcp import provenance
+    from data_analyst_mcp.recorder import get_recorder
+
+    # Force the sentinel shape without touching the network: the loader
+    # still reads the real local file; only the registration hash is faked.
+    # session.py binds the function at import (`from ... import
+    # compute_source_hash`), so patch the session-module binding.
+    def _sentinel(path: str) -> str:
+        return f"sentinel:no-file:{path}"
+
+    monkeypatch.setattr("data_analyst_mcp.session.compute_source_hash", _sentinel)
+    del provenance  # imported only to document where the real hasher lives
+
+    call_tool("load_dataset", {"path": MESSY_CSV, "name": "remote"})
+
+    src = get_recorder().cells[1]["source"]
+    assert "no verifiable source hash; reload is unguarded" in src
+    assert "expected_hash_ds_remote_0" not in src
+    assert "assert actual_hash" not in src
